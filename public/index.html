@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Real-time financial and economic news aggregator with AI-powered categorization and priority sorting">
+  <title>FinPulse — Financial News Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+</head>
+<body>
+  <!-- Breaking News Ticker -->
+  <div id="breaking-ticker" class="ticker" hidden>
+    <div class="ticker-label">
+      <span class="pulse-dot"></span>
+      BREAKING
+    </div>
+    <div class="ticker-track">
+      <div class="ticker-content" id="ticker-content"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="url(#logo-grad)"/>
+            <path d="M8 22L12 14L16 18L22 8L24 10L16 22L12 18L10 22H8Z" fill="white" fill-opacity="0.9"/>
+            <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32">
+              <stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/>
+            </linearGradient></defs>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-name">FinPulse</h1>
+          <p class="brand-tagline">Financial News Intelligence</p>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="search-bar">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input type="search" id="search-input" placeholder="Search news, markets, companies..." autocomplete="off">
+          <kbd class="search-kbd">⌘K</kbd>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="refresh-btn" class="btn btn-ghost" title="Refresh feeds">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+        </button>
+        <button id="theme-toggle" class="btn btn-ghost" title="Toggle theme">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <div class="stats-badge" id="stats-badge">
+          <span id="article-count">0</span> articles
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Stats Dashboard -->
+    <section class="dashboard" id="dashboard">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Total Articles</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-sources">—</div>
+        <div class="stat-label">News Sources</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-breaking">—</div>
+        <div class="stat-label">Breaking News</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-updated">—</div>
+        <div class="stat-label">Last Updated</div>
+      </div>
+    </section>
+
+    <!-- Category Filters -->
+    <section class="filters-section">
+      <div class="filters-row">
+        <div class="category-pills" id="category-pills">
+          <button class="pill active" data-category="all">
+            All News
+          </button>
+        </div>
+        <div class="priority-filter">
+          <select id="priority-filter" class="select-modern">
+            <option value="all">All Priorities</option>
+            <option value="breaking">🔴 Breaking</option>
+            <option value="high">🟠 High Priority</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="standard">⚪ Standard</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- News Grid -->
+    <section class="news-section">
+      <!-- Featured / Breaking Cards -->
+      <div class="featured-grid" id="featured-grid"></div>
+
+      <!-- Main Article Grid -->
+      <div class="article-grid" id="article-grid">
+        <div class="loading-state" id="loading-state">
+          <div class="spinner"></div>
+          <p>Fetching the latest financial news...</p>
+        </div>
+      </div>
+
+      <!-- Load More -->
+      <div class="load-more-wrap" id="load-more-wrap" hidden>
+        <button class="btn btn-primary btn-lg" id="load-more-btn">
+          Load More Articles
+        </button>
+        <p class="pagination-info" id="pagination-info"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Article Detail Modal -->
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal" id="article-modal">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <p>FinPulse — Aggregating news from Reuters, Bloomberg, CNBC, MarketWatch, Financial Times & more</p>
+      <p class="footer-sub">Auto-refreshes every 10 minutes · Data sourced from public RSS feeds</p>
+    </div>
+  </footer>
+
+  <script src="/js/app.js" type="module"></script>
+</body>
+</html>

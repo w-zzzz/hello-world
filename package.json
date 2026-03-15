@@ -1,0 +1,21 @@
+{
+  "name": "financial-news-aggregator",
+  "version": "1.0.0",
+  "description": "Sophisticated financial & economic news aggregator with real-time updates, AI summarization, and priority-sorted categorized display",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "rss-parser": "^3.13.0",
+    "node-cache": "^5.1.2",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "cheerio": "^1.0.0",
+    "marked": "^12.0.0"
+  }
+}
