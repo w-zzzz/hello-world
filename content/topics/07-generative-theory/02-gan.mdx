@@ -1,0 +1,194 @@
+---
+slug: "07-generative-theory/02-gan"
+part: "07-generative-theory"
+partTitle: "Generative modeling theory"
+partIndex: 7
+topicIndex: 2
+title: "Generative adversarial networks"
+hook: "Generator vs discriminator, mode collapse, StyleGAN."
+estMinutes: 14
+difficulty: 3
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["goodfellow", "karras"]
+papers:
+  - title: "Generative adversarial nets"
+    authors: "Goodfellow, Pouget-Abadie, Mirza, Xu, Warde-Farley, Ozair, Courville, Bengio"
+    year: 2014
+    url: "https://arxiv.org/abs/1406.2661"
+  - title: "A style-based generator architecture for generative adversarial networks"
+    authors: "Karras, Laine, Aila"
+    year: 2019
+    url: "https://arxiv.org/abs/1812.04948"
+  - title: "Wasserstein GAN"
+    authors: "Arjovsky, Chintala, Bottou"
+    year: 2017
+    url: "https://arxiv.org/abs/1701.07875"
+hfResources:
+  - kind: "model"
+    title: "stylegan3 on the Hub"
+    url: "https://huggingface.co/spaces/stabilityai/stylegan3"
+  - kind: "library"
+    title: "NVlabs/stylegan3 (official)"
+    url: "https://github.com/NVlabs/stylegan3"
+freeResources:
+  - kind: "blog"
+    title: "From GAN to WGAN"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2017-08-20-gan/"
+  - kind: "video"
+    title: "GANs explained"
+    source: "Ian Goodfellow, NeurIPS 2016 tutorial"
+    url: "https://www.youtube.com/watch?v=HGYYEUSm-0Q"
+  - kind: "course"
+    title: "MIT 6.S191 — Deep generative modeling"
+    url: "https://introtodeeplearning.com/"
+quiz:
+  - id: "gan-q1"
+    question: "What is the equilibrium of the original GAN minimax game when $G$ and $D$ have unlimited capacity?"
+    choices:
+      - "$D(x) = 0$ for all $x$."
+      - "$p_G = p_{\\mathrm{data}}$ and $D(x) = 1/2$ everywhere."
+      - "$D$ memorizes the training set."
+      - "$G$ outputs the dataset mean."
+    answer: 1
+    explanation: "Goodfellow's original analysis shows the global optimum is $p_G = p_{\\mathrm{data}}$, at which point the optimal discriminator is uncertain everywhere ($D = 1/2$). In practice neither network has unlimited capacity and the equilibrium is approached, not reached."
+  - id: "gan-q2"
+    question: "What is mode collapse and what causes it?"
+    choices:
+      - "$D$ overfits to noise in the training set."
+      - "$G$ produces only a small subset of the data distribution because the loss does not penalize missing modes — fooling $D$ on a few high-quality samples is enough."
+      - "The latent space becomes one-dimensional."
+      - "Gradients explode through $D$."
+    answer: 1
+    explanation: "The min-max objective rewards $G$ for fooling $D$, not for matching the full distribution. If $G$ finds a single image that fools $D$, it has no incentive to diversify. Mitigations: minibatch discrimination, unrolled GAN, Wasserstein loss with gradient penalty, conditioning."
+  - id: "gan-q3"
+    question: "Why did Wasserstein GAN replace the original Jensen–Shannon objective?"
+    choices:
+      - "It is faster to compute."
+      - "JS divergence is constant when $p_G$ and $p_{\\mathrm{data}}$ have disjoint support; the Wasserstein distance varies smoothly, giving usable gradients everywhere."
+      - "It removes the need for a discriminator."
+      - "It generates higher-resolution samples by default."
+    answer: 1
+    explanation: "When generated and real distributions don't overlap (typical early in training), JS is saturated at $\\log 2$ and provides no gradient. Wasserstein-1 distance measures how far you have to *move* mass and is well-defined even with disjoint supports. WGAN-GP enforces the required 1-Lipschitz constraint via a gradient penalty."
+---
+
+GANs taught the field that *direct distribution matching* is possible without
+a likelihood. For about five years they were the dominant image generator.
+Then diffusion ate their lunch. Understanding why both halves of that arc
+happened is good training for thinking about future generative paradigms.
+
+## Why this matters
+
+The VAE assumes a tractable likelihood and pays for it with blurry samples.
+GANs threw out the likelihood entirely. Instead of asking "what is the
+probability of this image?", they ask "can a critic tell my samples apart
+from the data?". When that question is answered correctly, the generator
+*has* matched the data distribution — no density estimate required.
+
+This is a fundamentally different idea: implicit density modeling via a
+two-player game. It enabled the first photorealistic generative models
+(Progressive GAN, BigGAN, StyleGAN) and inspired a generation of contrastive
+and adversarial training tricks.
+
+## The minimax game
+
+Two networks. The **generator** $G$ maps noise $z \sim p(z)$ to samples
+$G(z)$. The **discriminator** $D$ scores how likely an input came from the
+data versus from $G$. The original objective:
+
+$$
+\min_G \max_D \; \mathbb{E}_{x \sim p_{\mathrm{data}}}[\log D(x)] + \mathbb{E}_{z \sim p(z)}[\log(1 - D(G(z)))]
+$$
+
+$D$ wants to assign high score to real, low score to fake. $G$ wants to fool
+$D$. At the global optimum $p_G = p_{\mathrm{data}}$ and $D = 1/2$
+everywhere — $D$ has nothing to discriminate.
+
+In practice we replace $\log(1 - D(G(z)))$ with $-\log D(G(z))$ for $G$ (the
+"non-saturating" loss), because the original term has near-zero gradient
+when $D$ is winning, exactly when $G$ most needs a signal.
+
+<PaperCard
+  title="Generative adversarial nets"
+  authors="Goodfellow, Pouget-Abadie, Mirza, Xu, Warde-Farley, Ozair, Courville, Bengio"
+  year={2014}
+  url="https://arxiv.org/abs/1406.2661"
+/>
+
+## Why training is hard
+
+GAN training is a saddle-point problem, not a minimization. Two failure
+modes dominate:
+
+1. **Mode collapse.** $G$ finds a few high-quality samples that fool $D$ and
+   stops exploring. The latent space collapses onto a tiny submanifold.
+
+2. **Vanishing gradients.** When $D$ becomes too strong, its outputs
+   saturate; $G$ receives no useful gradient. When $D$ is too weak, the game
+   is uninformative.
+
+```python
+import torch
+import torch.nn.functional as F
+
+def gan_step(real, G, D, opt_g, opt_d, z_dim, device):
+    z = torch.randn(real.size(0), z_dim, device=device)
+    fake = G(z)
+
+    # discriminator
+    d_real = D(real)
+    d_fake = D(fake.detach())
+    d_loss = F.binary_cross_entropy_with_logits(d_real, torch.ones_like(d_real)) \
+           + F.binary_cross_entropy_with_logits(d_fake, torch.zeros_like(d_fake))
+    opt_d.zero_grad(); d_loss.backward(); opt_d.step()
+
+    # generator (non-saturating)
+    d_fake = D(fake)
+    g_loss = F.binary_cross_entropy_with_logits(d_fake, torch.ones_like(d_fake))
+    opt_g.zero_grad(); g_loss.backward(); opt_g.step()
+    return d_loss.item(), g_loss.item()
+```
+
+The Wasserstein GAN replaced JS divergence with the earth-mover distance,
+which provides smooth gradients even when $p_G$ and $p_{\mathrm{data}}$ have
+disjoint support. WGAN-GP enforces the required 1-Lipschitz critic via a
+gradient penalty:
+
+$$
+\lambda \, \mathbb{E}_{\hat{x}} \big[ (\|\nabla_{\hat{x}} D(\hat{x})\|_2 - 1)^2 \big]
+$$
+
+## StyleGAN: control as architecture
+
+NVIDIA's StyleGAN line (2018–2021) re-engineered the generator. Instead of
+pumping noise through a stack of transposed convs, StyleGAN maps noise to a
+**style vector** $w$, then injects $w$ into each layer via adaptive instance
+normalization. Different layers control different scales of detail: coarse
+layers determine pose and identity, mid layers determine features, fine
+layers determine texture.
+
+The result was the cleanest pre-diffusion image generation: the
+"this-person-does-not-exist" era was StyleGAN. It also gave latent-space
+*editing* a real foothold, since semantic axes (smile, age, pose) often line
+up with linear directions in $w$-space.
+
+<Callout variant="insight" title="Why diffusion replaced GANs">
+GANs are fast at inference (one forward pass) and produce sharp samples,
+but they are unstable to train, hard to scale to text conditioning, and
+prone to mode dropping. Diffusion models inverted the trade-off: slower
+inference, but stable likelihood-based training, well-defined log-likelihoods,
+and clean conditioning via classifier-free guidance. By 2022 diffusion had
+taken over text-to-image and never looked back.
+</Callout>
+
+## What you take away
+
+GANs are still useful where speed matters (single-step inference, super
+resolution, real-time avatar generation). The deeper lesson is methodological:
+*you can fit a generative model without a tractable likelihood, by training
+a second network to estimate divergences for you*. That idea reappears
+everywhere — contrastive learning, energy-based models, adversarial
+robustness, even some discriminator-based reward models in alignment.
+
+If a paper has a critic in it, GANs are the prequel.

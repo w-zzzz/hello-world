@@ -1,0 +1,276 @@
+---
+slug: "08-rl/04-rlhf-dpo-grpo"
+part: "08-rl"
+partTitle: "Reinforcement learning"
+partIndex: 8
+topicIndex: 4
+title: "RLHF, DPO, GRPO"
+hook: "Aligning LLMs to human preferences."
+estMinutes: 18
+difficulty: 4
+prereqs: ["08-rl/03-policy-gradient-ppo", "04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["rafailov", "stiennon"]
+papers:
+  - title: "Learning to summarize from human feedback"
+    authors: "Stiennon, Ouyang, Wu, Ziegler, Lowe, Voss, Radford, Amodei, Christiano"
+    year: 2020
+    url: "https://arxiv.org/abs/2009.01325"
+  - title: "Training language models to follow instructions with human feedback (InstructGPT)"
+    authors: "Ouyang, Wu, Jiang, Almeida, Wainwright, Mishkin, Zhang, Agarwal, Slama, Ray, et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2203.02155"
+  - title: "Direct preference optimization: your language model is secretly a reward model"
+    authors: "Rafailov, Sharma, Mitchell, Ermon, Manning, Finn"
+    year: 2023
+    url: "https://arxiv.org/abs/2305.18290"
+  - title: "DeepSeekMath: pushing the limits of mathematical reasoning in open language models"
+    authors: "Shao, Wang, Zhu, Xu, Song, Bi, Zhang, Zhang, Li, Wu, Guo"
+    year: 2024
+    url: "https://arxiv.org/abs/2402.03300"
+  - title: "DAPO: an open-source LLM reinforcement learning system at scale"
+    authors: "Yu, Luo, et al. (ByteDance Seed)"
+    year: 2025
+    url: "https://arxiv.org/abs/2503.14476"
+hfResources:
+  - kind: "library"
+    title: "TRL — DPOTrainer, PPOTrainer, GRPOTrainer"
+    url: "https://huggingface.co/docs/trl/main/en/index"
+  - kind: "dataset"
+    title: "Anthropic/hh-rlhf — preference data"
+    url: "https://huggingface.co/datasets/Anthropic/hh-rlhf"
+  - kind: "model"
+    title: "deepseek-ai/DeepSeek-R1"
+    url: "https://huggingface.co/deepseek-ai/DeepSeek-R1"
+freeResources:
+  - kind: "blog"
+    title: "Illustrating Reinforcement Learning from Human Feedback"
+    source: "Hugging Face"
+    url: "https://huggingface.co/blog/rlhf"
+  - kind: "blog"
+    title: "Why DPO works (and PPO is hard)"
+    source: "Nathan Lambert (Interconnects)"
+    url: "https://www.interconnects.ai/p/why-reward-models-matter"
+  - kind: "video"
+    title: "Stanford CS25 — Aligning open language models"
+    source: "Nathan Lambert"
+    url: "https://www.youtube.com/watch?v=AdLgPmcrXwQ"
+quiz:
+  - id: "rlhf-q1"
+    question: "In classical RLHF (Stiennon, InstructGPT), what does the *reward model* score?"
+    choices:
+      - "The next token's probability."
+      - "Whole responses, trained from human pairwise preferences via the Bradley–Terry likelihood: $P(y_w \\succ y_l | x) = \\sigma(r_\\phi(x, y_w) - r_\\phi(x, y_l))$."
+      - "The KL divergence to the base model."
+      - "The token-level entropy."
+    answer: 1
+    explanation: "Humans rank pairs $(y_w, y_l)$ given prompt $x$. The reward model is fit to predict that ranking under a Bradley–Terry model. The fitted $r_\\phi$ then produces a scalar reward for the PPO loop, which optimizes the policy with a KL penalty to the SFT model."
+  - id: "rlhf-q2"
+    question: "Why is DPO equivalent to RLHF without the explicit reward model and RL loop?"
+    choices:
+      - "It uses a different loss function on the same policy."
+      - "Under the KL-regularized RL objective, the optimal policy has a closed form $\\pi^*(y|x) \\propto \\pi_{\\mathrm{ref}}(y|x) \\exp(r(x,y)/\\beta)$. Inverting this expresses the implicit reward in terms of the policy ratio, turning preference learning into supervised classification on the policy itself."
+      - "It freezes the reward model."
+      - "It uses Q-learning instead of policy gradient."
+    answer: 1
+    explanation: "Rafailov et al. show that the KL-regularized maximum-reward policy is a softmax over the reference policy weighted by the reward. Solving for $r$ in terms of $\\log(\\pi/\\pi_{\\mathrm{ref}})$ and substituting into the Bradley–Terry preference likelihood eliminates $r$ entirely. You optimize the policy directly with a binary cross-entropy on chosen vs rejected."
+  - id: "rlhf-q3"
+    question: "What does GRPO (used in DeepSeek-R1) replace from PPO?"
+    choices:
+      - "The reward model."
+      - "The KL penalty."
+      - "The value/critic network. Instead of training a value function, GRPO samples a *group* of $G$ completions per prompt and computes the advantage as the standardized reward within that group."
+      - "The reference model."
+    answer: 2
+    explanation: "Training a separate value model on long generations is costly and noisy. GRPO uses the group mean and standard deviation as a per-prompt baseline: $A_i = (r_i - \\mathrm{mean}(r)) / \\mathrm{std}(r)$ across the $G$ completions. This halves the model count and works exceptionally well for verifiable-reward tasks like math and code."
+  - id: "rlhf-q4"
+    question: "What is the role of the KL penalty $\\beta \\, \\mathrm{KL}(\\pi_\\theta \\Vert \\pi_{\\mathrm{ref}})$ in RLHF?"
+    choices:
+      - "It speeds up training."
+      - "It prevents the policy from drifting too far from the SFT model and reward-hacking the proxy reward — without it, the policy can find degenerate high-reward outputs that look nothing like coherent text."
+      - "It is required for the policy gradient to be valid."
+      - "It eliminates the need for preference data."
+    answer: 1
+    explanation: "The reward model is a *proxy* for human preference. Optimized too hard, the policy will exploit its blind spots — emitting reward-model-friendly nonsense. The KL anchor keeps $\\pi_\\theta$ near $\\pi_{\\mathrm{ref}}$, where the reward model was trained and is reliable. $\\beta$ is the most important hyperparameter in RLHF after the reward model itself."
+---
+
+This is the topic that connects everything you've learned about RL to the
+LLM stack you actually use. Modern instruction-following models — ChatGPT,
+Claude, Gemini, DeepSeek-R1, Qwen — are all post-trained on human preferences
+or verifiable rewards. The algorithms have evolved fast: from PPO with a
+reward model (2022), to DPO without one (2023), to GRPO (2024) and DAPO
+(2025) for reasoning models.
+
+This is also the topic where the field is moving the fastest. What was
+state-of-the-art two years ago is now a baseline. Internalize the *shape* of
+the problem and the algorithms will keep making sense.
+
+## Why this matters
+
+Pretraining gives you a base model that predicts the next token. SFT
+teaches it to follow instructions. Neither tells it which of two correct
+answers is *better*: more helpful, more honest, less harmful, more correctly
+reasoned. Preferences fill that gap.
+
+The technical question: how do you turn pairwise preferences (or verifiable
+rewards) into a loss that improves the model? Three answers, in chronological
+order, each one simpler than the last.
+
+## RLHF: the original recipe
+
+Christiano et al. (2017) and Stiennon et al. (2020) established the pipeline
+that InstructGPT made famous:
+
+1. **SFT.** Fine-tune the base model on demonstration data to get
+   $\pi_{\mathrm{ref}}$.
+2. **Reward model.** Collect pairwise preferences $(x, y_w, y_l)$ where $y_w$
+   is preferred. Fit $r_\phi(x, y)$ under the Bradley–Terry model:
+
+   $$
+   \mathcal{L}_{\mathrm{RM}}(\phi) = -\mathbb{E}\!\left[\log \sigma\!\big(r_\phi(x, y_w) - r_\phi(x, y_l)\big)\right]
+   $$
+
+3. **RL.** Optimize the policy with PPO against $r_\phi$, regularized by
+   KL to the SFT model:
+
+   $$
+   J(\theta) = \mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi_\theta}\!\left[r_\phi(x, y) - \beta \, \mathrm{KL}\!\big(\pi_\theta(\cdot|x) \,\Vert\, \pi_{\mathrm{ref}}(\cdot|x)\big)\right]
+   $$
+
+This worked, and it produced ChatGPT. But it requires *four models* in
+memory at once (policy, reference, reward, critic) and a notoriously finicky
+PPO loop. Reward hacking is real — the policy finds outputs that score high
+on $r_\phi$ but humans hate, and the KL is the only thing preventing
+catastrophic drift.
+
+<PaperCard
+  title="Direct preference optimization: your language model is secretly a reward model"
+  authors="Rafailov, Sharma, Mitchell, Ermon, Manning, Finn"
+  year={2023}
+  url="https://arxiv.org/abs/2305.18290"
+/>
+
+## DPO: kill the RL loop
+
+Rafailov et al. observed that the KL-regularized RL objective has a
+closed-form optimal policy:
+
+$$
+\pi^*(y | x) \;=\; \frac{1}{Z(x)} \, \pi_{\mathrm{ref}}(y | x) \, \exp\!\left(\frac{1}{\beta} r(x, y)\right)
+$$
+
+Invert for the reward:
+
+$$
+r(x, y) \;=\; \beta \log \frac{\pi^*(y|x)}{\pi_{\mathrm{ref}}(y|x)} + \beta \log Z(x)
+$$
+
+Plug this into the Bradley–Terry preference likelihood. The partition
+function $Z(x)$ cancels out (it's the same for $y_w$ and $y_l$), and what
+remains is a binary classification objective in $\pi_\theta$ alone:
+
+$$
+\mathcal{L}_{\mathrm{DPO}}(\theta) \;=\; -\mathbb{E}\!\left[\log \sigma\!\left(\beta \log \frac{\pi_\theta(y_w|x)}{\pi_{\mathrm{ref}}(y_w|x)} - \beta \log \frac{\pi_\theta(y_l|x)}{\pi_{\mathrm{ref}}(y_l|x)}\right)\right]
+$$
+
+No reward model. No critic. No sampling. No PPO. Just a one-line loss on
+preference triples. The two-model footprint (policy + reference) and supervised
+training dynamics make DPO dramatically easier to debug.
+
+```python
+import torch
+import torch.nn.functional as F
+
+def dpo_loss(policy_chosen_logps, policy_rejected_logps,
+             ref_chosen_logps,    ref_rejected_logps, beta=0.1):
+    pi_logratios  = policy_chosen_logps  - policy_rejected_logps
+    ref_logratios = ref_chosen_logps     - ref_rejected_logps
+    logits = beta * (pi_logratios - ref_logratios)
+    return -F.logsigmoid(logits).mean()
+```
+
+DPO is now the default in open-source post-training. Variants (IPO, KTO,
+SimPO, ORPO) tweak the loss for different preference structures or to drop
+the reference model.
+
+<Callout variant="insight" title="What DPO trades">
+DPO assumes the preference data is (1) static and (2) i.i.d. from a
+distribution close to the SFT model. That's fine for offline preference
+datasets but breaks down when you want to *iteratively improve* the policy
+with on-policy samples. RL methods regain the advantage when preferences
+must be elicited online or when rewards come from verifiers (math, code).
+</Callout>
+
+## GRPO: PPO without the critic
+
+For *verifiable* rewards — math correctness, code passing tests, formatted
+output — RLHF's reward-model proxy is unnecessary. You have ground truth.
+But you still want online RL, because the policy needs to explore
+high-quality completions that aren't in any preference dataset.
+
+DeepSeek's **Group Relative Policy Optimization** (GRPO), introduced in
+DeepSeekMath and used to train DeepSeek-R1, simplifies PPO by replacing the
+critic. For each prompt $x$, sample a group of $G$ completions
+$\{y_1, \dots, y_G\}$, compute their rewards, and use the *standardized
+within-group reward* as the advantage:
+
+$$
+A_i \;=\; \frac{r_i - \mathrm{mean}(\{r_1, \dots, r_G\})}{\mathrm{std}(\{r_1, \dots, r_G\})}
+$$
+
+Plug this advantage into the PPO clipped objective. No value network — the
+group itself provides the baseline.
+
+The benefits compound: one fewer model in memory, no value-function bias
+to chase, and on long-horizon completions (which is where chain-of-thought
+RL needs to work) GRPO's group baseline is more stable than a learned
+critic that has to fit a noisy value target across thousands of tokens.
+GRPO is the algorithm behind DeepSeek-R1's RL stage and is now widely used
+in open reasoning models.
+
+## DAPO and the 2025 frontier
+
+ByteDance's **DAPO** (March 2025) is the latest open-source reasoning-RL
+recipe. It builds on GRPO with four important fixes:
+
+1. **Clip-Higher.** Use asymmetric clip thresholds so the upper clip doesn't
+   suppress exploration of high-reward but low-probability tokens — a real
+   pathology in long-form reasoning.
+2. **Dynamic sampling.** Filter prompts with all-correct or all-wrong groups
+   (zero gradient signal) and oversample the informative ones.
+3. **Token-level loss.** Average loss over tokens rather than over sequences,
+   so a single very long completion doesn't dominate the gradient.
+4. **Overlong reward shaping.** Penalize truncated completions softly so
+   the policy doesn't learn to ramble until cutoff.
+
+DAPO trained Qwen2.5-32B to 50 AIME points with fewer steps than GRPO. The
+broader lesson: RL post-training for reasoning is a subfield with its own
+fast-moving algorithmic landscape, all built on the PPO scaffold.
+
+<Callout variant="warning" title="The 2025 picture">
+A pragmatic stack today looks like: SFT → DPO (or its variants) for general
+helpfulness → GRPO/DAPO for verifiable reasoning rewards. RLHF with a
+trained reward model is still used at frontier labs — particularly Anthropic
+and Google — because it captures preferences that aren't easily verifiable.
+"DPO replaces RLHF" is too strong. "DPO replaces RLHF for the easy half"
+is closer.
+</Callout>
+
+## What to internalize
+
+Three pictures:
+
+1. **RLHF**: humans rank pairs → reward model → PPO with KL penalty. Four
+   models, one finicky pipeline.
+2. **DPO**: solve the KL-regularized RL problem in closed form, eliminate
+   the reward model, optimize the policy with binary cross-entropy on
+   preference pairs.
+3. **GRPO/DAPO**: when rewards are verifiable, skip the reward model
+   entirely; sample groups of completions and use within-group baselines
+   instead of a value network.
+
+Every alignment paper for the rest of the decade will be a remix of these
+three ideas — adding online preferences, mixing verifiable and judgmental
+rewards, sharpening the loss for reasoning. If you understand why DPO
+collapses RLHF and why GRPO eliminates the critic, you have the conceptual
+toolkit to read the next breakthrough as it appears.

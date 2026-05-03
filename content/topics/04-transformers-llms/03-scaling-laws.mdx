@@ -1,0 +1,209 @@
+---
+slug: "04-transformers-llms/03-scaling-laws"
+part: "04-transformers-llms"
+partTitle: "Transformers & LLMs"
+partIndex: 4
+topicIndex: 3
+title: "Scaling laws & Chinchilla"
+hook: "Compute-optimal models — data and parameters in lockstep."
+estMinutes: 18
+difficulty: 4
+prereqs: ["04-transformers-llms/01-gpt"]
+hasHeroViz: false
+researchers: ["kaplan", "hoffmann"]
+papers:
+  - title: "Scaling Laws for Neural Language Models"
+    authors: "Kaplan, McCandlish, Henighan, Brown, Chess, Child, Gray, Radford, Wu, Amodei"
+    year: 2020
+    url: "https://arxiv.org/abs/2001.08361"
+  - title: "Training Compute-Optimal Large Language Models (Chinchilla)"
+    authors: "Hoffmann et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2203.15556"
+  - title: "Beyond neural scaling laws: beating power law scaling via data pruning"
+    authors: "Sorscher, Geirhos, Shekhar, Ganguli, Morcos"
+    year: 2022
+    url: "https://arxiv.org/abs/2206.14486"
+hfResources:
+  - kind: "model"
+    title: "google/chinchilla-related — Gopher family (closest open analog)"
+    url: "https://huggingface.co/models?search=gopher"
+  - kind: "blog"
+    title: "Hugging Face — Scaling, optimally"
+    url: "https://huggingface.co/blog/large-language-models"
+freeResources:
+  - kind: "blog"
+    title: "Chinchilla's Wild Implications"
+    source: "Nostalgebraist"
+    url: "https://www.lesswrong.com/posts/6Fpvch8RR29qLEWNH/chinchilla-s-wild-implications"
+  - kind: "blog"
+    title: "Scaling Laws and Compute-Optimal LLMs"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2024-09-25-scaling/"
+  - kind: "video"
+    title: "Scaling laws explained"
+    source: "Yannic Kilcher"
+    url: "https://www.youtube.com/watch?v=QMqPAM_knrE"
+quiz:
+  - id: "scaling-q1"
+    question: "Kaplan et al. (2020) and Hoffmann et al. (2022, Chinchilla) both fit power laws but reached different conclusions. What was the disagreement?"
+    choices:
+      - "Whether scaling laws exist at all."
+      - "How to balance parameters $N$ and tokens $D$ for a fixed compute budget — Kaplan said scale parameters faster, Chinchilla said scale them roughly equally."
+      - "Whether to use Adam or SGD."
+      - "Whether wider or deeper models are better."
+    answer: 1
+    explanation: "Kaplan's original recipe over-weighted parameter count. Chinchilla's careful sweep showed that for compute-optimal training, you want roughly $D \\approx 20 N$ — for every parameter, train on ~20 tokens. This implies many published 2020-21 models were severely undertrained."
+  - id: "scaling-q2"
+    question: "What does the Chinchilla compute-optimal heuristic $D \\approx 20 N$ mean in practice?"
+    choices:
+      - "A 70B-parameter model needs roughly 1.4T training tokens."
+      - "A 70B model needs 70B tokens."
+      - "Compute is irrelevant."
+      - "Inference cost equals training cost."
+    answer: 0
+    explanation: "$20 \\times 70B \\approx 1.4T$ tokens. Llama 2 (2T tokens for 70B) and Llama 3 (15T for 70B) intentionally over-train *past* compute-optimal because the training cost is paid once but inference cost is paid forever — over-training a smaller model wins on lifetime efficiency."
+  - id: "scaling-q3"
+    question: "Why do we observe power-law-like loss curves $L(N) \\approx (N_c/N)^{\\alpha}$ at all?"
+    choices:
+      - "Power laws are a mathematical artifact of cross-entropy."
+      - "The empirical fit is excellent over many orders of magnitude, and is consistent with intrinsic-dimension and manifold-learning arguments — but a fully principled derivation is open."
+      - "Power laws appear because of fp16 precision."
+      - "They are guaranteed by the universal approximation theorem."
+    answer: 1
+    explanation: "Empirically, loss vs compute, parameters, or data fits a clean power law over 8+ orders of magnitude. Theoretical accounts (intrinsic dimensionality of the data manifold, kernel arguments) match the broad shape but no derivation pins the exponents. It's one of the cleanest empirical regularities in deep learning."
+  - id: "scaling-q4"
+    question: "What does 'compute-optimal' specifically mean?"
+    choices:
+      - "Lowest inference cost."
+      - "Lowest validation loss for a fixed total training FLOPs budget $C \\approx 6ND$."
+      - "Highest parameter count."
+      - "Most tokens trained."
+    answer: 1
+    explanation: "For a fixed FLOPs budget $C \\approx 6ND$, you choose $(N^*, D^*)$ that minimizes loss. Chinchilla did this sweep and found the optimum has $N^* \\propto C^{0.5}$, $D^* \\propto C^{0.5}$ — both scale at the same rate. Inference cost is a separate, equally important consideration."
+---
+
+Scaling laws are the closest thing deep learning has to a *physical theory*.
+You vary one knob — compute, data, parameters — and the test loss falls in
+a remarkably clean power law over many orders of magnitude. This empirical
+regularity is what made the GPT roadmap navigable: you didn't need to know
+*how* a 100B-parameter model would behave to be confident it would beat the
+10B one.
+
+Until 2022, the field's mental model came from Kaplan et al.'s 2020 paper,
+which suggested compute should be poured disproportionately into making
+models bigger. Then DeepMind's Chinchilla quietly demonstrated that the
+field had been training nearly every model wrong.
+
+## The empirical shape
+
+Test cross-entropy loss as a function of model size $N$ (parameters), dataset
+size $D$ (tokens), and compute $C$ (FLOPs) is well fit by:
+
+$$
+L(N) \approx L_\infty + \left(\frac{N_c}{N}\right)^{\alpha_N},\quad
+L(D) \approx L_\infty + \left(\frac{D_c}{D}\right)^{\alpha_D}
+$$
+
+with empirically determined exponents $\alpha_N \approx 0.34$ and
+$\alpha_D \approx 0.28$. The constants $L_\infty$ are the irreducible
+entropy floors of the data distribution. Treat the formula as a
+*calibration curve*: given a small-scale fit, you can extrapolate the loss
+of a much larger run.
+
+The compute relationship ties them together: ignoring constants,
+
+$$
+C \approx 6 N D
+$$
+
+(forward + backward FLOPs per token times $D$ tokens). For a fixed compute
+budget, you have a Pareto frontier: bigger model, fewer tokens, or smaller
+model, more tokens.
+
+## Kaplan vs Chinchilla
+
+Kaplan et al. (2020) ran sweeps and concluded the optimal allocation was
+roughly $N \propto C^{0.73}$, $D \propto C^{0.27}$ — scale parameters fast,
+data slowly. The whole field absorbed this. GPT-3 (175B parameters, 300B
+tokens) followed the prescription: $D/N \approx 1.7$.
+
+Hoffmann et al. (2022) — the **Chinchilla** paper — re-ran the sweep more
+carefully, sweeping $N$ and $D$ jointly rather than fitting them
+independently. Their conclusion was startling:
+
+$$
+N^* \propto C^{0.50},\quad D^* \propto C^{0.50},\quad D^* \approx 20\, N^*
+$$
+
+In other words, *for every parameter, train on about 20 tokens*. The
+correction was massive: a compute-optimal version of GPT-3-class compute
+should be a 70B-parameter model trained on 1.4T tokens, not a 175B model
+trained on 300B. Their proof: a 70B Chinchilla beat the 280B Gopher (4×
+larger, same compute) on most benchmarks.
+
+<Callout variant="insight" title="A sociology lesson">
+Two careful empirical papers, fit to similar data, disagreed on something
+that determined the shape of an entire industry's training runs for two
+years. Read both. Notice how the difference comes down to whether you let
+the learning-rate schedule fully decay (Chinchilla did, Kaplan did not). At
+this scale, methodology *is* the result.
+</Callout>
+
+## Why post-Chinchilla models train *past* the optimum
+
+If $D^* \approx 20N^*$ minimizes training loss per FLOP, why does Llama 3
+train a 70B-parameter model on **15T** tokens — over 10× the compute-optimal
+data? Because compute-optimal is the wrong objective if you care about
+inference.
+
+Training cost is paid once. Inference cost is paid every time a user types
+into the model. A 70B model trained on 15T tokens reaches the same loss as a
+much larger compute-optimal model — but is far cheaper to *serve*. This
+"over-training" recipe is the reason modern open-weights models are
+dramatically smaller than scaling-law-purist models would predict.
+
+```python
+# Compute-optimal vs inference-optimal allocation
+C_train = 1e25  # FLOPs
+# Compute-optimal (Chinchilla):
+import math
+N_opt = (C_train / 6 / 20) ** 0.5
+D_opt = 20 * N_opt
+# Inference-optimal: pick smaller N, larger D for same C_train
+N_inf = N_opt / 3
+D_inf = C_train / (6 * N_inf)
+print(f"Chinchilla:    N={N_opt:.2e}, D={D_opt:.2e}, D/N={D_opt/N_opt:.0f}")
+print(f"Over-trained:  N={N_inf:.2e}, D={D_inf:.2e}, D/N={D_inf/N_inf:.0f}")
+```
+
+This trade-off is one of the most important practical decisions in modern
+LLM design and depends on your serving volume.
+
+<PaperCard title="Training Compute-Optimal Large Language Models (Chinchilla)" authors="Hoffmann et al." year={2022} url="https://arxiv.org/abs/2203.15556" />
+
+## What scaling laws do *not* tell you
+
+- They predict **loss**, not capability. The loss falls smoothly; specific
+  capabilities (arithmetic, code, reasoning) often appear with phase
+  transitions.
+- They assume your data is "internet-text-like." Domain-shifted data has
+  its own (worse) constants.
+- They assume the architecture is approximately Transformer-shaped. Mamba,
+  MoE, and RWKV all fit power laws — but with different prefactors.
+- They are silent on **alignment, safety, and refusal behavior**. Cross-entropy
+  going down does not mean the model is more useful or honest.
+
+The frontier of 2024–2026 scaling research is no longer "how do I get a
+lower loss" — that was settled. It's "how do I scale **test-time compute**
+(reasoning models) and **data quality** (synthetic data, filtering) when raw
+text is running out?" Both of these break the original Kaplan/Chinchilla
+formulation because they change what $N$ and $D$ mean.
+
+## What to study next
+
+- Read the Chinchilla paper, especially Appendix C (the compute-optimal fit).
+- Read the Kaplan paper to see how subtle methodology choices change the answer.
+- Look at the Llama 3 technical report for a real-world post-Chinchilla recipe.
+
+Then move to the next chapter — once you have a base model, *making it useful* is its own problem.

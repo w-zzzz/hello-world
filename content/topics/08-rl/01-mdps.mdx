@@ -1,0 +1,207 @@
+---
+slug: "08-rl/01-mdps"
+part: "08-rl"
+partTitle: "Reinforcement learning"
+partIndex: 8
+topicIndex: 1
+title: "MDPs & value functions"
+hook: "Bellman equations and the language of decisions."
+estMinutes: 14
+difficulty: 3
+prereqs: ["01-math/02-probability-information"]
+hasHeroViz: false
+researchers: ["sutton", "barto"]
+papers:
+  - title: "A Markovian decision process"
+    authors: "Richard Bellman"
+    year: 1957
+    url: "https://www.jstor.org/stable/24900506"
+  - title: "Reinforcement learning: an introduction (2nd ed)"
+    authors: "Sutton, Barto"
+    year: 2018
+    url: "http://incompleteideas.net/book/RLbook2020.pdf"
+hfResources:
+  - kind: "library"
+    title: "Gymnasium — RL environment standard"
+    url: "https://gymnasium.farama.org/"
+  - kind: "course"
+    title: "Hugging Face Deep RL Course"
+    url: "https://huggingface.co/learn/deep-rl-course/unit0/introduction"
+freeResources:
+  - kind: "course"
+    title: "DeepMind x UCL RL Lecture Series"
+    source: "David Silver / Hado van Hasselt"
+    url: "https://www.deepmind.com/learning-resources/reinforcement-learning-lecture-series-2021"
+  - kind: "book"
+    title: "Reinforcement Learning: An Introduction"
+    source: "Sutton & Barto (free PDF)"
+    url: "http://incompleteideas.net/book/the-book-2nd.html"
+  - kind: "blog"
+    title: "Spinning Up — Part 1: Key concepts"
+    source: "OpenAI"
+    url: "https://spinningup.openai.com/en/latest/spinningup/rl_intro.html"
+quiz:
+  - id: "mdp-q1"
+    question: "What does the Markov property in an MDP guarantee?"
+    choices:
+      - "The reward is deterministic."
+      - "The next state and reward depend only on the current state and action, not on the history before it."
+      - "The optimal policy is always deterministic."
+      - "The discount factor $\\gamma$ equals 1."
+    answer: 1
+    explanation: "Markov means the state is a *sufficient statistic* of the past. If your representation isn't Markov, you should fold relevant history into the state (frame stacking in Atari, recurrent state in POMDPs)."
+  - id: "mdp-q2"
+    question: "What is the difference between $V^\\pi(s)$ and $Q^\\pi(s, a)$?"
+    choices:
+      - "$V$ is for stochastic policies, $Q$ is for deterministic ones."
+      - "$V^\\pi(s)$ is the expected return from $s$ following $\\pi$; $Q^\\pi(s,a)$ is the expected return from $s$ taking $a$ first, then following $\\pi$. They are related by $V^\\pi(s) = \\mathbb{E}_{a \\sim \\pi}[Q^\\pi(s, a)]$."
+      - "$V$ uses discounting, $Q$ does not."
+      - "They are identical in expectation."
+    answer: 1
+    explanation: "The Q-function adds the choice of first action explicitly, which is why Q-learning and policy improvement work directly with it: $\\pi'(s) = \\arg\\max_a Q^\\pi(s, a)$."
+  - id: "mdp-q3"
+    question: "Why does the discount factor $\\gamma < 1$ matter mathematically?"
+    choices:
+      - "It makes the optimization convex."
+      - "It guarantees the infinite-horizon return is finite when rewards are bounded, and turns the Bellman operator into a contraction with rate $\\gamma$, ensuring unique fixed points."
+      - "It removes the Markov assumption."
+      - "It eliminates exploration."
+    answer: 1
+    explanation: "Geometric weighting bounds the sum and makes the Bellman operator a $\\gamma$-contraction in sup-norm. That contraction is the reason value iteration converges to a unique optimal value function."
+---
+
+Reinforcement learning is the math of *learning to make decisions*. Before
+PPO, RLHF, AlphaZero — before any of the algorithms that made RL famous —
+you need the underlying object they all optimize over: the **Markov
+decision process**.
+
+This is short, formal, and unavoidable. Every RL paper assumes you know it.
+
+## Why this matters
+
+Supervised learning gives you a label and asks you to predict it.
+Reinforcement learning gives you a reward signal — possibly delayed, possibly
+sparse, possibly noisy — and asks you to choose actions over time that
+maximize cumulative reward. The MDP is the formalism that makes "over time"
+precise.
+
+The same structure shows up far beyond games and robots. RLHF, agent
+planning, dialog management, even active learning — all of these reduce to
+"choose actions in an MDP".
+
+## The five-tuple
+
+A (discounted, infinite-horizon) MDP is $\langle \mathcal{S}, \mathcal{A}, P, R, \gamma \rangle$:
+
+- $\mathcal{S}$: state space.
+- $\mathcal{A}$: action space.
+- $P(s' | s, a)$: transition probabilities.
+- $R(s, a)$: reward for taking action $a$ in state $s$ (possibly stochastic).
+- $\gamma \in [0, 1)$: discount factor.
+
+A **policy** $\pi(a | s)$ is a (possibly stochastic) mapping from states to
+actions. The agent's goal is to maximize the expected discounted return:
+
+$$
+J(\pi) = \mathbb{E}_\pi \!\left[ \sum_{t=0}^{\infty} \gamma^t R(s_t, a_t) \right]
+$$
+
+The **Markov property** says the future depends on the present alone:
+$P(s_{t+1} | s_t, a_t, s_{t-1}, \dots) = P(s_{t+1} | s_t, a_t)$. If your
+problem doesn't satisfy this, fold history into the state until it does.
+
+## Value functions
+
+Two quantities organize all of RL:
+
+$$
+V^\pi(s) = \mathbb{E}_\pi \!\left[ \sum_{t=0}^{\infty} \gamma^t R(s_t, a_t) \,\Big|\, s_0 = s \right]
+$$
+
+$$
+Q^\pi(s, a) = \mathbb{E}_\pi \!\left[ \sum_{t=0}^{\infty} \gamma^t R(s_t, a_t) \,\Big|\, s_0 = s, a_0 = a \right]
+$$
+
+$V^\pi$ is the value of being in state $s$ and following $\pi$ forever.
+$Q^\pi$ is the value of taking one specific first action $a$ and *then*
+following $\pi$. Their relationship:
+$V^\pi(s) = \mathbb{E}_{a \sim \pi(\cdot|s)}[Q^\pi(s, a)]$.
+
+## The Bellman equations
+
+The defining recursion of RL:
+
+$$
+V^\pi(s) = \mathbb{E}_{a \sim \pi}\!\left[ R(s, a) + \gamma \mathbb{E}_{s' \sim P}\!\left[V^\pi(s')\right] \right]
+$$
+
+This is *just the law of total expectation*: the value of $s$ equals the
+immediate reward plus the discounted value of where you go next. The
+**Bellman optimality equation** for the optimal value function $V^*$
+replaces the policy expectation with a max:
+
+$$
+V^*(s) = \max_a \left[ R(s, a) + \gamma \mathbb{E}_{s'}[V^*(s')] \right]
+$$
+
+The corresponding optimal policy is greedy with respect to $Q^*$:
+$\pi^*(s) = \arg\max_a Q^*(s, a)$.
+
+<PaperCard
+  title="Reinforcement learning: an introduction (2nd ed)"
+  authors="Sutton, Barto"
+  year={2018}
+  url="http://incompleteideas.net/book/RLbook2020.pdf"
+/>
+
+## Two basic algorithms
+
+When the MDP is small and known, you can solve it exactly.
+
+```python
+import numpy as np
+
+def value_iteration(P, R, gamma=0.99, tol=1e-6):
+    # P: (S, A, S')  R: (S, A)
+    S, A, _ = P.shape
+    V = np.zeros(S)
+    while True:
+        Q = R + gamma * (P * V[None, None, :]).sum(axis=-1)   # (S, A)
+        V_new = Q.max(axis=-1)
+        if np.abs(V_new - V).max() < tol:
+            return V_new, Q.argmax(axis=-1)
+        V = V_new
+```
+
+**Value iteration** repeatedly applies the Bellman optimality operator until
+convergence. Because that operator is a $\gamma$-contraction in sup-norm,
+the iteration converges geometrically to a unique $V^*$ regardless of
+initialization.
+
+**Policy iteration** alternates between policy evaluation (solve
+$V^\pi$ for the current $\pi$) and policy improvement
+($\pi'(s) = \arg\max_a Q^\pi(s, a)$). It also converges to $\pi^*$, often
+faster in practice.
+
+<Callout variant="insight" title="Why this matters past the toy regime">
+Real problems don't have a known $P$ or a small state space. Q-learning is
+value iteration done from samples, without ever writing down $P$. Policy
+gradients are policy iteration with a learned policy network. Every
+practical RL algorithm is a stochastic, function-approximated descendant of
+Bellman's two equations.
+</Callout>
+
+## What to take into the next topic
+
+Three things should be permanent furniture in your head:
+
+1. The **state must be Markov**. If learning fails, your representation is
+   often the culprit.
+2. $V^\pi$ vs $Q^\pi$. Q-learning, SARSA, and policy improvement all hinge
+   on $Q$, not $V$.
+3. The Bellman equation is the **fixed-point equation** that every value-based
+   algorithm tries to solve, exactly or approximately.
+
+When we move to Q-learning and policy gradients, we're swapping known
+dynamics for samples and tabular representations for neural networks. The
+underlying object — the MDP — does not change.

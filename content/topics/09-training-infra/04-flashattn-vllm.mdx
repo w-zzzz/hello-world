@@ -1,0 +1,241 @@
+---
+slug: "09-training-infra/04-flashattn-vllm"
+part: "09-training-infra"
+partTitle: "Training & inference infrastructure"
+partIndex: 9
+topicIndex: 4
+title: "FlashAttention & vLLM"
+hook: "IO-aware attention and batched serving."
+estMinutes: 16
+difficulty: 4
+prereqs: ["03-deep-learning/04-attention"]
+hasHeroViz: false
+researchers: ["dao", "kwon"]
+papers:
+  - title: "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+    authors: "Dao, Fu, Ermon, Rudra, Ré"
+    year: 2022
+    url: "https://arxiv.org/abs/2205.14135"
+  - title: "FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning"
+    authors: "Dao"
+    year: 2023
+    url: "https://arxiv.org/abs/2307.08691"
+  - title: "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision"
+    authors: "Shah, Bikshandi, Zhang, Thakkar, Ramani, Dao"
+    year: 2024
+    url: "https://arxiv.org/abs/2407.08608"
+  - title: "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+    authors: "Kwon, Li, Zhuang, Sheng, Zheng, Yu, Gonzalez, Zhang, Stoica"
+    year: 2023
+    url: "https://arxiv.org/abs/2309.06180"
+hfResources:
+  - kind: "library"
+    title: "FlashAttention repository"
+    url: "https://github.com/Dao-AILab/flash-attention"
+  - kind: "library"
+    title: "vLLM"
+    url: "https://github.com/vllm-project/vllm"
+  - kind: "blog"
+    title: "Hugging Face — Optimizing inference"
+    url: "https://huggingface.co/docs/transformers/main/en/llm_optims"
+freeResources:
+  - kind: "blog"
+    title: "From Online Softmax to FlashAttention"
+    source: "Zihao Ye"
+    url: "https://courses.cs.washington.edu/courses/cse599m/23sp/notes/flashattn.pdf"
+  - kind: "blog"
+    title: "How continuous batching enables 23x throughput"
+    source: "Anyscale"
+    url: "https://www.anyscale.com/blog/continuous-batching-llm-inference"
+quiz:
+  - id: "flash-q1"
+    question: "Standard attention writes the full $n \\times n$ score matrix to HBM. Why is that the bottleneck rather than the FLOPs?"
+    choices:
+      - "Modern GPUs are FLOP-starved."
+      - "Attention is memory-bound: HBM bandwidth is far below the FLOP rate, so reading/writing $O(n^2)$ scores from global memory dominates wall-clock time."
+      - "Softmax is non-associative."
+      - "The matmul is too small."
+    answer: 1
+    explanation: "An A100 has ~19.5 TFLOPs in fp16 but only ~1.5 TB/s HBM. The $n \\times n$ matrix is huge in bytes; touching it from global memory is the limiting step. FlashAttention keeps tiles in SRAM."
+  - id: "flash-q2"
+    question: "How does FlashAttention compute softmax correctly while only ever holding tiles of $K, V$ in SRAM?"
+    choices:
+      - "It approximates softmax."
+      - "It uses an online softmax with running max and normalizer that can be updated as new tiles stream in, never materializing the full attention matrix."
+      - "It precomputes softmax on CPU."
+      - "It rewrites softmax as a matmul."
+    answer: 1
+    explanation: "The numerically stable softmax can be computed in one pass with running statistics $(m, \\ell)$. FlashAttention extends this to multi-tile streaming so the kernel emits the exact attention output without ever instantiating the score matrix."
+  - id: "flash-q3"
+    question: "PagedAttention (vLLM) borrows which idea from operating systems?"
+    choices:
+      - "Memory-mapped files."
+      - "Virtual memory: KV cache is split into fixed-size blocks indexed by a page table, eliminating fragmentation and enabling prefix sharing across requests."
+      - "Process schedulers."
+      - "Microkernels."
+    answer: 1
+    explanation: "Pre-allocating contiguous KV cache per request wastes memory to fragmentation and forbids sharing. PagedAttention treats KV like virtual memory: requests reference logical blocks; identical prefixes (system prompts) share physical blocks."
+  - id: "flash-q4"
+    question: "Speculative decoding works because:"
+    choices:
+      - "Big models are deterministic."
+      - "A cheap draft model can propose $k$ tokens; the target model then verifies all $k$ in a single forward pass, accepting the longest matching prefix — turning sequential decoding into parallel verification."
+      - "It quantizes the model further."
+      - "It removes attention."
+    answer: 1
+    explanation: "The target's forward over a candidate sequence costs roughly the same as a single token (memory-bound). If the draft is right most of the time, you get $k$x speedup at the cost of running a small model. The output distribution is provably identical in expectation."
+---
+
+Attention's $O(n^2)$ time complexity gets all the textbook attention. The
+practical cost, in 2024-era systems, is somewhere else entirely: it is the
+$O(n^2)$ memory traffic between high-bandwidth memory and on-chip SRAM,
+and the wasted compute on a serving cluster that wastes 80% of GPU
+capacity on padding and idle batches.
+
+FlashAttention rewrote the attention kernel. vLLM rewrote the way
+inference servers handle memory. Together they are why every serious LLM
+deployment in 2024 looks the way it does.
+
+## Why this matters
+
+A naive attention implementation produces a beautiful, correct, slow
+program. Two changes — neither algorithmic, both *systems* — give roughly
+$3{-}4\times$ training speedup and $20\times$ serving throughput on the
+same hardware. Understanding them is non-negotiable for anyone shipping
+LLMs.
+
+## FlashAttention: IO-aware attention
+
+The starting point is what the standard implementation actually does:
+
+1. Compute $S = QK^\top \in \mathbb{R}^{n \times n}$, write to HBM.
+2. Compute $P = \mathrm{softmax}(S)$, write to HBM.
+3. Compute $O = PV$, write to HBM.
+
+Each line touches an $n \times n$ tensor in global memory. For
+$n = 8192$, the score matrix alone is 256 MB in fp16 — every layer, every
+forward, every step. The arithmetic intensity is laughably low: lots of
+memory bandwidth, very little FLOPs per byte.
+
+FlashAttention's insight is that we never actually need the full score
+matrix. Softmax is computable in **one pass** with running statistics:
+
+$$
+m^{(j)} = \max(m^{(j-1)}, \tilde m_j), \qquad \ell^{(j)} = e^{m^{(j-1)} - m^{(j)}} \ell^{(j-1)} + e^{\tilde m_j - m^{(j)}} \tilde \ell_j
+$$
+
+Combine that with **tiling**: load blocks of $Q$ and stream blocks of $K, V$
+through SRAM. For each $(Q_i, K_j, V_j)$ tile, compute partial attention,
+update the running $(m, \ell, O)$, drop $K_j, V_j$. The $n \times n$
+matrix never exists. Memory traffic drops from $O(n^2 d)$ to $O(n d
+\sqrt{M})$ where $M$ is SRAM size.
+
+```python
+# Pseudocode: outer loop over Q tiles, inner over K/V tiles.
+for i in range(num_q_blocks):
+    Qi = load(Q[i])
+    Oi = zeros_like(Qi); mi = -inf; li = 0
+    for j in range(num_kv_blocks):
+        Kj, Vj = load(K[j]), load(V[j])
+        Sij = Qi @ Kj.T / sqrt(d_k)
+        m_new = max(mi, Sij.max(-1))
+        Pij = exp(Sij - m_new)
+        li = exp(mi - m_new) * li + Pij.sum(-1)
+        Oi = exp(mi - m_new) * Oi + Pij @ Vj
+        mi = m_new
+    write(O[i], Oi / li)
+```
+
+This is *exact* attention — no approximation. Just a different schedule.
+
+FlashAttention-2 reorders the loops to maximize work per warp.
+**FlashAttention-3** (Hopper) exploits asynchronous TMA for memory and
+WGMMA for matmul, overlapping copies with computation, and adds FP8
+support — closing on 75% of H100 peak.
+
+<PaperCard
+  title="FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+  authors="Dao, Fu, Ermon, Rudra, Ré"
+  year={2022}
+  url="https://arxiv.org/abs/2205.14135"
+/>
+
+## vLLM: serving as a memory problem
+
+Inference at scale is dominated by the KV cache. Every layer caches keys
+and values for every token in every request. For Llama-3-70B at 4096
+context, the cache is $\sim$1.6 GB **per request**. Pre-allocating that
+contiguously, as early systems did, wastes most of it: requests finish
+early, requests are short, and contiguous reservations leave holes you
+cannot fill.
+
+PagedAttention applies the OS textbook to this. Split the KV cache into
+fixed-size **blocks** (e.g. 16 tokens). Each request has a small page
+table mapping logical positions to physical blocks. Allocate blocks as
+they fill; free them when the request finishes. Two consequences:
+
+- **Near-zero fragmentation.** Memory utilization goes from ~20–40% in
+  contiguous schemes to ~96% in vLLM.
+- **Prefix sharing.** Two requests with the same system prompt point at
+  the same physical blocks until they diverge. Production systems with
+  long shared prefixes (e.g. "you are a helpful assistant…") get this for
+  free.
+
+<Callout variant="insight" title="The throughput unlock">
+PagedAttention plus continuous batching — slotting newly-arriving
+requests into a running batch instead of waiting for the slowest to
+finish — turns a server that processes one request at a time into one
+that processes hundreds simultaneously. The 24x throughput numbers in
+the vLLM paper come from these two ideas together.
+</Callout>
+
+## Speculative decoding
+
+Decoding is memory-bound: for each token, you re-read the entire model.
+But the cost of running the model on a $k$-token sequence is roughly the
+same as on one token. So:
+
+1. A small **draft model** generates $k$ candidate tokens cheaply.
+2. The target model runs *one* forward over the candidate sequence,
+   producing logits at every position in parallel.
+3. Accept the longest prefix where the target agrees with the draft;
+   resample at the rejection point.
+
+If the draft matches 70% of the time, you get a $\sim 3\times$ speedup
+with mathematically identical output distribution. **Medusa**,
+**EAGLE**, and self-speculation variants take this further by attaching
+small auxiliary heads to the target model itself.
+
+## What good serving looks like
+
+A 2025 production stack typically combines:
+
+- FlashAttention-2/3 in the model's attention kernel.
+- vLLM (or TensorRT-LLM) with PagedAttention and continuous batching.
+- INT8/FP8 weight + KV-cache quantization.
+- Speculative decoding for chat workloads.
+- Tensor parallelism within a node, replication across nodes.
+
+Stack these and you can serve a 70B model at a few cents per million
+tokens. Skip them and the same model costs ten times as much for the
+same quality.
+
+<Callout variant="warning" title="Profile, don't intuit">
+"My LLM is slow" almost never means "FLOPs bound." It usually means the
+KV cache is too big, batches are not being filled, the prompt prefix is
+being recomputed, or you forgot to enable FlashAttention. Always profile
+HBM bandwidth utilization before optimizing anything else.
+</Callout>
+
+## What to read next
+
+- The FlashAttention paper, then FA-2, then FA-3 — in order. The
+  refinements show what "IO-aware" really demands.
+- The vLLM paper and the project's design docs. Spend an hour in the
+  scheduler code.
+- Karpathy's `llm.c` and Tri Dao's CUTLASS examples for first-principles
+  kernel intuition.
+
+When you can sketch — by hand — both the FlashAttention tile loop and
+PagedAttention's page-table lookup, the rest of the LLM systems
+literature reads like a series of natural extensions.

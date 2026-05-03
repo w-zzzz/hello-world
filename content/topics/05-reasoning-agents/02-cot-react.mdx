@@ -1,0 +1,189 @@
+---
+slug: "05-reasoning-agents/02-cot-react"
+part: "05-reasoning-agents"
+partTitle: "Reasoning & agents"
+partIndex: 5
+topicIndex: 2
+title: "Chain-of-thought, ReAct & tool use"
+hook: "Interleaving reasoning with actions."
+estMinutes: 16
+difficulty: 3
+prereqs: ["04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["wei", "amodei"]
+papers:
+  - title: "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models"
+    authors: "Wei, Wang, Schuurmans, Bosma, Ichter, Xia, Chi, Le, Zhou"
+    year: 2022
+    url: "https://arxiv.org/abs/2201.11903"
+  - title: "ReAct: Synergizing Reasoning and Acting in Language Models"
+    authors: "Yao, Zhao, Yu, Du, Shafran, Narasimhan, Cao"
+    year: 2022
+    url: "https://arxiv.org/abs/2210.03629"
+  - title: "Toolformer: Language Models Can Teach Themselves to Use Tools"
+    authors: "Schick, Dwivedi-Yu, Dessì, Raileanu, Lomeli, Zettlemoyer, Cancedda, Scialom"
+    year: 2023
+    url: "https://arxiv.org/abs/2302.04761"
+hfResources:
+  - kind: "library"
+    title: "smolagents — minimal agent framework"
+    url: "https://huggingface.co/docs/smolagents"
+  - kind: "course"
+    title: "Hugging Face Agents Course"
+    url: "https://huggingface.co/learn/agents-course"
+freeResources:
+  - kind: "blog"
+    title: "LLM Powered Autonomous Agents"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2023-06-23-agent/"
+  - kind: "blog"
+    title: "Building effective agents"
+    source: "Anthropic"
+    url: "https://www.anthropic.com/engineering/building-effective-agents"
+quiz:
+  - id: "react-q1"
+    question: "What does ReAct interleave?"
+    choices:
+      - "Forward and backward passes."
+      - "Reasoning (Thought) tokens with Action tokens that invoke tools, plus Observations returned to the model."
+      - "Encoder and decoder layers."
+      - "Multiple LLMs."
+    answer: 1
+    explanation: "ReAct alternates `Thought:` (free-form reasoning), `Action:` (a tool call like `search[...]`), and `Observation:` (the tool's response). The model reasons about what to do, takes an action, observes the result, and reasons about the new state. This is the canonical agent loop."
+  - id: "react-q2"
+    question: "Why does CoT prompting fail on small models?"
+    choices:
+      - "Their tokenizer is broken."
+      - "They are not capable enough to produce reasoning chains that improve their answers — CoT is an emergent capability tied to scale and post-training."
+      - "They run out of memory."
+      - "Their attention is wrong."
+    answer: 1
+    explanation: "Wei et al. (2022) plotted CoT gains vs scale and found near-zero benefit below ~10B parameters, with sharp gains above. A small model produces longer text but still wrong answers. CoT is a *capability* that has to be present, not a magic phrase."
+  - id: "react-q3"
+    question: "What is the principal failure mode of long agent loops?"
+    choices:
+      - "Forgetting due to context length."
+      - "Compounding errors: each step has some failure rate $\\epsilon$; over $T$ steps, success probability ~$ (1-\\epsilon)^T$ falls fast."
+      - "Network latency."
+      - "GPU memory."
+    answer: 1
+    explanation: "If each tool-use step succeeds with probability 0.9, a 20-step plan succeeds with probability $0.9^{20} \\approx 0.12$. Real agent reliability lives or dies on per-step error rate, recovery, and verification — not on prompt cleverness."
+---
+
+Chain-of-thought (CoT) prompting was a 2022 surprise: ask a large model to
+"think step by step" and accuracy on math problems jumps. ReAct extended
+this by letting the reasoning steps invoke *tools* — search engines,
+calculators, code interpreters — and feed observations back into the
+context. Together, these are the conceptual ancestors of every modern agent.
+
+You can think of o1/R1 as the *internalized* version of CoT, and tool-using
+agents as the *externalized* version. Both turn one forward pass into many.
+
+## CoT, precisely
+
+In few-shot CoT, the prompt contains demonstrations whose answers include
+explicit reasoning:
+
+```
+Q: Roger has 5 tennis balls. He buys 2 more cans of 3 balls each. How many balls does he have?
+A: Roger started with 5 balls. 2 cans of 3 balls is 6 balls. 5 + 6 = 11. The answer is 11.
+```
+
+In zero-shot CoT, you simply append "Let's think step by step" to the
+question. The model emits a reasoning trace before the answer. The total
+forward-pass compute spent on the problem grows with trace length.
+
+Why this works at all is non-obvious. A naive view: the model already knew
+the answer; the trace is theater. The empirical reality: traces materially
+improve accuracy on problems whose answers were not single-shot reachable.
+The mechanistic interpretation is that the trace gives the model
+*intermediate state* — scratchpad memory written in the same channel it
+will read from. Subsequent tokens can attend to earlier reasoning and
+condition on it.
+
+<Callout variant="insight" title="Reasoning length is compute">
+Producing $K$ extra tokens before an answer is $O(K)$ extra forward passes.
+On a hard problem, this is the cheapest way to spend more compute *without
+retraining the model*. Test-time compute scaling, agent loops, and reasoning
+models are all variations of this trick.
+</Callout>
+
+## ReAct: reasoning + acting
+
+The ReAct paper (Yao et al., 2022) realized that reasoning becomes much more
+powerful when interleaved with *actions* in an environment. The format:
+
+```
+Question: How tall is the Eiffel Tower in feet?
+Thought: I should search for the Eiffel Tower's height.
+Action: search["Eiffel Tower height"]
+Observation: The Eiffel Tower is 330 meters tall.
+Thought: Convert 330 meters to feet: 330 × 3.281 ≈ 1083 feet.
+Action: finish[1083 feet]
+```
+
+This is the loop every modern agent runs. The model alternates between
+thinking, calling tools, and processing observations. Crucially, the
+*actions are real*: the harness intercepts the `Action:` line, executes the
+tool, and feeds the result back as the next `Observation:`.
+
+```python
+def react_step(model, tokenizer, history, tools):
+    prompt = format_react(history)
+    out = model.generate(tokenizer(prompt, return_tensors="pt").input_ids,
+                         stop_sequences=["Observation:"])
+    text = tokenizer.decode(out[0])
+    if "Action:" in text:
+        tool_name, args = parse_action(text)
+        obs = tools[tool_name](args)
+        history.append({"thought": parse_thought(text),
+                         "action": (tool_name, args),
+                         "observation": obs})
+        return False  # continue
+    return True       # done
+```
+
+This loop, plus a model trained to emit valid `Action:` lines, plus a
+sensible set of tools, is most of what an "agent" is.
+
+## Tool use, function calling, and structured outputs
+
+Modern instruction-tuned models (Claude, GPT-4, Gemini, Llama 3.1+) are
+trained to emit *structured tool calls* — usually JSON — when given tool
+definitions in their system prompt or a separate field. The harness parses
+the JSON, executes the tool, and continues the conversation with the result
+appended as a `tool` role message.
+
+This is essentially ReAct with a more typed interface and better-trained
+models. The "thought" is implicit in the assistant turns; the "action" is
+the tool call; the "observation" is the tool result.
+
+<PaperCard title="ReAct: Synergizing Reasoning and Acting in Language Models" authors="Yao et al." year={2022} url="https://arxiv.org/abs/2210.03629" />
+
+## Common patterns and their failure modes
+
+Anthropic's *Building effective agents* essay distills hard-won lessons:
+
+- **Prompt chaining** (sequential LLM calls) is robust when each step is well-defined.
+- **Routing** (an LLM picks one of several specialists) works when the categories are clean.
+- **Parallelization** (many subtasks at once, then aggregate) shines on independent subproblems.
+- **Orchestrator-workers** (a planner LLM spawns worker LLMs) handles open-ended tasks.
+- **Evaluator-optimizer** (one LLM proposes, another critiques, repeat) trades latency for quality.
+
+The recurring failure mode is **error compounding**: a 20-step agent with
+90% per-step reliability succeeds about 12% of the time. Long-horizon
+agents need verification, retries, and human-in-the-loop checkpoints.
+
+## Where this connects
+
+- **Internally**: o1/R1 fold the ReAct loop *inside* the model — the
+  reasoning trace is generated as one long completion, with tool use
+  optional.
+- **Externally**: agent frameworks like LangGraph and CrewAI (next topic)
+  give you graph-based control over the loop.
+- **Protocol**: the Model Context Protocol (also next topic) standardizes
+  how tools advertise themselves to LLMs.
+
+If you can sketch the ReAct loop on a whiteboard and explain where it
+fails, you can read every agent paper and product announcement of the next
+two years without confusion.

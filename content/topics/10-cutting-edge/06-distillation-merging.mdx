@@ -1,0 +1,238 @@
+---
+slug: "10-cutting-edge/06-distillation-merging"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 6
+title: "Distillation, merging & synthetic data"
+hook: "Smaller models, smarter data, fused experts."
+estMinutes: 14
+difficulty: 3
+prereqs: ["04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["hinton"]
+papers:
+  - title: "Distilling the Knowledge in a Neural Network"
+    authors: "Hinton, Vinyals, Dean"
+    year: 2015
+    url: "https://arxiv.org/abs/1503.02531"
+  - title: "TIES-Merging: Resolving Interference When Merging Models"
+    authors: "Yadav, Tam, Choshen, Raffel, Bansal"
+    year: 2023
+    url: "https://arxiv.org/abs/2306.01708"
+  - title: "Editing Models with Task Arithmetic"
+    authors: "Ilharco, Ribeiro, Wortsman, Schmidt, Hajishirzi, Farhadi"
+    year: 2022
+    url: "https://arxiv.org/abs/2212.04089"
+  - title: "Textbooks Are All You Need"
+    authors: "Gunasekar et al. (Microsoft)"
+    year: 2023
+    url: "https://arxiv.org/abs/2306.11644"
+hfResources:
+  - kind: "library"
+    title: "mergekit"
+    url: "https://github.com/arcee-ai/mergekit"
+  - kind: "blog"
+    title: "Merge Large Language Models with mergekit"
+    url: "https://huggingface.co/blog/mlabonne/merge-models"
+  - kind: "model"
+    title: "microsoft/phi-3-mini-4k-instruct"
+    url: "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct"
+freeResources:
+  - kind: "blog"
+    title: "Distilling Step-by-Step"
+    source: "Google Research"
+    url: "https://blog.research.google/2023/09/distilling-step-by-step-outperforming.html"
+quiz:
+  - id: "dist-q1"
+    question: "Hinton's classic knowledge distillation trains a student to match the teacher's:"
+    choices:
+      - "Hard labels."
+      - "Soft (temperature-scaled) probability distribution over classes, which carries 'dark knowledge' about class similarity that hard labels discard."
+      - "Hidden states only."
+      - "Gradients."
+    answer: 1
+    explanation: "$p_i = \\exp(z_i/T) / \\sum_j \\exp(z_j/T)$ at $T > 1$ flattens the distribution and reveals which wrong classes the teacher considers more or less plausible. That structure is information about the input that the student can learn from."
+  - id: "dist-q2"
+    question: "Why can simply averaging two fine-tuned checkpoints sometimes work as a 'merge'?"
+    choices:
+      - "Because models are linear."
+      - "Empirically, fine-tunes from a shared base often lie in a connected low-loss basin (linear mode connectivity); averaging stays in the basin and combines task knowledge."
+      - "Because the loss is convex."
+      - "It does not — averaging always destroys quality."
+    answer: 1
+    explanation: "Linear mode connectivity is a striking empirical phenomenon: two fine-tunes from the same pretrained model are connected by a low-loss line. Their average benefits from both fine-tuning signals while remaining in a high-quality region."
+  - id: "dist-q3"
+    question: "TIES-Merging addresses interference between task vectors by:"
+    choices:
+      - "Averaging."
+      - "Trimming small parameter changes, resolving sign conflicts to a majority sign, and only merging parameters with consistent direction across tasks."
+      - "Deleting half the parameters."
+      - "Quantizing."
+    answer: 1
+    explanation: "Naive task-vector arithmetic suffers when different tasks push the same parameter in opposite directions. TIES keeps only large updates, picks the consistent sign, and averages the surviving values — preserving each task's contribution where it matters."
+  - id: "dist-q4"
+    question: "Why has high-quality synthetic data become important for training small models?"
+    choices:
+      - "It is cheaper than scraping."
+      - "Models trained on curated synthetic data (textbook-quality from a strong teacher) reach much better quality-per-parameter than models trained on raw web text — the 'data quality > data quantity' regime."
+      - "It avoids legal issues only."
+      - "It is faster to load."
+    answer: 1
+    explanation: "Phi-1, Phi-2, Phi-3 demonstrated that careful synthetic data — written by a strong model to be pedagogically clean — lets small students reach quality previously associated with much larger models. Quality is the new scale."
+---
+
+The frontier of LLM training has split into two worlds. The first
+trains $1{-}10$ trillion-parameter models on raw web data. The second
+takes the outputs of the first — soft labels, generations, preferences —
+and uses them to make small, fast, sharp models. Distillation, model
+merging, and synthetic-data pipelines are how the second world works.
+
+## Why this matters
+
+Frontier models are too expensive to deploy widely. Distillation is the
+mechanism by which their capability propagates downward — into the
+on-device assistants, the edge models, the cheap-to-run domain
+specialists. Most products you use are running a distilled or merged
+descendant of a much larger thing.
+
+## Knowledge distillation: the old idea, freshly relevant
+
+Hinton, Vinyals, Dean (2015) framed distillation as: train a small
+**student** model to match a large **teacher**'s output distribution
+rather than just the hard labels.
+
+$$
+\mathcal{L}_\text{KD} = T^2 \cdot \mathrm{KL}\!\left( \mathrm{softmax}(z_t / T) \, \| \, \mathrm{softmax}(z_s / T) \right) + \alpha \cdot \mathrm{CE}(y, z_s)
+$$
+
+The temperature $T$ softens the teacher's distribution. At $T=1$ you
+mostly get the hard label. At $T=4$ or so, the relative probabilities
+across non-target classes become visible — the **dark knowledge** that a
+teacher knows "5 looks like 6 more than like 1."
+
+For LLMs, the modern equivalents include:
+
+- **Sequence-level distillation**: the student is trained on the
+  teacher's *generations*, not just its logits.
+- **Logit distillation** at every token, where memory permits.
+- **Reasoning distillation**: train the student on chain-of-thought
+  traces produced by the teacher (the entire R1-Distill family).
+
+The R1-Distill series (DeepSeek, 2024) is a striking demonstration: take
+a strong reasoning teacher's CoTs, fine-tune a smaller base on them, get
+a substantial fraction of the reasoning capability at a fraction of the
+cost.
+
+```python
+import torch
+import torch.nn.functional as F
+
+def kd_loss(student_logits, teacher_logits, labels, T=4.0, alpha=0.5):
+    soft = F.kl_div(
+        F.log_softmax(student_logits / T, dim=-1),
+        F.softmax(teacher_logits / T, dim=-1),
+        reduction="batchmean",
+    ) * (T * T)
+    hard = F.cross_entropy(student_logits, labels)
+    return alpha * soft + (1 - alpha) * hard
+```
+
+## Model merging: arithmetic on weights
+
+A more recent surprise: you can do arithmetic on the *weights* of fine-
+tuned models and end up with something useful. Define the **task vector**
+of a fine-tune as
+
+$$
+\tau = \theta_\text{ft} - \theta_\text{base}
+$$
+
+Add task vectors to combine capabilities. Subtract one to remove a
+behavior. Average them. Scale them. Linear mode connectivity, the
+empirical observation that fine-tunes from a shared base lie in a
+connected low-loss basin, is the reason this works at all.
+
+The state of the art is **TIES-Merging** and its descendants. The
+problem with naive averaging is *interference*: parameters one task
+moves up, another moves down. TIES:
+
+1. **Trim**: zero out the smallest-magnitude entries of each task
+   vector.
+2. **Elect** a sign per parameter: the majority direction across tasks.
+3. **Disjoint merge**: average only the values that agree with the
+   elected sign.
+
+The result keeps each task's important updates while resolving conflicts
+deterministically. **DARE**, **SLERP**, and Arcee's mergekit recipes
+build on this.
+
+<Callout variant="insight" title="Why merging is profound">
+The fact that you can blend two specialists by averaging their weights
+is implicit evidence that fine-tunes occupy a connected, low-curvature
+region of parameter space. The geometry that makes ensembling work for
+predictions also makes merging work for weights.
+</Callout>
+
+<PaperCard
+  title="TIES-Merging: Resolving Interference When Merging Models"
+  authors="Yadav, Tam, Choshen, Raffel, Bansal"
+  year={2023}
+  url="https://arxiv.org/abs/2306.01708"
+/>
+
+## Synthetic data: quality over scale
+
+Phi-1's "Textbooks Are All You Need" demonstrated that **6B
+high-quality synthetic tokens** beat 100x as many web tokens for code
+generation in a 1.3B model. Phi-2, Phi-3, and the open-source community
+(OpenHermes, Tülu, Nemotron-mini) extended this.
+
+The recipe is roughly:
+
+1. Use a strong teacher to *write* training data: textbook-style
+   explanations, question/answer pairs, chain-of-thought traces.
+2. Filter aggressively for diversity and difficulty.
+3. Train a small student on this curated corpus.
+
+The student's quality-per-parameter goes up dramatically. Training on
+"clean signal from a smart teacher" is qualitatively different from
+training on "noisy signal at scale."
+
+<Callout variant="warning" title="The synthetic-data trap">
+Distillation is fundamentally bounded by the teacher's capability and
+biases. A student trained only on a teacher's outputs inherits its
+blindspots — and any error in the teacher gets amplified by being
+treated as ground truth. Mix synthetic with real, evaluate against
+held-out human-authored benchmarks, and watch for mode collapse.
+</Callout>
+
+## When to reach for which
+
+- **Distillation**: when you have a much larger teacher and need a
+  cheap, fast student of similar quality on a defined scope.
+- **Merging**: when you have several fine-tunes (different tasks,
+  different preference data) and want one model that does all of them
+  passably.
+- **Synthetic data**: when you need to train (or fine-tune) on a
+  capability the teacher already has but the available real data does
+  not cleanly cover.
+
+These compose. The standard 2025 recipe for a small-but-strong open
+model: distill traces from a frontier teacher → train a base → fine-tune
+several specialists → TIES-merge them. Every step squeezes more
+capability into the same parameter budget.
+
+## What to read next
+
+- Hinton 2015 — the canonical distillation paper.
+- Ilharco et al. (Task Arithmetic) and TIES-Merging — for the merging
+  story.
+- The Phi family of technical reports — for the synthetic-data
+  argument.
+- mergekit's recipe library — for what production merges actually look
+  like.
+
+If you can take a frontier model's outputs, distill a small student,
+fine-tune two variants, merge them, and beat both on a held-out task,
+you have shipped what most production teams ship.

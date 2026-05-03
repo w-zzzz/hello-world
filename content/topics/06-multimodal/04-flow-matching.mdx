@@ -1,0 +1,214 @@
+---
+slug: "06-multimodal/04-flow-matching"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 4
+title: "Flow matching & rectified flow"
+hook: "Straighter trajectories, fewer sampling steps."
+estMinutes: 18
+difficulty: 4
+prereqs: ["06-multimodal/03-diffusion-ddpm-sd"]
+hasHeroViz: false
+researchers: ["liphardt", "liu-rectified", "dao"]
+papers:
+  - title: "Flow Matching for Generative Modeling"
+    authors: "Lipman, Chen, Ben-Hamu, Nickel, Le"
+    year: 2023
+    url: "https://arxiv.org/abs/2210.02747"
+  - title: "Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow"
+    authors: "Liu, Gong, Liu"
+    year: 2022
+    url: "https://arxiv.org/abs/2209.03003"
+  - title: "Stochastic Interpolants: A Unifying Framework for Flows and Diffusions"
+    authors: "Albergo, Boffi, Vanden-Eijnden"
+    year: 2023
+    url: "https://arxiv.org/abs/2303.08797"
+  - title: "Scaling Rectified Flow Transformers for High-Resolution Image Synthesis (SD3)"
+    authors: "Esser et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2403.03206"
+hfResources:
+  - kind: "model"
+    title: "stabilityai/stable-diffusion-3-medium"
+    url: "https://huggingface.co/stabilityai/stable-diffusion-3-medium"
+  - kind: "model"
+    title: "black-forest-labs/FLUX.1-schnell"
+    url: "https://huggingface.co/black-forest-labs/FLUX.1-schnell"
+  - kind: "library"
+    title: "torchcfm — flow-matching reference implementation"
+    url: "https://github.com/atong01/conditional-flow-matching"
+freeResources:
+  - kind: "blog"
+    title: "An Introduction to Flow Matching"
+    source: "Tor Fjelde, Emile Mathieu, Vincent Dutordoir"
+    url: "https://mlg.eng.cam.ac.uk/blog/2024/01/20/flow-matching.html"
+  - kind: "blog"
+    title: "Flow Matching for Generative Modeling — explained"
+    source: "Cambridge MLG"
+    url: "https://diffusionflow.github.io/"
+quiz:
+  - id: "flow-q1"
+    question: "What does flow matching learn?"
+    choices:
+      - "A score function $\\nabla \\log p_t(x)$."
+      - "A vector field $v_\\theta(x, t)$ that transports samples from a prior $p_0$ to data $p_1$ by ODE integration."
+      - "A noise prediction."
+      - "A discriminator."
+    answer: 1
+    explanation: "Flow matching parameterizes a time-dependent vector field. Generation is solving the ODE $\\frac{dx_t}{dt} = v_\\theta(x_t, t)$ from $x_0 \\sim p_0$ (e.g. Gaussian) to $x_1 \\sim p_{\\text{data}}$. Diffusion can be viewed as a particular noisy version of this picture."
+  - id: "flow-q2"
+    question: "What makes *rectified* flow special?"
+    choices:
+      - "It uses straight noise."
+      - "It trains the vector field on linear interpolants $x_t = (1-t)x_0 + t x_1$, which encourages straight, low-curvature trajectories that can be integrated in few steps."
+      - "It is faster to train."
+      - "It avoids the ODE."
+    answer: 1
+    explanation: "Rectified flow's training pairs a noise sample with a data sample and asks the model to learn the constant velocity $x_1 - x_0$ along the straight line connecting them. Repeated 'reflow' iterations further straighten the resulting trajectories, enabling 1-4 step sampling at near-equivalent quality."
+  - id: "flow-q3"
+    question: "Stable Diffusion 3 and FLUX both use rectified flow. Why is this preferred over standard diffusion at scale?"
+    choices:
+      - "It is mathematically simpler — a deterministic ODE rather than an SDE — and the loss formulation gives more uniform gradient signal across timesteps, which Esser et al. (2024) showed scales more cleanly."
+      - "It is the only thing that works."
+      - "It uses no neural networks."
+      - "It avoids prompts."
+    answer: 0
+    explanation: "Esser et al. (2024) ran a careful empirical comparison of objectives (eps-prediction, v-prediction, score, rectified flow). Rectified flow with logit-normal timestep weighting won on FID/text-alignment at every scale they tested. SD3 and FLUX both use it."
+---
+
+If diffusion was the dominant idea of 2020–2023, **flow matching** is its
+2024–2026 cleanup. Same generative paradigm — transport noise to data —
+with a cleaner mathematical formulation, simpler loss, and trajectories
+that can often be integrated in 1–4 steps instead of 30–50. Stable
+Diffusion 3 and FLUX are flow-matching models. So is Meta's Movie Gen.
+The shift is quiet but pervasive.
+
+You don't need to abandon diffusion intuition to learn flow matching — the
+two are deeply related. But the new framing makes some things obvious that
+were obscure before, and (it turns out) yields better-behaved models.
+
+## The continuous picture
+
+Both diffusion and flow matching describe a *continuous-time* path of
+distributions $\{p_t\}_{t \in [0,1]}$ that smoothly interpolates between a
+simple prior $p_0$ (typically Gaussian) and the data distribution $p_1$.
+
+The two paradigms differ in *how* they characterize and learn this path:
+
+- **Score-based / diffusion**: learn the *score* $\nabla_x \log p_t(x)$ at
+  each timestep. Generation is reverse-time SDE integration.
+- **Flow matching**: learn a *vector field* $v_t(x)$ such that integrating
+  $\dot{x}_t = v_t(x_t)$ from $x_0$ produces a sample from $p_t$.
+  Generation is forward-time ODE integration.
+
+The two are related: any score function induces a probability-flow ODE,
+and any flow can be interpreted probabilistically. But the *training
+objective* and the *sampling dynamics* differ.
+
+## The flow-matching objective
+
+The clean idea: pick any "interpolant" $x_t = \alpha_t x_0 + \sigma_t x_1$
+where $x_0 \sim p_{\text{noise}}$ and $x_1 \sim p_{\text{data}}$ are
+independent. The conditional velocity along this path is
+
+$$
+u_t(x \mid x_0, x_1) = \dot{\alpha}_t x_0 + \dot{\sigma}_t x_1
+$$
+
+a known closed form. Train a network $v_\theta(x, t)$ to match it:
+
+$$
+\mathcal{L}_{\text{FM}}(\theta) = \mathbb{E}_{t, x_0, x_1}\, \big\| v_\theta(x_t, t) - u_t(x \mid x_0, x_1) \big\|^2
+$$
+
+The miracle (proved in Lipman et al. 2023): regressing on the *conditional*
+velocity matches the *marginal* velocity in expectation. So this trains
+the right vector field without ever needing access to the marginal.
+
+```python
+def fm_loss(model, x1):
+    B = x1.size(0)
+    x0 = torch.randn_like(x1)
+    t  = torch.rand(B, device=x1.device).view(-1, *([1]*(x1.ndim-1)))
+    xt = (1 - t) * x0 + t * x1                # linear interpolation
+    target_v = x1 - x0                         # constant velocity
+    pred_v = model(xt, t.squeeze())
+    return F.mse_loss(pred_v, target_v)
+```
+
+Three lines for the loss. Compare DDPM's noise-prediction loss — it
+reduces to nearly the same form, but flow matching makes the geometric
+intuition explicit.
+
+## Rectified flow: prefer straight lines
+
+The simplest interpolation $x_t = (1-t) x_0 + t x_1$ — a *linear*
+trajectory — is the heart of **rectified flow** (Liu et al., 2022). Two
+useful properties follow:
+
+1. The target velocity $u_t = x_1 - x_0$ is *constant in $t$*. The model is
+   trained to predict the same direction at every point along the path.
+2. If the model perfectly fit constant velocities, sampling would require
+   only *one* Euler step: $x_1 = x_0 + v_\theta(x_0, 0)$.
+
+In practice the model can't perfectly recover constant velocities (because
+of crossings — many noise samples can lead to the same data sample), so
+trajectories curve. But Liu et al. introduced a beautiful recursive
+*reflow* procedure: re-pair the noise samples with their model-generated
+endpoints, retrain. After a couple of reflows, trajectories become nearly
+straight, enabling few-step sampling at full quality.
+
+<PaperCard title="Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow" authors="Liu, Gong, Liu" year={2022} url="https://arxiv.org/abs/2209.03003" />
+
+## Why SD3 and FLUX picked rectified flow
+
+Esser et al. (2024, the SD3 paper) ran perhaps the most systematic
+empirical comparison of generative objectives at scale: eps-prediction
+(DDPM), v-prediction, score-matching, EDM, rectified flow, and several
+hybrids. Their findings:
+
+- **Rectified flow consistently won** on FID and text alignment across
+  all model sizes they tested (450M–8B parameters).
+- **Logit-normal timestep weighting** — sample $t$ from a distribution
+  that focuses on middle timesteps where the loss carries the most signal
+  — gave another consistent boost.
+- The combination scaled cleanly with parameters and compute, with no
+  surprise pathologies.
+
+This is why SD3, FLUX, and most 2024–2026 frontier image and video models
+are rectified-flow Transformers (DiTs). The architecture is shared with
+diffusion; the training objective changed.
+
+## Connection to optimal transport
+
+If you squint, flow matching is doing something close to *dynamic optimal
+transport*: finding a vector field that transports $p_0$ to $p_1$ with
+minimal kinetic cost. Linear interpolants give exact OT trajectories
+*conditional on a pairing*; the model learns the marginal vector field
+that best approximates this. This is one of the threads tying generative
+modeling to a much older mathematical literature on Monge and
+Kantorovich.
+
+<Callout variant="insight" title="Same algorithm, cleaner story">
+Flow matching is not a fundamentally different generative paradigm from
+diffusion. It is a re-derivation that makes the geometry obvious, the loss
+simpler, and (with rectification) the sampling faster. Most of the
+practical gains of 2024 image and video generation come from this cleanup,
+plus DiT backbones, plus better data.
+</Callout>
+
+## Where the action is now
+
+- **Few-step generation**: rectified flow + adversarial distillation
+  (FLUX.1-schnell) gives high-quality 1-4 step sampling.
+- **Consistency models** (Song et al.): an alternative path to 1-step
+  sampling via direct boundary-condition learning.
+- **Conditional flow matching** for non-image domains: protein backbones,
+  molecule geometries, point clouds.
+- **Discrete flow matching**: extending the framework to discrete
+  modalities (text, code) — an active 2025 research direction.
+
+If diffusion is the workhorse of generative modeling, flow matching is the
+chassis being refactored beneath it. Most of what you'll build with in
+2026 is a flow-matching model whether you label it that way or not.

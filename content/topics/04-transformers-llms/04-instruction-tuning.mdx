@@ -1,0 +1,197 @@
+---
+slug: "04-transformers-llms/04-instruction-tuning"
+part: "04-transformers-llms"
+partTitle: "Transformers & LLMs"
+partIndex: 4
+topicIndex: 4
+title: "Instruction tuning & prompting"
+hook: "From base model to assistant: SFT, few-shot, CoT."
+estMinutes: 16
+difficulty: 3
+prereqs: ["04-transformers-llms/01-gpt"]
+hasHeroViz: false
+researchers: ["wei", "weng"]
+papers:
+  - title: "Finetuned Language Models are Zero-Shot Learners (FLAN)"
+    authors: "Wei, Bosma, Zhao, Guu, Yu, Lester, Du, Dai, Le"
+    year: 2021
+    url: "https://arxiv.org/abs/2109.01652"
+  - title: "Training language models to follow instructions with human feedback (InstructGPT)"
+    authors: "Ouyang et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2203.02155"
+  - title: "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models"
+    authors: "Wei, Wang, Schuurmans, Bosma, Ichter, Xia, Chi, Le, Zhou"
+    year: 2022
+    url: "https://arxiv.org/abs/2201.11903"
+hfResources:
+  - kind: "dataset"
+    title: "HuggingFaceH4/ultrachat_200k"
+    url: "https://huggingface.co/datasets/HuggingFaceH4/ultrachat_200k"
+  - kind: "model"
+    title: "meta-llama/Llama-3.1-8B-Instruct"
+    url: "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
+  - kind: "course"
+    title: "Hugging Face — SFT with TRL"
+    url: "https://huggingface.co/docs/trl/sft_trainer"
+freeResources:
+  - kind: "blog"
+    title: "Prompt Engineering"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/"
+  - kind: "blog"
+    title: "Anthropic — Prompting overview"
+    source: "Anthropic"
+    url: "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview"
+quiz:
+  - id: "instruct-q1"
+    question: "What does supervised fine-tuning (SFT) actually optimize?"
+    choices:
+      - "RLHF reward."
+      - "Cross-entropy on (instruction, ideal-response) pairs — the same next-token loss, on a curated distribution."
+      - "Embedding similarity to a reference."
+      - "Pairwise preference ranking."
+    answer: 1
+    explanation: "SFT is just continued pretraining on a different distribution: the instruction-following one. The objective is unchanged — predict the next token — but now the data is high-quality assistant-style demonstrations. RLHF/DPO come *after* SFT and use a different objective."
+  - id: "instruct-q2"
+    question: "Why is chain-of-thought (CoT) prompting effective?"
+    choices:
+      - "It changes the model's weights at inference."
+      - "It allows the model to allocate more forward-pass compute per token by producing intermediate reasoning steps before the final answer."
+      - "It bypasses the softmax."
+      - "It increases temperature."
+    answer: 1
+    explanation: "Each token in a chain of thought is another forward pass. Asking the model to 'think step by step' is asking it to spend more *compute* on a hard problem. This is also the conceptual precursor to test-time compute scaling in o1/R1."
+  - id: "instruct-q3"
+    question: "What is a *chat template*, and why does it matter?"
+    choices:
+      - "A prompt prefix the user sees."
+      - "A model-specific schema (special tokens like `<|user|>`, `<|assistant|>`) that delimits roles in the input — applying the wrong template silently degrades quality."
+      - "A latency optimization."
+      - "An RLHF reward model."
+    answer: 1
+    explanation: "Each instruction-tuned model is trained with specific role markers. Llama 3, Claude, Qwen, Mistral all use different ones. Tokenizing your prompt without the model's chat template feeds the model an out-of-distribution input — the responses get noticeably worse. Always use `tokenizer.apply_chat_template`."
+---
+
+A pre-trained GPT predicts the next token of internet text. That's not what
+you want. You want an assistant: something that takes an instruction and
+produces a helpful, honest, well-formatted answer. The transformation from
+the first thing into the second — sometimes called *post-training* — is what
+makes a usable product.
+
+The 2022 InstructGPT paper laid out the recipe that everyone still uses, in
+some form: **(1) Supervised fine-tune on instruction-response demonstrations.
+(2) Train a reward model on human preferences. (3) Optimize the policy
+against the reward model.** This module covers the first stage and the
+adjacent topic of *prompting*, which lets you steer behavior without any
+fine-tuning at all.
+
+## Why a base model isn't an assistant
+
+A base GPT trained on internet text has seen plenty of question-answer
+patterns — but also forum flame wars, marketing copy, listicles, and code.
+At inference, the model picks the continuation that is *most likely* given
+the prefix. Ask "What is the capital of France?" and you might get the right
+answer, or a list of geography quiz questions, or a Wikipedia stub. The
+distribution of continuations is the distribution of the internet, which is
+not the distribution of helpful answers.
+
+SFT shifts the conditional distribution. By fine-tuning on millions of
+(instruction, ideal-response) pairs, you push the model toward the
+"helpful-assistant" mode of behavior. The architecture and loss don't
+change; only the data does.
+
+$$
+\mathcal{L}_{\text{SFT}}(\theta) = -\mathbb{E}_{(x, y) \sim \mathcal{D}_{\text{instruct}}} \sum_{t} \log p_\theta(y_t \mid y_{<t}, x)
+$$
+
+where the loss is computed *only on the assistant's response tokens* — the
+instruction is conditioned on, not predicted.
+
+```python
+from datasets import load_dataset
+from trl import SFTTrainer, SFTConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+ds = load_dataset("HuggingFaceH4/ultrachat_200k", split="train_sft")
+tok = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B")
+model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B")
+
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tok,
+    train_dataset=ds,
+    args=SFTConfig(output_dir="sft-llama", max_seq_length=2048,
+                   per_device_train_batch_size=4, num_train_epochs=1),
+)
+trainer.train()
+```
+
+The whole loop is conceptually identical to pretraining; the magic is in the
+*data*.
+
+## Few-shot, zero-shot, and chain-of-thought
+
+Even before SFT, large models exhibit non-trivial in-context learning. Three
+prompting regimes have become standard vocabulary:
+
+- **Zero-shot**: just the instruction. *"Translate to French: 'good morning'"*
+- **Few-shot**: a handful of demonstrations precede the query, teaching the format and style implicitly.
+- **Chain-of-thought (CoT)**: the prompt instructs the model to *reason out loud* — *"Let's think step by step."*
+
+CoT was the most surprising of these. Wei et al. (2022) showed that asking
+math-word-problem questions with CoT produced enormous accuracy gains on
+large-enough models — and *zero* gains on small ones. CoT was the first
+clear capability *emergence* tied to scale, and the conceptual seed of
+modern reasoning models.
+
+<Callout variant="insight" title="CoT is test-time compute, smuggled in">
+Each reasoning token consumes another forward pass. A model that thinks for
+500 tokens before answering has done ~500× more compute than a model that
+answers immediately. This is why CoT works — and why o1, o3, and DeepSeek-R1
+are essentially CoT made native, with the reasoning trace produced
+internally and at much greater length. Prompting was the prototype; the next
+chapter is the production version.
+</Callout>
+
+## Chat templates, system prompts, and tool definitions
+
+Modern assistant models are fine-tuned with specific structural conventions:
+
+- **Roles**: every turn is tagged `system`, `user`, or `assistant`.
+- **Special tokens**: `<|im_start|>`, `<|user|>`, `<|assistant|>`, etc., delimit segments. These vary per model.
+- **Tool/function calling**: tools are defined in the system prompt or via a structured schema; the model emits structured calls the harness executes.
+
+Always use the tokenizer's `apply_chat_template` rather than concatenating
+strings yourself:
+
+```python
+messages = [
+    {"role": "system", "content": "You are a concise math tutor."},
+    {"role": "user", "content": "Differentiate x^3 sin(x)."},
+]
+input_ids = tok.apply_chat_template(messages, return_tensors="pt",
+                                    add_generation_prompt=True)
+```
+
+Skip this and you silently degrade every response.
+
+<PaperCard title="Training language models to follow instructions with human feedback (InstructGPT)" authors="Ouyang et al." year={2022} url="https://arxiv.org/abs/2203.02155" />
+
+## Prompting as programming, soberly
+
+Prompt engineering deserves both more and less respect than it gets. *More*,
+because the difference between a careless prompt and a careful one is often
+a 10–30 point benchmark gap. *Less*, because most "prompt-engineering"
+folklore (magic phrases, threats, bribes) does not survive controlled
+evaluation. The robust techniques are mundane:
+
+1. State the task precisely. Define inputs and outputs.
+2. Show 2–5 well-chosen examples.
+3. Specify the format (JSON schema, bullet list, exact length).
+4. Ask for reasoning *before* the answer when the task is non-trivial.
+5. Verify on a held-out set, not on vibes.
+
+This is the prelude to reasoning models, agent frameworks, and RLHF — all
+of which try to internalize one or another of these recipes so the user
+doesn't have to.

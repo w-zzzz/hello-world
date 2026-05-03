@@ -1,0 +1,232 @@
+---
+slug: "05-reasoning-agents/01-o1-o3-r1"
+part: "05-reasoning-agents"
+partTitle: "Reasoning & agents"
+partIndex: 5
+topicIndex: 1
+title: "Reasoning models & test-time compute"
+hook: "o1, o3, DeepSeek-R1: thinking before answering."
+estMinutes: 20
+difficulty: 4
+prereqs: ["04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["sutskever", "karpathy"]
+papers:
+  - title: "OpenAI o1 System Card / Learning to Reason with LLMs"
+    authors: "OpenAI"
+    year: 2024
+    url: "https://openai.com/index/learning-to-reason-with-llms/"
+  - title: "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning"
+    authors: "DeepSeek-AI"
+    year: 2025
+    url: "https://arxiv.org/abs/2501.12948"
+  - title: "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models (GRPO)"
+    authors: "Shao, Wang, Zhu, Xu, Li, Mao, Li, Wu, Liu, Guo"
+    year: 2024
+    url: "https://arxiv.org/abs/2402.03300"
+  - title: "Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters"
+    authors: "Snell, Lee, Xu, Kumar"
+    year: 2024
+    url: "https://arxiv.org/abs/2408.03314"
+hfResources:
+  - kind: "model"
+    title: "deepseek-ai/DeepSeek-R1"
+    url: "https://huggingface.co/deepseek-ai/DeepSeek-R1"
+  - kind: "model"
+    title: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+    url: "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+  - kind: "dataset"
+    title: "open-r1 — open reproduction of R1"
+    url: "https://huggingface.co/open-r1"
+freeResources:
+  - kind: "blog"
+    title: "Reasoning with o1"
+    source: "OpenAI"
+    url: "https://openai.com/index/learning-to-reason-with-llms/"
+  - kind: "blog"
+    title: "DeepSeek-R1 Paper Explained"
+    source: "Sebastian Raschka"
+    url: "https://magazine.sebastianraschka.com/p/understanding-reasoning-llms"
+  - kind: "video"
+    title: "Deep dive: o1, R1 and the new frontier"
+    source: "Andrej Karpathy"
+    url: "https://www.youtube.com/watch?v=7xTGNNLPyMI"
+quiz:
+  - id: "reason-q1"
+    question: "What is the central idea of *test-time compute scaling* as exploited by o1 / R1?"
+    choices:
+      - "Train a much larger model."
+      - "Allow the model to spend variable amounts of compute *per query* by generating long internal reasoning traces before answering."
+      - "Quantize the model to int4."
+      - "Use a vector database."
+    answer: 1
+    explanation: "o1 and R1 are trained so that for harder problems they generate longer chains of internal reasoning. The total compute per response can scale by 10-100x for hard problems vs easy ones. Snell et al. (2024) showed this can be more efficient per FLOP than scaling parameters."
+  - id: "reason-q2"
+    question: "How was DeepSeek-R1-Zero trained?"
+    choices:
+      - "Pure supervised fine-tuning on chain-of-thought traces."
+      - "RL with rule-based rewards (correctness on math/code) using GRPO, *without* any SFT cold start — reasoning emerged from RL alone."
+      - "Distillation from GPT-4."
+      - "Standard PPO with a reward model."
+    answer: 1
+    explanation: "R1-Zero is the surprising result: starting from a base LLM and applying GRPO with verifiable rewards (does the math answer match? does the code pass tests?), long-form reasoning emerges *without* any human-written CoT data. R1 proper adds an SFT cold-start for readability."
+  - id: "reason-q3"
+    question: "What does GRPO (Group Relative Policy Optimization) do differently from PPO?"
+    choices:
+      - "It uses a different model architecture."
+      - "It estimates advantages by comparing multiple sampled completions for the same prompt to each other, eliminating the need for a separate value/critic network."
+      - "It is off-policy."
+      - "It does not use rewards."
+    answer: 1
+    explanation: "GRPO samples a *group* of $K$ completions per prompt and uses their mean reward as a baseline; the advantage of completion $i$ is $r_i$ minus the group mean, normalized by group std. No critic network is needed — half the parameters compared to PPO with a value head, and a key reason DeepSeek could afford R1's RL run."
+  - id: "reason-q4"
+    question: "Why do reasoning models produce hidden 'thinking' tokens?"
+    choices:
+      - "To save on API costs."
+      - "Because the reasoning trace is a working scratchpad — its quality matters for the answer, but it is not part of the final user-facing response and is often verbose, exploratory, and rough."
+      - "Because they cannot generate fluent text."
+      - "For copyright reasons."
+    answer: 1
+    explanation: "The reasoning trace is the model's *internal* monologue — backtracking, second-guessing, trying alternative approaches. Showing it raw is distracting and harms the user experience. o1 hides them entirely; R1 shows them in `<think>` tags. Either way, the *answer* is summarized from the trace."
+---
+
+For five years, the dominant story of LLM progress was: bigger model, more
+data, better answers. In late 2024, OpenAI's o1 quietly changed the axis.
+Instead of scaling parameters, scale the *amount of compute the model spends
+thinking before it answers*. Then in early 2025, DeepSeek-R1 showed that
+this capability could be elicited entirely through reinforcement learning —
+no chain-of-thought demonstrations required. Both results upended the
+field's model of where progress comes from.
+
+This is arguably the most important shift since the original GPT-3 paper.
+You should understand it precisely.
+
+## Two compute axes
+
+Until 2024, "more compute" meant "bigger model, more training tokens."
+Inference was the cheap part. A reasoning model breaks this assumption: a
+single response from o1 might involve generating 10,000+ hidden reasoning
+tokens before producing a 200-token answer. That's 50× the inference cost
+of a vanilla GPT-4 response on the same prompt.
+
+The trade-off is favorable when the problem warrants it. Snell et al. (2024)
+showed that on hard math and reasoning benchmarks, a small model with
+generous test-time compute often outperforms a much larger model that
+answers immediately, *at equal total FLOPs*. Reasoning is fungible with
+parameters — to a point.
+
+$$
+\text{quality} \approx f(\underbrace{N}_{\text{params}},\ \underbrace{D}_{\text{train data}},\ \underbrace{T_{\text{think}}}_{\text{test-time tokens}})
+$$
+
+Pre-o1 we optimized $(N, D)$ with $T_{\text{think}}$ pinned near zero.
+Post-o1 we let $T_{\text{think}}$ grow — and discovered the curve in that
+direction was steep and far from saturated.
+
+## How o1 was trained (and what we don't know)
+
+OpenAI hasn't published full details. What's been confirmed:
+
+- A *large-scale RL* algorithm trains the model to produce long internal
+  chains of thought before answering.
+- The reward function is a mix of automated graders (verifiable correctness
+  on math, code, and other domains where right answers exist) and learned
+  reward models.
+- Inference time scales with problem difficulty — the model "decides" how
+  much to think.
+
+What's unconfirmed: the specific RL algorithm, the reward composition, and
+the exact dataset. The community filled in the blanks via DeepSeek-R1.
+
+## DeepSeek-R1 and GRPO: the open recipe
+
+DeepSeek-R1 (January 2025) is the most consequential open-weights model
+release of the decade. The paper described an end-to-end recipe — and
+showed that a key surprise was achievable.
+
+**R1-Zero**: starting from DeepSeek-V3 base, train *with RL only*, using
+verifiable correctness as the reward (math has known answers; code passes
+or fails tests). Long chain-of-thought reasoning, self-verification, and
+backtracking *emerged* during training. No SFT step, no human-written CoT
+data.
+
+**R1**: the production model. Add a small SFT cold start for readability
+(R1-Zero's reasoning was correct but ugly), then RL, then more SFT, then
+RL again. The result matches o1 on most public reasoning benchmarks.
+
+The RL algorithm is **GRPO** (Group Relative Policy Optimization), introduced
+in the DeepSeekMath paper. Conceptually:
+
+1. For each prompt $q$, sample $K$ completions $\{o_1, \ldots, o_K\}$ from the current policy.
+2. Score them with the reward function: $r_1, \ldots, r_K$.
+3. Compute group-relative advantages: $\hat{A}_i = (r_i - \bar{r}) / \sigma_r$.
+4. Update the policy with a clipped PPO-style objective using $\hat{A}_i$:
+
+$$
+\mathcal{L}_{\text{GRPO}} = \mathbb{E}_q\, \frac{1}{K}\sum_{i=1}^{K} \min\!\Big(\rho_i \hat{A}_i,\ \mathrm{clip}(\rho_i, 1-\epsilon, 1+\epsilon) \hat{A}_i\Big) - \beta\, D_{\text{KL}}(\pi_\theta \| \pi_{\text{ref}})
+$$
+
+where $\rho_i = \pi_\theta(o_i|q) / \pi_{\text{old}}(o_i|q)$. The crucial
+innovation: **no value/critic network** is needed. The group baseline
+replaces it. This halves the GPU memory footprint of RL training.
+
+```python
+# Sketch of GRPO advantage computation
+def grpo_advantages(rewards):
+    # rewards: tensor of shape (B, K) — K completions per prompt
+    mean = rewards.mean(dim=-1, keepdim=True)
+    std  = rewards.std(dim=-1, keepdim=True) + 1e-8
+    return (rewards - mean) / std  # (B, K)
+```
+
+That short snippet, plus a clipped policy gradient, plus a verifiable
+reward, plus weeks of compute, gets you a frontier reasoning model.
+
+<PaperCard title="DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning" authors="DeepSeek-AI" year={2025} url="https://arxiv.org/abs/2501.12948" />
+
+## What "thinking" actually looks like
+
+R1's reasoning traces are remarkable to read. The model writes things like
+*"Wait, let me reconsider..."*, *"This doesn't feel right, let me try a
+different approach."*, *"Let me verify this calculation."* These behaviors
+were never demonstrated to it; they emerged because they reduced loss under
+the verifiable reward.
+
+This is the deepest implication of R1-Zero: **reasoning is RL-discoverable
+in pretrained LLMs**. The capability was latent in the base model. RL with
+the right reward simply unlocked it.
+
+<Callout variant="insight" title="The bitter lesson, again">
+Sutton's bitter lesson: methods that scale with compute beat methods that
+encode human priors. R1-Zero is the bitter lesson aimed at reasoning. We
+spent a decade hand-engineering CoT prompts. RL discovered better ones from
+scratch in weeks. Expect more of this.
+</Callout>
+
+## Where this is going
+
+- **o3** (December 2024) demonstrated that the curve had not saturated:
+  scaling up the same recipe by ~5× compute produced superhuman performance
+  on ARC-AGI, FrontierMath, and competitive programming.
+- **Distillation** of R1's reasoning into smaller models (R1-Distill-Qwen,
+  R1-Distill-Llama) produced 7B-32B models that beat much larger base
+  models on reasoning — without doing any RL themselves.
+- **Domain transfer** is the open question. Verifiable rewards exist for
+  math, code, and formal logic. They do not exist for "is this essay
+  insightful?" Whether reasoning trained on verifiable domains transfers
+  to non-verifiable ones is the research story of 2025–2026.
+
+<Callout variant="warning" title="Don't conflate reasoning with thinking">
+Long chain-of-thought is *correlated* with deliberation but is not
+deliberation itself. The model can produce a 5,000-token "reasoning"
+trace that is internally inconsistent, contains errors it does not catch,
+or arrives at the right answer for the wrong reason. Use reasoning models
+where their answers can be verified or audited. Don't trust their
+introspection.
+</Callout>
+
+## What to study next
+
+- Read the DeepSeek-R1 paper end-to-end. It's accessible and the recipe is reproducible.
+- Skim the open-r1 effort on Hugging Face — community reproductions of R1.
+- Move on to chain-of-thought + ReAct (next topic) for the "non-RL" version of the same idea.

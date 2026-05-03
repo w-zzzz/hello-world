@@ -1,0 +1,223 @@
+---
+slug: "08-rl/03-policy-gradient-ppo"
+part: "08-rl"
+partTitle: "Reinforcement learning"
+partIndex: 8
+topicIndex: 3
+title: "Policy gradients & PPO"
+hook: "Optimize the policy directly; clip the update."
+estMinutes: 18
+difficulty: 4
+prereqs: ["08-rl/02-q-learning"]
+hasHeroViz: false
+researchers: ["schulman"]
+papers:
+  - title: "Policy gradient methods for reinforcement learning with function approximation"
+    authors: "Sutton, McAllester, Singh, Mansour"
+    year: 2000
+    url: "https://proceedings.neurips.cc/paper/1999/hash/464d828b85b0bed98e80ade0a5c43b0f-Abstract.html"
+  - title: "Trust region policy optimization"
+    authors: "Schulman, Levine, Moritz, Jordan, Abbeel"
+    year: 2015
+    url: "https://arxiv.org/abs/1502.05477"
+  - title: "Proximal policy optimization algorithms"
+    authors: "Schulman, Wolski, Dhariwal, Radford, Klimov"
+    year: 2017
+    url: "https://arxiv.org/abs/1707.06347"
+  - title: "High-dimensional continuous control using generalized advantage estimation"
+    authors: "Schulman, Moritz, Levine, Jordan, Abbeel"
+    year: 2016
+    url: "https://arxiv.org/abs/1506.02438"
+hfResources:
+  - kind: "library"
+    title: "TRL — PPOTrainer for LLMs"
+    url: "https://huggingface.co/docs/trl/main/en/ppo_trainer"
+  - kind: "library"
+    title: "CleanRL — single-file PPO implementations"
+    url: "https://github.com/vwxyzjn/cleanrl"
+freeResources:
+  - kind: "blog"
+    title: "The 37 implementation details of PPO"
+    source: "Costa Huang et al."
+    url: "https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/"
+  - kind: "blog"
+    title: "Spinning Up — PPO"
+    source: "OpenAI"
+    url: "https://spinningup.openai.com/en/latest/algorithms/ppo.html"
+  - kind: "video"
+    title: "Policy gradient methods"
+    source: "Pieter Abbeel"
+    url: "https://www.youtube.com/watch?v=KHZVXao4qXs"
+quiz:
+  - id: "pg-q1"
+    question: "What does the policy gradient theorem actually say?"
+    choices:
+      - "The gradient of the value function is the gradient of the policy."
+      - "$\\nabla_\\theta J(\\theta) = \\mathbb{E}_{\\pi_\\theta} [\\nabla_\\theta \\log \\pi_\\theta(a|s) \\, Q^{\\pi_\\theta}(s, a)]$ — you can estimate the gradient of the expected return without differentiating through the environment."
+      - "Policies must be deterministic to have a valid gradient."
+      - "The advantage function is the only valid weighting."
+    answer: 1
+    explanation: "The score-function trick lets you move the gradient inside the expectation. The environment dynamics never appear in the gradient — you only need to differentiate $\\log \\pi$ — which is what makes model-free RL feasible at all."
+  - id: "pg-q2"
+    question: "Why subtract a baseline from the return in policy gradient estimates?"
+    choices:
+      - "It changes the optimum."
+      - "It reduces variance without introducing bias, because $\\mathbb{E}[\\nabla_\\theta \\log \\pi(a|s) \\cdot b(s)] = 0$ for any state-only baseline."
+      - "It makes the policy deterministic."
+      - "It is required for convergence."
+    answer: 1
+    explanation: "A state-only baseline doesn't change the expected gradient (it integrates to zero) but can dramatically reduce variance. Using $V^\\pi(s)$ as the baseline gives the *advantage* $A(s, a) = Q(s, a) - V(s)$, which is the workhorse of modern policy gradient methods."
+  - id: "pg-q3"
+    question: "What problem does PPO's clipped objective solve?"
+    choices:
+      - "It eliminates the need for a value function."
+      - "Vanilla policy gradient can take destructively large steps when the importance ratio is far from 1; clipping the surrogate objective at $[1 - \\epsilon, 1 + \\epsilon]$ caps how much one update can change the policy."
+      - "It enforces deterministic policies."
+      - "It removes the need for advantage estimation."
+    answer: 1
+    explanation: "TRPO solved the same problem with a hard KL constraint and a constrained optimization. PPO replaces that with a simple clipped surrogate that you can drop into any first-order optimizer. The clip is a soft trust region — much cheaper, almost as good, and what every modern PG implementation actually uses."
+  - id: "pg-q4"
+    question: "What is generalized advantage estimation (GAE) doing?"
+    choices:
+      - "Estimating the policy gradient via finite differences."
+      - "Computing an exponentially-weighted average of $n$-step TD residuals — $A_t^{GAE} = \\sum_l (\\gamma\\lambda)^l \\delta_{t+l}$ — to interpolate between low-variance/high-bias TD and high-variance/low-bias Monte Carlo."
+      - "Replacing the policy with a value function."
+      - "Removing the discount factor."
+    answer: 1
+    explanation: "GAE's $\\lambda \\in [0, 1]$ slides between $\\lambda = 0$ (pure TD residual: low variance, biased by the value function's errors) and $\\lambda = 1$ (Monte Carlo return: unbiased, high variance). $\\lambda \\approx 0.95$ is a standard sweet spot."
+---
+
+Value-based methods like Q-learning estimate $Q^*$ and act greedily. Policy
+gradient methods *skip the value function* and optimize the policy
+directly — by following the gradient of the expected return with respect to
+the policy's parameters. They work in continuous action spaces, with
+stochastic policies, and (with the right tricks) they scale to
+LLM-fine-tuning, robotics, and game-playing.
+
+PPO is the workhorse: simple enough to implement in a weekend, robust enough
+to be the default RL algorithm in 2025.
+
+## Why this matters
+
+Q-learning is fragile in continuous control (the $\max_a Q$ becomes an
+optimization), and action distributions are often more naturally modeled
+than action values. Policy gradient methods accept those facts and optimize
+the right object — $J(\theta) = \mathbb{E}_{\pi_\theta}[\sum_t \gamma^t r_t]$ —
+directly.
+
+The same machinery that trains a robot to walk also fine-tunes a language
+model with RLHF. The substrate is identical.
+
+## The policy gradient theorem
+
+Differentiating $J(\theta)$ requires differentiating an expectation over
+trajectories. The score-function trick gives a clean form:
+
+$$
+\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta} \!\left[ \sum_t \nabla_\theta \log \pi_\theta(a_t | s_t) \cdot Q^{\pi_\theta}(s_t, a_t) \right]
+$$
+
+Sample a trajectory, compute $\nabla \log \pi$ at each step, weight by the
+return-from-this-step, sum. **You never differentiate through the
+environment.** That is what makes the algorithm model-free.
+
+Two practical refinements:
+
+1. Subtract a state-only **baseline** $b(s)$ — usually $V^\pi(s)$ — to
+   reduce variance. The expected gradient is unchanged.
+2. Use the **advantage** $A(s, a) = Q(s, a) - V(s)$ instead of $Q$.
+
+This gives the **actor–critic** template: a policy network (actor) and a
+value network (critic) trained jointly.
+
+## Generalized advantage estimation
+
+How do you estimate $A(s, a)$? Two extremes:
+
+- $A_t = \sum_{l \ge 0} \gamma^l r_{t+l} - V(s_t)$. Monte Carlo: unbiased,
+  very high variance.
+- $A_t = r_t + \gamma V(s_{t+1}) - V(s_t)$. One-step TD: low variance, but
+  biased by errors in $V$.
+
+GAE interpolates:
+
+$$
+A_t^{\mathrm{GAE}(\gamma, \lambda)} = \sum_{l=0}^{\infty} (\gamma \lambda)^l \, \delta_{t+l}, \quad \delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)
+$$
+
+$\lambda$ slides between TD ($\lambda = 0$) and MC ($\lambda = 1$). The
+typical setting $\lambda \approx 0.95$ trades small bias for big variance
+reduction.
+
+## Trust regions and the clipping trick
+
+Naive policy gradient is fragile because the gradient is local. One bad
+update can move $\pi_\theta$ to a region where the data you collected is
+worthless, and recovery is slow or impossible. **TRPO** addressed this with
+a hard KL constraint:
+
+$$
+\max_\theta \; \mathbb{E}\!\left[\frac{\pi_\theta(a|s)}{\pi_{\theta_{\mathrm{old}}}(a|s)} A(s,a)\right] \quad \text{s.t.} \quad \mathbb{E}[\mathrm{KL}(\pi_{\theta_{\mathrm{old}}} \Vert \pi_\theta)] \le \delta
+$$
+
+This works but requires a constrained optimizer (conjugate gradient + line
+search). **PPO** replaced the constraint with a clipped surrogate:
+
+$$
+L^{\mathrm{CLIP}}(\theta) = \mathbb{E}\!\left[ \min\!\big( r_t(\theta) A_t,\; \mathrm{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\, A_t \big) \right]
+$$
+
+where $r_t(\theta) = \pi_\theta(a_t|s_t) / \pi_{\theta_{\mathrm{old}}}(a_t|s_t)$
+is the importance ratio and $\epsilon \approx 0.2$. The minimum-with-clip
+construction means: if the new policy wants to push too far in a direction
+that already increased advantage, the clip caps the gradient. A soft trust
+region in one line of code.
+
+<PaperCard
+  title="Proximal policy optimization algorithms"
+  authors="Schulman, Wolski, Dhariwal, Radford, Klimov"
+  year={2017}
+  url="https://arxiv.org/abs/1707.06347"
+/>
+
+```python
+import torch
+import torch.nn.functional as F
+
+def ppo_loss(logp_new, logp_old, advantages, returns, values, eps=0.2, vf_coef=0.5, ent_coef=0.01, entropy=None):
+    ratio = torch.exp(logp_new - logp_old)
+    unclipped = ratio * advantages
+    clipped   = torch.clamp(ratio, 1 - eps, 1 + eps) * advantages
+    policy_loss = -torch.min(unclipped, clipped).mean()
+    value_loss  = F.mse_loss(values, returns)
+    ent         = entropy.mean() if entropy is not None else 0.0
+    return policy_loss + vf_coef * value_loss - ent_coef * ent
+```
+
+## What makes PPO actually work
+
+The 2017 paper is short. The full implementation is not. Empirical
+"implementation details" papers (notably Engstrom et al., 2020 and Huang
+et al., 2022) document dozens of small choices — orthogonal initialization,
+observation normalization, value clipping, learning rate annealing, advantage
+normalization — that contribute as much to PPO's reputation as the clipped
+objective itself.
+
+<Callout variant="insight" title="PPO as a default">
+PPO became the default not because it is theoretically optimal but because
+it is a *forgiving* algorithm. It works on continuous control, discrete
+action games, and LLM fine-tuning with the same hyperparameters within an
+order of magnitude. That robustness is why GPT-style RLHF picked PPO and
+why DeepMind, OpenAI, and Anthropic all kept variants of it as a workhorse.
+</Callout>
+
+## What comes next
+
+The next topic — RLHF, DPO, GRPO — is in many ways a story about *replacing*
+PPO. DPO eliminates the RL loop entirely; GRPO simplifies the value function.
+But the algorithms are descendants. To understand why DPO is "PPO without
+the value function" you have to understand PPO first.
+
+If you can write down the policy gradient theorem, derive the advantage,
+and explain why the clip ratio exists, you have the entire toolkit needed
+for what comes next.

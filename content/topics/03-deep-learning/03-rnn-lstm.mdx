@@ -1,0 +1,226 @@
+---
+slug: "03-deep-learning/03-rnn-lstm"
+part: "03-deep-learning"
+partTitle: "Deep learning core"
+partIndex: 3
+topicIndex: 3
+title: "RNNs, LSTMs, GRUs"
+hook: "Recurrence, vanishing gradients, and gates."
+estMinutes: 16
+difficulty: 3
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["hochreiter", "bengio"]
+papers:
+  - title: "Long Short-Term Memory"
+    authors: "Hochreiter, Schmidhuber"
+    year: 1997
+    url: "https://www.bioinf.jku.at/publications/older/2604.pdf"
+  - title: "Learning long-term dependencies with gradient descent is difficult"
+    authors: "Bengio, Simard, Frasconi"
+    year: 1994
+    url: "https://ieeexplore.ieee.org/document/279181"
+  - title: "Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling"
+    authors: "Chung, Gulcehre, Cho, Bengio"
+    year: 2014
+    url: "https://arxiv.org/abs/1412.3555"
+hfResources:
+  - kind: "doc"
+    title: "torch.nn.LSTM — PyTorch reference"
+    url: "https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html"
+  - kind: "course"
+    title: "Hugging Face NLP Course — sequence models"
+    url: "https://huggingface.co/learn/nlp-course/chapter1/4"
+freeResources:
+  - kind: "blog"
+    title: "Understanding LSTM Networks"
+    source: "Christopher Olah"
+    url: "https://colah.github.io/posts/2015-08-Understanding-LSTMs/"
+  - kind: "blog"
+    title: "The Unreasonable Effectiveness of Recurrent Neural Networks"
+    source: "Andrej Karpathy"
+    url: "https://karpathy.github.io/2015/05/21/rnn-effectiveness/"
+  - kind: "course"
+    title: "Stanford CS224N — RNN/LSTM lecture notes"
+    url: "https://web.stanford.edu/class/cs224n/"
+quiz:
+  - id: "rnn-q1"
+    question: "Why do plain RNNs struggle to learn long-term dependencies?"
+    choices:
+      - "They are not differentiable"
+      - "Backprop through time multiplies the same recurrent Jacobian many times; eigenvalues less than 1 cause vanishing, greater than 1 cause exploding gradients"
+      - "They can't be parallelized"
+      - "They need too many parameters"
+    answer: 1
+    explanation: "Unrolling an RNN gives a product of $T$ copies of the same Jacobian. Repeated multiplication amplifies any deviation from 1: gradients shrink to 0 or blow up. Long-range signal is lost in either case — Bengio et al. (1994) made this precise."
+  - id: "rnn-q2"
+    question: "What does the LSTM cell state $C_t$ buy you over a plain hidden state $h_t$?"
+    choices:
+      - "It is faster to compute"
+      - "An additive update path $C_t = f \\odot C_{t-1} + i \\odot \\tilde{C}_t$ that lets gradients flow back through time without repeated multiplications"
+      - "It guarantees convexity"
+      - "It removes the need for nonlinearities"
+    answer: 1
+    explanation: "The cell state is updated additively (not multiplicatively), so the recurrent Jacobian along the cell path is close to the identity when the forget gate is open. This is the original 'constant error carousel' that lets LSTMs propagate gradients across hundreds of timesteps."
+  - id: "rnn-q3"
+    question: "GRUs differ from LSTMs by:"
+    choices:
+      - "Using a single hidden state with combined update/reset gates and no separate cell state — fewer parameters but similar empirical performance"
+      - "Removing all gates"
+      - "Adding attention"
+      - "Using ReLU instead of tanh"
+    answer: 0
+    explanation: "GRUs merge the LSTM's forget and input gates into one update gate, drop the output gate, and use the hidden state directly (no separate cell). Fewer parameters, often comparable accuracy — Chung et al. (2014) showed they're roughly interchangeable in practice."
+  - id: "rnn-q4"
+    question: "Why did Transformers displace RNNs for most sequence modeling tasks?"
+    choices:
+      - "RNNs cannot be trained with backprop"
+      - "Transformers can process every position in parallel during training and have direct $O(1)$ paths between any two tokens, while RNNs are inherently sequential"
+      - "Transformers use fewer parameters"
+      - "RNNs require labeled data"
+    answer: 1
+    explanation: "An RNN's hidden state must be computed left-to-right: step $t$ depends on step $t-1$. Transformers compute all positions in parallel via attention, and information between distant positions hops in one step rather than through $T$ recurrent updates. On modern hardware this is decisive."
+---
+
+Before Transformers, sequences belonged to recurrent networks. RNNs, LSTMs,
+and GRUs were the workhorses of language modeling, machine translation,
+speech recognition, and sequential decision-making for the better part of a
+decade. They are, broadly, no longer the right answer for new
+sequence-modeling problems — but the *reasons* they failed at scale led
+directly to attention, and the *gating mechanisms* they invented power
+modern state-space models like Mamba.
+
+You can't fully understand why Transformers won without understanding what
+they replaced.
+
+## Why this matters
+
+Three reasons RNNs still earn space in your head:
+
+1. The vanishing/exploding gradient analysis that justified LSTMs is the
+   same analysis that justifies residual connections in deep nets, and the
+   same analysis that motivates structured state-space models.
+2. **Gating** — multiplicative on/off control of information flow — is one
+   of the most important architectural primitives in deep learning. It
+   shows up in LSTMs, GRUs, highway networks, GLU, Mixture-of-Experts
+   routers, and Mamba.
+3. RNNs remain useful for streaming/online inference where memory and
+   latency matter — speech models, time series, embedded systems.
+
+## A vanilla RNN
+
+Given inputs $x_1, \dots, x_T$ and a hidden state $h_t \in \mathbb{R}^d$:
+
+$$
+h_t = \tanh(W_{hh} h_{t-1} + W_{xh} x_t + b)
+$$
+
+The output at each step (or only at the end, depending on the task) is a
+linear projection of $h_t$. Training is **backprop through time** (BPTT):
+unroll the recurrence into a feed-forward graph of length $T$ and apply
+standard backprop.
+
+The trouble is in that unrolling. The gradient $\partial L / \partial h_0$
+includes a product of $T$ copies of the recurrent Jacobian $\partial h_t /
+\partial h_{t-1}$. If its largest eigenvalue is less than 1, the gradient
+vanishes exponentially. If greater than 1, it explodes. Bengio, Simard, and
+Frasconi made this rigorous in 1994: long-range learning with vanilla RNNs
+is, generically, mathematically hard.
+
+<Callout variant="info" title="Two practical fixes that always apply">
+1. **Gradient clipping**: cap $\|\nabla\|$ to some threshold (e.g. 1.0).
+   Doesn't fix vanishing, but prevents exploding from killing training.
+2. **Truncated BPTT**: only unroll for $K$ steps (typically 32–256) before
+   detaching the graph. Reduces compute and limits gradient horizons.
+</Callout>
+
+## LSTM: the constant error carousel
+
+Hochreiter and Schmidhuber's 1997 LSTM solved vanishing gradients by adding
+a separate **cell state** $C_t$ that is updated *additively* through gates.
+For input $x_t$ and previous state $(h_{t-1}, C_{t-1})$:
+
+$$
+\begin{aligned}
+f_t &= \sigma(W_f [h_{t-1}, x_t] + b_f) & \text{forget gate} \\
+i_t &= \sigma(W_i [h_{t-1}, x_t] + b_i) & \text{input gate} \\
+o_t &= \sigma(W_o [h_{t-1}, x_t] + b_o) & \text{output gate} \\
+\tilde{C}_t &= \tanh(W_c [h_{t-1}, x_t] + b_c) & \text{candidate} \\
+C_t &= f_t \odot C_{t-1} + i_t \odot \tilde{C}_t & \text{cell update} \\
+h_t &= o_t \odot \tanh(C_t) & \text{hidden output}
+\end{aligned}
+$$
+
+The crucial line is $C_t = f_t \odot C_{t-1} + i_t \odot \tilde{C}_t$. The
+cell state is updated by *adding* something — not multiplying — so the
+recurrent Jacobian along the cell path is close to the identity whenever
+the forget gate is open. Gradients flow back through time without
+exponential decay. Hochreiter called this the "constant error carousel".
+
+Olah's [Understanding LSTM Networks](https://colah.github.io/posts/2015-08-Understanding-LSTMs/)
+remains the cleanest visual treatment. Read it.
+
+<PaperCard title="Long Short-Term Memory" authors="Hochreiter, Schmidhuber" year={1997} url="https://www.bioinf.jku.at/publications/older/2604.pdf" />
+
+## GRU: a simpler gate
+
+The Gated Recurrent Unit (Cho et al., 2014) merges the LSTM's input and
+forget gates into one update gate, drops the output gate, and works with a
+single hidden state:
+
+$$
+\begin{aligned}
+z_t &= \sigma(W_z [h_{t-1}, x_t]) \\
+r_t &= \sigma(W_r [h_{t-1}, x_t]) \\
+\tilde{h}_t &= \tanh(W_h [r_t \odot h_{t-1}, x_t]) \\
+h_t &= (1 - z_t) \odot h_{t-1} + z_t \odot \tilde{h}_t
+\end{aligned}
+$$
+
+Fewer parameters, similar performance on most benchmarks. In practice, GRUs
+are slightly faster to train; LSTMs win marginally on very long sequences.
+Pick whichever your framework defaults to.
+
+```python
+import torch
+import torch.nn as nn
+
+rnn = nn.LSTM(input_size=128, hidden_size=256, num_layers=2,
+              bidirectional=False, batch_first=True)
+x = torch.randn(8, 100, 128)               # (batch, seq, features)
+y, (h, c) = rnn(x)
+print(y.shape, h.shape, c.shape)           # (8, 100, 256), (2, 8, 256), (2, 8, 256)
+```
+
+## Why Transformers won
+
+Three reasons RNNs lost language modeling:
+
+1. **Sequential computation.** $h_t$ depends on $h_{t-1}$, so you cannot
+   compute timesteps in parallel during training. Transformers process the
+   whole sequence in one batched matmul.
+2. **Path length.** In an RNN, information from token 1 reaches token $T$
+   through $T$ recurrent steps, each lossy. In a Transformer, every token
+   attends directly to every other in $O(1)$ hops.
+3. **Hardware fit.** Modern GPUs are matrix-multiply machines. Transformers
+   are matrix multiplies. RNN cells are small per-step operations that
+   under-use the device.
+
+The first reason is the killer. Faster training → more data and parameters
+→ better models. Transformer scaling crushed RNN scaling decisively after
+GPT-2 / GPT-3.
+
+<Callout variant="insight" title="The gate idea didn't die">
+Selective state-space models (Mamba, S5) reintroduce gating with carefully
+chosen parameterizations of recurrent dynamics. They achieve linear-time
+inference (RNN's old advantage) while preserving long-range gradient flow
+(LSTM's contribution) and parallelizable training (Transformer's
+contribution). The lineage is direct.
+</Callout>
+
+## What to do next
+
+If you'll work on language modeling, you can mostly skip RNNs in practice
+and jump to Transformers. But understand the LSTM gating equations once —
+they're the prototype for almost every "selective" computation in modern
+deep learning, and they show up unchanged in Mamba's ablations.

@@ -1,0 +1,224 @@
+---
+slug: "02-classical-ml/04-clustering-pca-umap"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 4
+title: "Clustering, PCA, t-SNE & UMAP"
+hook: "How to see high-dimensional data in two dimensions."
+estMinutes: 18
+difficulty: 3
+prereqs: ["01-math/01-linear-algebra"]
+hasHeroViz: false
+researchers: ["maaten", "mcinnes"]
+papers:
+  - title: "Visualizing Data using t-SNE"
+    authors: "van der Maaten, Hinton"
+    year: 2008
+    url: "https://www.jmlr.org/papers/v9/vandermaaten08a.html"
+  - title: "UMAP: Uniform Manifold Approximation and Projection"
+    authors: "McInnes, Healy, Melville"
+    year: 2018
+    url: "https://arxiv.org/abs/1802.03426"
+hfResources:
+  - kind: "doc"
+    title: "scikit-learn — Manifold learning"
+    url: "https://scikit-learn.org/stable/modules/manifold.html"
+  - kind: "library"
+    title: "umap-learn — UMAP reference implementation"
+    url: "https://umap-learn.readthedocs.io/"
+freeResources:
+  - kind: "blog"
+    title: "How to Use t-SNE Effectively"
+    source: "Distill (Wattenberg, Viégas, Johnson)"
+    url: "https://distill.pub/2016/misread-tsne/"
+  - kind: "blog"
+    title: "Understanding UMAP"
+    source: "Coenen, Pearce — Google PAIR"
+    url: "https://pair-code.github.io/understanding-umap/"
+  - kind: "course"
+    title: "Stanford CS229 — Unsupervised learning notes"
+    url: "https://cs229.stanford.edu/notes2022fall/main_notes.pdf"
+quiz:
+  - id: "cluster-q1"
+    question: "PCA finds directions that:"
+    choices:
+      - "Maximize the distance between class means"
+      - "Maximize the variance of the projected data, subject to orthogonality"
+      - "Minimize the kernel-induced distance"
+      - "Minimize the L1 norm of the projection"
+    answer: 1
+    explanation: "PCA's principal components are the eigenvectors of the data covariance matrix, ordered by eigenvalue (= variance along that direction). Equivalently, they are the right singular vectors of the centered data matrix. Best linear, orthogonal, variance-preserving projection."
+  - id: "cluster-q2"
+    question: "Why can a t-SNE plot be misleading?"
+    choices:
+      - "It is non-deterministic"
+      - "It preserves local structure but not global distances or cluster sizes; perplexity, initialization, and iteration count all dramatically change the layout"
+      - "It only works on 2D inputs"
+      - "It requires labeled data"
+    answer: 1
+    explanation: "t-SNE matches local neighborhood probabilities, not metric distances. Inter-cluster distances and apparent cluster densities are essentially arbitrary — running it twice with different perplexity gives different stories. Always check robustness across hyperparameters."
+  - id: "cluster-q3"
+    question: "K-means assumes clusters are:"
+    choices:
+      - "Of arbitrary shape and size"
+      - "Roughly spherical with similar variance, separable by Euclidean distance to centroids"
+      - "Pre-labeled"
+      - "Hierarchically nested"
+    answer: 1
+    explanation: "K-means minimizes within-cluster squared distance, which corresponds to a Gaussian mixture with identical isotropic covariance. Elongated, density-varying, or non-convex clusters break this assumption — use DBSCAN, GMM, or spectral clustering instead."
+  - id: "cluster-q4"
+    question: "UMAP differs from t-SNE primarily because:"
+    choices:
+      - "UMAP is faster, scales better, and tends to preserve more global structure thanks to a fuzzy-simplicial-set construction with a different cost function"
+      - "UMAP is exact while t-SNE is approximate"
+      - "UMAP only works for images"
+      - "UMAP is supervised"
+    answer: 0
+    explanation: "UMAP frames the problem as preserving a fuzzy topological structure rather than matching local probabilities. In practice it's faster, scales to millions of points, and produces layouts where inter-cluster distance carries somewhat more meaning — though both methods still distort global geometry."
+---
+
+When you're handed a million 768-dimensional embeddings, your first move is
+to look at them. But you cannot look at $\mathbb{R}^{768}$. You need a
+projection — and the projection you choose tells a story about your data
+that may or may not be true.
+
+Dimensionality reduction is half intuition pump, half necessary
+preprocessing for downstream models. It's worth knowing both halves: when
+the resulting plot is trustworthy, and when it's a beautiful lie.
+
+## Why this matters
+
+Every modern ML pipeline produces high-dimensional embeddings — token
+representations, image features, gene expression profiles, user vectors.
+You evaluate them by clustering, visualizing, and retrieving. PCA, t-SNE,
+and UMAP are the workhorse tools, and each makes different tradeoffs
+between local fidelity, global structure, and interpretability.
+
+K-means and GMM, meanwhile, are the canonical clustering methods. You'll
+use them to label embedding clusters, initialize codebooks for VQ-VAE,
+build hierarchical retrieval structures, and seed a hundred other
+algorithms.
+
+## PCA: the linear baseline
+
+Given a centered data matrix $X \in \mathbb{R}^{n \times d}$, PCA finds the
+orthogonal directions of maximal variance. These are the top eigenvectors
+of the covariance matrix $\frac{1}{n} X^\top X$, equivalently the right
+singular vectors of $X$:
+
+$$
+X = U \Sigma V^\top, \qquad X V_k \in \mathbb{R}^{n \times k} \;\; \text{is the rank-$k$ projection.}
+$$
+
+PCA preserves global linear structure exactly — pairwise inner products in
+the projection equal those in the original space, up to truncation error.
+It's interpretable, fast, and a defensible default. Its weaknesses are
+exactly its strengths: linear, axis-of-maximum-variance, no notion of
+manifold curvature.
+
+<Callout variant="info" title="When PCA quietly fails">
+A 'Swiss roll' embedded in 3D has 2D intrinsic structure, but PCA on it
+produces a useless flat blob — the two best linear directions don't align
+with the manifold's geodesic coordinates. You need nonlinear methods to
+recover the underlying chart.
+</Callout>
+
+## K-means clustering
+
+Pick $K$, alternate two steps until convergence:
+
+1. **Assign**: each point to its nearest centroid.
+2. **Update**: each centroid to the mean of its assigned points.
+
+This is coordinate descent on the within-cluster variance objective
+
+$$
+\min_{\{\mu_k\}, \{z_i\}} \sum_i \|x_i - \mu_{z_i}\|^2
+$$
+
+K-means is fast, parallelizable, and gives reasonable results when clusters
+are roughly spherical with similar variance. It assumes Euclidean geometry
+matters, equal cluster size and density, and you know $K$ — none of which
+are guaranteed. The elbow plot of within-cluster variance vs. $K$ is the
+classical heuristic for picking $K$, but it's notoriously inconclusive.
+
+For more flexible clustering: **Gaussian mixture models** (each cluster has
+its own mean and covariance, fit with EM), **DBSCAN** (density-based, finds
+arbitrary shapes), **HDBSCAN** (hierarchical density), **spectral
+clustering** (cluster the eigenvectors of a similarity graph's Laplacian).
+
+## t-SNE: matching local neighborhoods
+
+t-SNE maps high-dimensional points to 2D such that *probabilistic*
+neighborhood relations are preserved. In high-D:
+
+$$
+p_{j|i} = \frac{\exp(-\|x_i - x_j\|^2 / 2\sigma_i^2)}{\sum_{k \ne i} \exp(-\|x_i - x_k\|^2 / 2\sigma_i^2)}
+$$
+
+with $\sigma_i$ chosen so the conditional has a target perplexity. In 2D,
+use a Student-$t$ kernel (heavy tails — that's the "$t$"):
+
+$$
+q_{ij} = \frac{(1 + \|y_i - y_j\|^2)^{-1}}{\sum_{k \ne l} (1 + \|y_k - y_l\|^2)^{-1}}
+$$
+
+and minimize $D_{KL}(P \,\Vert\, Q)$ over the 2D coordinates $y_i$.
+
+t-SNE plots are extraordinarily good at revealing *cluster structure*. They
+are also extraordinarily good at *fooling you*: cluster sizes, inter-cluster
+distances, and density differences in the plot don't reliably reflect those
+in the data. Distill's [How to Use t-SNE Effectively](https://distill.pub/2016/misread-tsne/)
+is required reading before you put one in a paper.
+
+<PaperCard title="Visualizing Data using t-SNE" authors="van der Maaten, Hinton" year={2008} url="https://www.jmlr.org/papers/v9/vandermaaten08a.html" />
+
+## UMAP: faster, more global
+
+UMAP frames the same problem topologically: build a fuzzy simplicial set in
+high-D, build one in low-D, minimize a cross-entropy between them. The
+practical wins:
+
+- **Speed and scaling** — UMAP runs on millions of points in minutes.
+- **More global structure** — inter-cluster distances are not arbitrary
+  (though still not metric).
+- **Useful as a preprocessor** — you can feed UMAP embeddings into
+  downstream models, unlike t-SNE which is purely visualization.
+
+```python
+import umap, numpy as np
+from sklearn.datasets import load_digits
+
+X, y = load_digits(return_X_y=True)
+
+reducer = umap.UMAP(
+    n_neighbors=15,    # local vs global tradeoff
+    min_dist=0.1,      # how tightly points pack in low-D
+    n_components=2,
+    metric="euclidean",
+    random_state=42,
+)
+emb = reducer.fit_transform(X)
+print(emb.shape)   # (1797, 2)
+```
+
+The two knobs that matter: `n_neighbors` (small → emphasize local
+structure; large → emphasize global) and `min_dist` (small → tight
+clusters; large → smoother layout).
+
+<Callout variant="warning" title="Visualizations are not ground truth">
+A clean t-SNE/UMAP plot suggesting clean clusters is *evidence*, not proof.
+Always validate with a second method: cluster in the original space and
+color the plot, run a stability analysis, or check whether the structure
+persists under different hyperparameters.
+</Callout>
+
+## What to do next
+
+Build a pipeline you'll reuse forever: PCA to 50 dimensions, then UMAP to
+2D, then color by whatever metadata you have. This combination is faster,
+more numerically stable, and often more readable than UMAP on raw
+high-dimensional inputs. Then run K-means or HDBSCAN on the 50D PCA output
+for cluster labels. That's the standard recipe for embedding analysis at
+every modern ML lab.

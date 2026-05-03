@@ -1,0 +1,224 @@
+---
+slug: "10-cutting-edge/07-double-descent-grokking"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 7
+title: "Double descent & grokking"
+hook: "Counterintuitive generalization."
+estMinutes: 14
+difficulty: 4
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["belkin"]
+papers:
+  - title: "Reconciling modern machine-learning practice and the bias-variance trade-off"
+    authors: "Belkin, Hsu, Ma, Mandal"
+    year: 2018
+    url: "https://arxiv.org/abs/1812.11118"
+  - title: "Deep Double Descent: Where Bigger Models and More Data Hurt"
+    authors: "Nakkiran, Kaplun, Bansal, Yang, Barak, Sutskever"
+    year: 2019
+    url: "https://arxiv.org/abs/1912.02292"
+  - title: "Grokking: Generalization Beyond Overfitting on Small Algorithmic Datasets"
+    authors: "Power, Burda, Edwards, Babuschkin, Misra"
+    year: 2022
+    url: "https://arxiv.org/abs/2201.02177"
+  - title: "Progress measures for grokking via mechanistic interpretability"
+    authors: "Nanda, Chan, Lieberum, Smith, Steinhardt"
+    year: 2023
+    url: "https://arxiv.org/abs/2301.05217"
+hfResources:
+  - kind: "blog"
+    title: "Hugging Face — Hyperparameter search and overfitting"
+    url: "https://huggingface.co/docs/transformers/hpo_train"
+freeResources:
+  - kind: "blog"
+    title: "A mechanistic interpretability analysis of grokking"
+    source: "Neel Nanda"
+    url: "https://www.alignmentforum.org/posts/N6WM6hs7RQMKDhYjB/a-mechanistic-interpretability-analysis-of-grokking"
+  - kind: "video"
+    title: "Grokking explained"
+    source: "Yannic Kilcher"
+    url: "https://www.youtube.com/watch?v=ujW3l8mw4Y8"
+quiz:
+  - id: "dd-q1"
+    question: "What is double descent?"
+    choices:
+      - "Two gradient descents in parallel."
+      - "A test-error curve, as a function of model capacity, that goes down (under-parameterized), up to a peak at the interpolation threshold, and then down again into the over-parameterized regime."
+      - "A faster optimizer."
+      - "Loss going down twice in training."
+    answer: 1
+    explanation: "Classical bias-variance predicts a U; modern over-parameterized models keep improving past interpolation. Belkin et al. unified these into the double-descent curve, with a sharp test-error peak at the threshold where the model first fits the training data exactly."
+  - id: "dd-q2"
+    question: "Why does test error drop again past the interpolation threshold?"
+    choices:
+      - "Models become linear."
+      - "Among the many parameter settings that interpolate the training set, gradient descent has an *implicit bias* toward low-norm / low-complexity solutions, which generalize better."
+      - "More parameters means less data is used."
+      - "It does not — it always rises."
+    answer: 1
+    explanation: "Past interpolation, the loss landscape contains many zero-loss minima. SGD does not pick a random one — it preferentially finds flat, low-norm solutions. This implicit regularization is what powers benign overfitting."
+  - id: "dd-q3"
+    question: "Grokking, as observed by Power et al., is:"
+    choices:
+      - "Faster training."
+      - "A phenomenon where a model fits the training set early but its test accuracy stays at chance for a long time, then suddenly jumps to near-perfect long after train accuracy plateaued."
+      - "A new loss function."
+      - "An alignment technique."
+    answer: 1
+    explanation: "On a small modular-arithmetic task with weight decay, networks first memorize, then over many more steps slowly find a generalizing solution that crowds out the memorizing one. The transition is sharp."
+  - id: "dd-q4"
+    question: "Nanda et al. (2023) explained grokking on modular addition by showing that the network learns:"
+    choices:
+      - "Random features."
+      - "A discrete Fourier-transform-style algorithm using sinusoidal embeddings of inputs and trigonometric identities — provable, mechanistic, and emergent during the grokking transition."
+      - "A lookup table."
+      - "Symbolic reasoning."
+    answer: 1
+    explanation: "Reverse-engineering the trained network revealed sinusoidal weights and an explicit algorithm for $a + b \\bmod p$. 'Progress measures' — quantities that increase before grokking — give early warning of the structure forming."
+---
+
+Two of the most counterintuitive empirical phenomena in modern deep
+learning sit in the same place: a model behaves badly, then suddenly,
+without obvious cause, behaves well. Double descent and grokking are
+both transitions across regimes that classical statistics did not
+predict and most ML pedagogy still under-explains.
+
+They matter both because they are real engineering phenomena and
+because they expose the gap between bias-variance intuition and what
+modern over-parameterized models actually do.
+
+## Why this matters
+
+If you believe the bias-variance U curve, you set model capacity to
+match the dataset and avoid overfitting. Modern practice does the
+opposite: train models with billions of parameters on millions of
+examples, drive training loss to zero, and ship. This works. The
+classical theory does not explain why. Double descent is the empirical
+correction; grokking is its cousin in time.
+
+## Double descent: the big picture
+
+Belkin et al. (2018) and Nakkiran et al. (2019) plotted test error
+against model size *and* training time. The curve is not a U. It is a
+**double descent**:
+
+1. **Under-parameterized regime** (capacity ≪ data): test error
+   decreases as capacity grows. Classical bias-variance, as expected.
+2. **Interpolation threshold** (capacity ≈ data): test error spikes.
+   The model can just barely fit the training set, and the unique
+   interpolating solution is wildly variable.
+3. **Over-parameterized regime** (capacity ≫ data): test error
+   *decreases again*, often below the underfit minimum.
+
+The same shape appears as a function of training time (epoch-wise
+double descent) and effective model size (sample-wise double descent).
+
+<Callout variant="insight" title="Implicit bias is the explanation">
+Past the interpolation threshold there are *many* zero-loss solutions.
+SGD doesn't pick one at random; it has an implicit bias toward
+low-norm, flat-minimum solutions. Those solutions tend to generalize.
+The benign-overfitting story is: SGD + over-parameterization +
+implicit regularization = a quiet win that classical theory missed.
+</Callout>
+
+## Why this is not a paradox
+
+Classical theory bounds generalization via VC dimension or Rademacher
+complexity — capacity measures that grow with the number of
+parameters. Modern theory replaces these with capacity measures that
+depend on the *solution found*: norms, margins, NTK eigenstructure.
+The model class is huge; the implicitly-selected solution is small.
+
+Double descent is the empirical fingerprint of this transition. At
+the interpolation threshold, the implicit bias has nothing left to
+work with — the unique fitting solution is whatever it is — so test
+error blows up.
+
+```python
+# Toy demo: width-vs-test-error for a 1-hidden-layer net on a small dataset.
+import torch
+import torch.nn as nn
+
+errors = []
+for h in [4, 8, 16, 32, 64, 100, 128, 256, 1024]:
+    net = nn.Sequential(nn.Linear(50, h), nn.ReLU(), nn.Linear(h, 1))
+    # ... train on small fixed dataset to convergence ...
+    errors.append((h, eval_test_error(net)))
+```
+
+Plot $h$ vs error and the U-then-down shape becomes visible whenever
+$N \approx d \cdot h$ — the parameter count crosses the data count.
+
+## Grokking: late-onset generalization
+
+Power et al. (2022) trained a small transformer on **modular addition**
+modulo a prime, with weight decay, on a few thousand examples. The
+training accuracy hit 100% within a few thousand steps. Test accuracy
+stayed at chance.
+
+Then, around 100,000 steps later — long after anyone watching a loss
+curve would have stopped — test accuracy *abruptly* rose to ~100%.
+The network had been *memorizing*, then started *generalizing*.
+
+<PaperCard
+  title="Grokking: Generalization Beyond Overfitting on Small Algorithmic Datasets"
+  authors="Power, Burda, Edwards, Babuschkin, Misra"
+  year={2022}
+  url="https://arxiv.org/abs/2201.02177"
+/>
+
+## What is happening during the wait?
+
+Nanda et al. (2023) reverse-engineered a grokking modular-addition
+transformer and found a remarkable result: the network learns a
+**discrete Fourier algorithm**. Inputs are mapped to sinusoidal
+embeddings; the output is computed via trig identities. Mechanistically,
+the algorithm is fully explicit.
+
+What happens before grokking, then? The network is *gradually
+constructing* the Fourier algorithm in parallel with the memorization
+circuit. Weight decay disadvantages the high-norm memorizer relative to
+the structured generalizer. At some point the generalizing circuit is
+sharp enough to take over, the memorizing circuit is decayed enough to
+yield, and accuracy on novel inputs flips on.
+
+This is the deepest current explanation for grokking: **competition
+between two solutions, with weight decay as the tiebreaker**, plus the
+mechanistic picture that the slow buildup is the construction of an
+algorithm.
+
+## Are these the same phenomenon?
+
+They are siblings. Both are sharp transitions in test performance
+without sharp transitions in training loss. Both depend critically on
+implicit bias, weight decay, and over-parameterization. Both are
+benign — the model ends up better than naive theory would predict.
+
+The unifying view: the loss landscape contains both *memorizing*
+(high-norm, fitting) and *generalizing* (lower-norm, structured)
+basins. Training dynamics mediate which one you end up in. Sometimes
+that takes a long time and looks like a phase transition.
+
+<Callout variant="warning" title="What this does and does not justify">
+Double descent does not mean "always train bigger." It means "do not
+sit on the interpolation threshold." Grokking does not mean "train
+forever." It means "with the right regularization and enough patience,
+generalizing solutions can emerge from memorizing ones." Both are
+phenomena to recognize and exploit, not heuristics to deploy blindly.
+</Callout>
+
+## What to read next
+
+- Belkin et al. for the original "we were missing a regime" paper.
+- Nakkiran et al. for sample-, model-, and epoch-wise double descent.
+- The Power et al. grokking paper, then Nanda et al.'s mechanistic
+  follow-up — the second one is what makes the first feel solved.
+- Bartlett, Long, Lugosi, Tsigler on **benign overfitting** for the
+  theoretical companion.
+
+If you can articulate why your 7B model overfits less than your 70M
+model on the same dataset, you understand modern generalization in a
+way the textbooks have not yet caught up to.

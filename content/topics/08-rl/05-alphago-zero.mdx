@@ -1,0 +1,232 @@
+---
+slug: "08-rl/05-alphago-zero"
+part: "08-rl"
+partTitle: "Reinforcement learning"
+partIndex: 8
+topicIndex: 5
+title: "AlphaGo, AlphaZero & self-play"
+hook: "MCTS + neural networks beat the world's best."
+estMinutes: 14
+difficulty: 3
+prereqs: ["08-rl/02-q-learning"]
+hasHeroViz: false
+researchers: ["silver", "hassabis"]
+papers:
+  - title: "Mastering the game of Go with deep neural networks and tree search"
+    authors: "Silver, Huang, Maddison, Guez, Sifre, van den Driessche, Schrittwieser, Antonoglou, Panneershelvam, Lanctot, et al."
+    year: 2016
+    url: "https://www.nature.com/articles/nature16961"
+  - title: "Mastering the game of Go without human knowledge"
+    authors: "Silver, Schrittwieser, Simonyan, Antonoglou, Huang, Guez, Hubert, Baker, Lai, Bolton, et al."
+    year: 2017
+    url: "https://www.nature.com/articles/nature24270"
+  - title: "A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play (AlphaZero)"
+    authors: "Silver, Hubert, Schrittwieser, Antonoglou, Lai, Guez, Lanctot, Sifre, Kumaran, Graepel, Lillicrap, Simonyan, Hassabis"
+    year: 2018
+    url: "https://www.science.org/doi/10.1126/science.aar6404"
+  - title: "Mastering Atari, Go, chess and shogi by planning with a learned model (MuZero)"
+    authors: "Schrittwieser, Antonoglou, Hubert, Simonyan, Sifre, Schmitt, Guez, Lockhart, Hassabis, Graepel, Lillicrap, Silver"
+    year: 2020
+    url: "https://www.nature.com/articles/s41586-020-03051-4"
+hfResources:
+  - kind: "library"
+    title: "open_spiel — DeepMind's RL game framework with MCTS"
+    url: "https://github.com/google-deepmind/open_spiel"
+  - kind: "model"
+    title: "leela-zero — open AlphaZero-style Go engine"
+    url: "https://github.com/leela-zero/leela-zero"
+freeResources:
+  - kind: "blog"
+    title: "AlphaGo Zero explained"
+    source: "DeepMind"
+    url: "https://deepmind.google/discover/blog/alphago-zero-starting-from-scratch/"
+  - kind: "blog"
+    title: "A simple AlphaZero implementation"
+    source: "Surag Nair"
+    url: "https://web.stanford.edu/~surag/posts/alphazero.html"
+  - kind: "video"
+    title: "AlphaGo — the movie"
+    source: "DeepMind"
+    url: "https://www.youtube.com/watch?v=WXuK6gekU1Y"
+quiz:
+  - id: "azero-q1"
+    question: "What is the role of the policy network $p$ vs the value network $v$ in AlphaZero?"
+    choices:
+      - "Policy is for training, value is for inference."
+      - "Policy provides priors over actions to guide MCTS expansion; value evaluates leaf positions, replacing rollouts."
+      - "Policy plays one side, value plays the other."
+      - "They are the same network with different weights."
+    answer: 1
+    explanation: "MCTS used to require expensive Monte Carlo rollouts to estimate leaf values. AlphaGo Zero replaces rollouts with a learned $v$ and uses a learned $p$ to bias the tree search toward promising moves. The two heads share a residual tower trunk."
+  - id: "azero-q2"
+    question: "How does the PUCT formula select actions during MCTS in AlphaZero?"
+    choices:
+      - "Uniformly at random."
+      - "$a^* = \\arg\\max_a \\big[ Q(s,a) + c \\cdot p(s,a) \\frac{\\sqrt{\\sum_b N(s,b)}}{1 + N(s,a)} \\big]$ — exploit by mean Q, explore via the policy prior weighted by inverse visit count."
+      - "Greedy on the value network alone."
+      - "By temperature-scaled sampling from the policy."
+    answer: 1
+    explanation: "PUCT (Predictor + UCT) combines the empirical mean return $Q$ with an exploration bonus that decays as a node is visited and is biased by the policy prior. This is what lets MCTS spend its budget on plausible moves while still exploring."
+  - id: "azero-q3"
+    question: "What changed between AlphaGo and AlphaGo Zero?"
+    choices:
+      - "Zero used a deeper network."
+      - "Zero eliminated supervised pretraining on human games — it learned tabula rasa via self-play, starting from random weights."
+      - "Zero added a third network."
+      - "Zero used policy gradients instead of MCTS."
+    answer: 1
+    explanation: "AlphaGo bootstrapped a policy network from human Go games. AlphaGo Zero trained from scratch using self-play with MCTS as a policy improvement operator. The result was stronger than AlphaGo with a simpler pipeline — and demonstrated that human data was the bottleneck, not the algorithm."
+  - id: "azero-q4"
+    question: "How does AlphaZero use MCTS as a *training signal*?"
+    choices:
+      - "It treats MCTS as the final policy."
+      - "The MCTS visit-count distribution at the root is a *better* policy than the network's raw $p$; the network is trained to imitate this improved policy, with the value head trained on game outcomes."
+      - "It uses MCTS only at evaluation."
+      - "MCTS provides reward shaping."
+    answer: 1
+    explanation: "MCTS plus the current network produces stronger play than the network alone. AlphaZero distills that improvement back into the network — policy improvement via search. Iterating this is the engine of self-play: each generation trains on the previous generation's MCTS-augmented play."
+---
+
+In 2016, AlphaGo beat Lee Sedol. In 2017, AlphaGo Zero beat AlphaGo 100–0
+having never seen a human game. In 2018, AlphaZero generalized the same
+algorithm to chess and shogi and beat the world's strongest engines in
+hours of training. The formula — Monte Carlo Tree Search guided by deep
+neural networks, trained by self-play — is one of the cleanest and most
+powerful ideas in modern RL.
+
+## Why this matters
+
+Pure model-free RL (Q-learning, policy gradients) struggles in domains
+with enormous state spaces, sparse rewards, and long-horizon credit
+assignment. Go has $\approx 10^{170}$ legal positions and a single
+reward at the end of a multi-hundred-move game. Brute-force search is
+infeasible; brute-force learning is too slow.
+
+AlphaZero's answer: combine *learning* and *search*. The network proposes
+moves and evaluates positions; tree search refines those proposals into
+something stronger. The network is then trained to match the search. Each
+side amplifies the other.
+
+This is the prototype for all "system 2" reasoning approaches that came
+after — including the reasoning-trace post-training that produces o1, o3,
+and DeepSeek-R1.
+
+## The architecture
+
+A single residual ConvNet (later: Transformer-tower in MuZero) takes the
+board state and outputs two heads:
+
+- **Policy head** $p(s, \cdot)$: a probability distribution over moves.
+- **Value head** $v(s)$: a scalar in $[-1, 1]$ predicting the eventual
+  game outcome from the current player's perspective.
+
+That's the whole network. No hand-crafted features. In Go, the input is
+literally the stack of recent board planes.
+
+## MCTS, with neural priors
+
+A Monte Carlo Tree Search builds a partial game tree, focusing on
+promising branches. Each node tracks $N(s, a)$ (visit count), $W(s, a)$
+(total value), and $Q(s, a) = W/N$ (mean value).
+
+Each simulation:
+
+1. **Select.** From the root, descend by
+
+   $$
+   a^* = \arg\max_a \left[ Q(s, a) + c \cdot p(s, a) \cdot \frac{\sqrt{\sum_b N(s, b)}}{1 + N(s, a)} \right]
+   $$
+
+   The first term exploits known good moves; the second explores using
+   the prior $p$ and decays as a child is visited (PUCT formula).
+
+2. **Expand.** When you reach a leaf, evaluate it with the network to get
+   $p(s_{\mathrm{leaf}}, \cdot)$ and $v(s_{\mathrm{leaf}})$.
+
+3. **Backup.** Propagate $v$ up the path, updating each $W, N$.
+
+After hundreds of simulations, the visit distribution $\pi(\cdot|s) \propto
+N(s, \cdot)^{1/\tau}$ at the root is the MCTS policy — strictly stronger
+than the raw network policy $p$, because search has explored, validated,
+and refined.
+
+<PaperCard
+  title="Mastering the game of Go without human knowledge"
+  authors="Silver, Schrittwieser, Simonyan, Antonoglou, Huang, Guez, Hubert, Baker, Lai, Bolton et al."
+  year={2017}
+  url="https://www.nature.com/articles/nature24270"
+/>
+
+## Self-play as policy iteration
+
+Now the brilliant part. The MCTS-improved policy is the training target:
+
+$$
+\mathcal{L}(\theta) = (z - v_\theta(s))^2 - \pi^{\mathrm{MCTS}} \cdot \log p_\theta(s) + c \|\theta\|^2
+$$
+
+Three terms: a regression on the game outcome $z$, a cross-entropy on the
+search-refined policy, and weight decay. The training data is generated
+entirely by self-play: the current network plays against itself, MCTS
+guides every move, and the resulting trajectories — with the search
+distributions and final outcomes — are stored for training.
+
+```python
+def train_step(net, mcts_data, optimizer):
+    # mcts_data: list of (state, mcts_policy_pi, game_outcome_z)
+    states, pis, zs = batch(mcts_data)
+    p_logits, v = net(states)
+    policy_loss = -(pis * log_softmax(p_logits, dim=-1)).sum(dim=-1).mean()
+    value_loss  = (zs - v).pow(2).mean()
+    loss = policy_loss + value_loss + 1e-4 * sum(p.pow(2).sum() for p in net.parameters())
+    optimizer.zero_grad(); loss.backward(); optimizer.step()
+```
+
+This is policy iteration in the classical sense:
+
+- **Policy improvement**: MCTS turns $p_\theta$ into a stronger policy $\pi^{\mathrm{MCTS}}$.
+- **Policy evaluation**: self-play games give value targets.
+- **Update**: train the network to match.
+
+Iterate until superhuman.
+
+## What AlphaGo Zero proved
+
+The lesson of Zero is that *human data was the bottleneck*. The 2016
+AlphaGo bootstrapped from human Go games; Zero started from random play
+and was stronger within 40 days. Hand-crafted features, opening books,
+and supervised pretraining all turned out to be scaffolding the algorithm
+didn't need.
+
+AlphaZero generalized further: same algorithm, same hyperparameters, three
+games. MuZero went further still by *learning* the dynamics model, removing
+the requirement that the rules be known.
+
+<Callout variant="insight" title="The pattern for the next decade">
+The AlphaZero recipe — learned proposal + search + outcome-based update —
+is the backbone of o1/o3-style reasoning models, AlphaProof's IMO results,
+and AlphaCode's competitive-programming runs. The proposal becomes a
+language model, the search becomes chain-of-thought rollout (sometimes with
+a learned verifier instead of MCTS), and the outcome is whatever can be
+checked. The algorithmic core is the same.
+</Callout>
+
+## Why it doesn't trivially port to LLMs
+
+Search needs three things AlphaZero had and language modeling lacks:
+
+1. A **simulator** you can rewind. Games trivially reset; conversations and
+   real-world reasoning don't.
+2. A **verifiable terminal reward**. Win/loss/draw is unambiguous. "Helpful
+   answer" is not.
+3. A tractable **branching factor**. Go has $\approx 250$ legal moves;
+   language has 100,000+ token possibilities, with very long horizons.
+
+Reasoning-model RL handles this with verifiable subdomains (math, code),
+shorter rollouts, learned verifiers, and tree search of a different shape
+(beam, ToT, self-consistency). The conceptual frame — search-augmented
+policy improvement — is preserved.
+
+If you understand AlphaZero, you understand the prototype every test-time
+compute paper from 2024 onwards is a variation on. It is, in many ways,
+the most important RL system ever built.

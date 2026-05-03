@@ -1,0 +1,240 @@
+---
+slug: "04-transformers-llms/01-gpt"
+part: "04-transformers-llms"
+partTitle: "Transformers & LLMs"
+partIndex: 4
+topicIndex: 1
+title: "The GPT family"
+hook: "Decoder-only Transformers + next-token prediction at scale."
+estMinutes: 22
+difficulty: 4
+prereqs: ["03-deep-learning/04-attention"]
+hasHeroViz: true
+vizKey: "transformer-3d"
+researchers: ["radford", "brown", "sutskever"]
+papers:
+  - title: "Improving Language Understanding by Generative Pre-Training (GPT-1)"
+    authors: "Radford, Narasimhan, Salimans, Sutskever"
+    year: 2018
+    url: "https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf"
+  - title: "Language Models are Unsupervised Multitask Learners (GPT-2)"
+    authors: "Radford, Wu, Child, Luan, Amodei, Sutskever"
+    year: 2019
+    url: "https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf"
+  - title: "Language Models are Few-Shot Learners (GPT-3)"
+    authors: "Brown et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2005.14165"
+  - title: "GPT-4 Technical Report"
+    authors: "OpenAI"
+    year: 2023
+    url: "https://arxiv.org/abs/2303.08774"
+hfResources:
+  - kind: "model"
+    title: "openai-community/gpt2"
+    url: "https://huggingface.co/openai-community/gpt2"
+  - kind: "model"
+    title: "meta-llama/Llama-3.1-8B"
+    url: "https://huggingface.co/meta-llama/Llama-3.1-8B"
+  - kind: "course"
+    title: "Hugging Face LLM Course — Causal language modeling"
+    url: "https://huggingface.co/learn/llm-course/chapter7/6"
+freeResources:
+  - kind: "video"
+    title: "Let's build GPT: from scratch, in code, spelled out"
+    source: "Andrej Karpathy"
+    url: "https://www.youtube.com/watch?v=kCc8FmEb1nY"
+  - kind: "blog"
+    title: "The Illustrated GPT-2"
+    source: "Jay Alammar"
+    url: "https://jalammar.github.io/illustrated-gpt2/"
+  - kind: "library"
+    title: "nanoGPT"
+    source: "Karpathy"
+    url: "https://github.com/karpathy/nanoGPT"
+quiz:
+  - id: "gpt-q1"
+    question: "Why is GPT trained with a *causal* (left-to-right) attention mask rather than the bidirectional mask BERT uses?"
+    choices:
+      - "Causal masks are cheaper to compute."
+      - "Next-token prediction requires that token $i$ only see tokens $\\le i$, otherwise the loss is trivial."
+      - "It is the only mask compatible with rotary embeddings."
+      - "Bidirectional attention does not converge."
+    answer: 1
+    explanation: "If a token could attend to its own future, predicting that future would be trivial — the model could just copy. Causal masking enforces the autoregressive factorization $p(x) = \\prod_t p(x_t | x_{<t})$ that defines the loss."
+  - id: "gpt-q2"
+    question: "GPT-3 demonstrated *in-context learning*. What is the most accurate description?"
+    choices:
+      - "The model updates its weights at inference time."
+      - "The model conditions on examples in the prompt and produces appropriate outputs without any gradient updates."
+      - "The model retrieves examples from a database during decoding."
+      - "It is just better fine-tuning."
+    answer: 1
+    explanation: "In-context learning happens entirely in the forward pass: the prompt acts as a temporary 'program' that conditions the next-token distribution. No weights move. This emergent capability scaled with model size — GPT-2 showed it weakly, GPT-3 showed it strongly."
+  - id: "gpt-q3"
+    question: "In a decoder-only Transformer block, what is the typical order of operations?"
+    choices:
+      - "Self-attention → Add & LayerNorm → MLP → Add & LayerNorm"
+      - "LayerNorm → Self-attention → Residual → LayerNorm → MLP → Residual (pre-norm)"
+      - "Cross-attention → Self-attention → MLP"
+      - "MLP → Self-attention → Softmax"
+    answer: 1
+    explanation: "Modern GPTs use *pre-norm*: LayerNorm is applied *before* each sublayer, then the residual is added. This stabilizes training at depth far better than the original post-norm formulation in 'Attention is All You Need'."
+  - id: "gpt-q4"
+    question: "What does *next-token prediction* actually optimize?"
+    choices:
+      - "Mean squared error on token IDs."
+      - "Cross-entropy of the predicted distribution against the one-hot true next token, averaged over positions and sequences."
+      - "Contrastive similarity between adjacent tokens."
+      - "KL divergence between the model and a frozen reference."
+    answer: 1
+    explanation: "The loss is $-\\sum_t \\log p_\\theta(x_t \\mid x_{<t})$ — token-level cross-entropy. Despite its simplicity, this objective is enough to elicit grammar, world knowledge, arithmetic, code, and (with enough scale) the precursors of reasoning."
+---
+
+GPT is the architecture that broke the dam. Decoder-only Transformer plus
+next-token prediction plus a lot of internet plus a lot of GPUs — that's the
+recipe. Everything from Llama to Mistral to Gemini to Claude descends from
+this lineage. Understanding GPT precisely is the price of admission to the
+rest of modern AI.
+
+The radical claim, in retrospect, was almost philosophical: if you ask a big
+enough network to predict the next token on enough text, *understanding* will
+emerge as a side effect of compression. The 2018 GPT-1 paper hedged. By
+GPT-3 in 2020, the hedge was gone.
+
+## Why decoder-only
+
+Transformers come in three flavors: encoder-only (BERT), encoder-decoder (T5,
+the original 2017 architecture), and decoder-only (GPT). For a long time it
+was unclear which would dominate. The community converged on decoder-only
+for one reason: **a single autoregressive objective is enough to do
+everything**.
+
+A decoder-only model can:
+
+- Generate text (its native mode).
+- Classify text — frame the label as the next token.
+- Translate, summarize, answer questions — frame everything as text in, text out.
+- Use tools, write code, follow instructions — same trick.
+
+The encoder–decoder split made sense when the world looked like
+"input language → output language." Once we accepted that *every* problem
+could be cast as continuation, the decoder-only architecture became Pareto-optimal.
+
+## The architecture, precisely
+
+A GPT is a stack of $N$ identical Transformer blocks operating on a sequence
+of $T$ token embeddings. Each block does, in pre-norm form:
+
+$$
+\begin{aligned}
+x &\leftarrow x + \text{MHA}(\text{LN}(x)) \\
+x &\leftarrow x + \text{MLP}(\text{LN}(x))
+\end{aligned}
+$$
+
+The MLP is typically a two-layer feedforward with an inner dimension $4d$
+(more recently, with SwiGLU it's $\sim 2.67 d$ at the same parameter count).
+Self-attention uses a causal mask:
+
+$$
+A_{ij} = \begin{cases} \frac{q_i \cdot k_j}{\sqrt{d_k}} & j \le i \\ -\infty & j > i \end{cases}
+$$
+
+so token $i$ never sees the future. After the final block, a LayerNorm and a
+linear projection (often weight-tied to the embedding matrix) produce logits
+over the vocabulary.
+
+<Embed viz="transformer-3d" />
+
+## Training, in one equation
+
+The loss is just cross-entropy on next-token prediction, averaged over a
+massive corpus $\mathcal{D}$:
+
+$$
+\mathcal{L}(\theta) = -\mathbb{E}_{x \sim \mathcal{D}} \sum_{t=1}^{T} \log p_\theta(x_t \mid x_{<t})
+$$
+
+Every training example contributes $T$ supervision signals, one per position,
+all evaluated in parallel thanks to the causal mask. This density is part of
+why scaling works: a 1T-token dataset gives $\sim$1T gradient signals, not
+just one per document.
+
+```python
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class GPTBlock(nn.Module):
+    def __init__(self, d, h):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(d)
+        self.ln2 = nn.LayerNorm(d)
+        self.attn = nn.MultiheadAttention(d, h, batch_first=True)
+        self.mlp = nn.Sequential(nn.Linear(d, 4*d), nn.GELU(), nn.Linear(4*d, d))
+
+    def forward(self, x, mask):
+        h, _ = self.attn(self.ln1(x), self.ln1(x), self.ln1(x), attn_mask=mask)
+        x = x + h
+        x = x + self.mlp(self.ln2(x))
+        return x
+
+# causal mask: True where j > i (forbidden)
+T = 1024
+mask = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
+```
+
+This is essentially nanoGPT in 12 lines — the rest is tokenization, batching,
+and an optimizer.
+
+<PaperCard title="Language Models are Few-Shot Learners (GPT-3)" authors="Brown et al." year={2020} url="https://arxiv.org/abs/2005.14165" />
+
+## Why GPT-2 → GPT-3 was a shock
+
+GPT-2 (1.5B parameters, 2019) was a competent text generator. GPT-3 (175B,
+2020) was something qualitatively different: you could *describe a task in
+the prompt* and it would do it. Translation. Arithmetic. SQL. Analogies.
+Nothing in the loss said "be a few-shot learner" — the capability emerged
+because compressing the internet well *requires* the ability to follow
+patterns.
+
+The lesson, repeated since: don't assume the loss is the limit of what the
+model is doing. A model trained to predict the next token has to model the
+world that produces those tokens.
+
+<Callout variant="insight" title="Compression as cognition">
+A perfect next-token predictor on a corpus describing physics, mathematics,
+and human reasoning would have to *implement* working theories of physics,
+mathematics, and human reasoning internally. Next-token prediction is not a
+toy objective — it is, plausibly, a complete one for any task expressible in
+text.
+</Callout>
+
+## What changed from GPT-2 to GPT-4 (and Llama 3, Claude, Gemini)
+
+The architecture barely changed. The recipe got more careful:
+
+- **Pre-norm** instead of post-norm (training stability).
+- **RoPE / ALiBi** instead of sinusoidal positional encodings (length generalization).
+- **SwiGLU / GeGLU** instead of GELU MLPs (a small but consistent win).
+- **Grouped-query attention (GQA / MQA)** to shrink KV-cache size at inference.
+- **RMSNorm** instead of LayerNorm (slightly cheaper, equivalent in practice).
+- **Mixture-of-Experts** in the largest models (Mixtral, DeepSeek-V3, GPT-4).
+
+But the *loss*, the *objective*, and the *core dataflow* are unchanged from
+the 2018 paper. That's the punchline of the GPT story: a remarkably narrow
+architectural recipe, scaled by orders of magnitude in compute and data,
+covered most of the distance to general-purpose intelligence.
+
+<Callout variant="warning" title="Don't confuse the model with the assistant">
+"GPT-4" the *base* model and "ChatGPT" the *assistant* are not the same
+thing. The base model is a next-token predictor on internet text. To turn it
+into a useful chatbot you need supervised instruction tuning and RLHF on top
+— covered in the next two topics. Confusing these is the source of half the
+public confusion about LLMs.
+</Callout>
+
+## What to study next
+
+- Implement nanoGPT and train a 30M-parameter model on tinyShakespeare.
+- Read the GPT-3 paper's section 1 and 2 with care — most of the qualitative observations there still hold for frontier models.
+- Then jump to scaling laws: how do we *predict* what a bigger version of this thing will do?

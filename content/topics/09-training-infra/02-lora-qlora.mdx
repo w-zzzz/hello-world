@@ -1,0 +1,194 @@
+---
+slug: "09-training-infra/02-lora-qlora"
+part: "09-training-infra"
+partTitle: "Training & inference infrastructure"
+partIndex: 9
+topicIndex: 2
+title: "LoRA, QLoRA & PEFT"
+hook: "Fine-tune billions of parameters with millions."
+estMinutes: 14
+difficulty: 3
+prereqs: ["04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["hu", "dettmers"]
+papers:
+  - title: "LoRA: Low-Rank Adaptation of Large Language Models"
+    authors: "Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, Chen"
+    year: 2021
+    url: "https://arxiv.org/abs/2106.09685"
+  - title: "QLoRA: Efficient Finetuning of Quantized LLMs"
+    authors: "Dettmers, Pagnoni, Holtzman, Zettlemoyer"
+    year: 2023
+    url: "https://arxiv.org/abs/2305.14314"
+  - title: "DoRA: Weight-Decomposed Low-Rank Adaptation"
+    authors: "Liu et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2402.09353"
+hfResources:
+  - kind: "library"
+    title: "PEFT — Parameter-Efficient Fine-Tuning"
+    url: "https://huggingface.co/docs/peft/index"
+  - kind: "blog"
+    title: "Making LLMs even more accessible with bitsandbytes, 4-bit quantization, and QLoRA"
+    url: "https://huggingface.co/blog/4bit-transformers-bitsandbytes"
+freeResources:
+  - kind: "blog"
+    title: "Practical Tips for Finetuning LLMs Using LoRA"
+    source: "Sebastian Raschka"
+    url: "https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms"
+quiz:
+  - id: "lora-q1"
+    question: "LoRA replaces $\\Delta W$ with $BA$ where $A \\in \\mathbb{R}^{r \\times d}$, $B \\in \\mathbb{R}^{d \\times r}$, $r \\ll d$. What is the trainable parameter count?"
+    choices:
+      - "$d^2$"
+      - "$2rd$"
+      - "$r^2$"
+      - "$d$"
+    answer: 1
+    explanation: "$A$ has $rd$ parameters, $B$ has $rd$, total $2rd$. For $d=4096, r=8$ that's 65k versus the original 16M — roughly 250x fewer trainable parameters per layer."
+  - id: "lora-q2"
+    question: "Why is the LoRA learning rate typically much higher than full fine-tuning?"
+    choices:
+      - "Because gradients are smaller."
+      - "Because $A$ is initialized to zero (or $B$ is) so the effective update starts at zero, and there are far fewer parameters to spread the update across."
+      - "Because Adam needs bigger steps in low rank."
+      - "It is not — same LR is used."
+    answer: 1
+    explanation: "One factor is initialized to zero so the adapter starts as the identity update; both factors are updated independently, and with so few parameters per layer the loss landscape tolerates and benefits from larger steps."
+  - id: "lora-q3"
+    question: "What does QLoRA add over plain LoRA?"
+    choices:
+      - "Quaternion arithmetic."
+      - "Frozen base weights are stored in NF4 (4-bit), dequantized just-in-time for the forward pass; only the LoRA adapters and a few extras are trained in higher precision."
+      - "Quantum entanglement."
+      - "It removes LoRA entirely."
+    answer: 1
+    explanation: "QLoRA freezes the base model in 4-bit NormalFloat, so a 65B model fits on a single 48 GB GPU. Adapters live in bf16. Double quantization and paged optimizers shave further memory."
+  - id: "lora-q4"
+    question: "Adapters can be merged into the base weights at inference. Why is that useful?"
+    choices:
+      - "It increases capacity."
+      - "Because $W + BA$ is a single matrix, you incur zero inference overhead — the deployed model looks like the original."
+      - "It enables multi-tenant routing only."
+      - "It makes training faster."
+    answer: 1
+    explanation: "After training you can fold $BA$ into $W$, eliminating the extra matmul. Or keep adapters separate to hot-swap per request — both are valid deployment patterns."
+---
+
+Full fine-tuning of a 70B model needs hundreds of gigabytes of optimizer
+state, gradient buffers, and a copy of the weights. LoRA, in 2021, made the
+exact same model trainable on a single consumer GPU — by changing what we
+update, not what we use.
+
+The idea is so simple it is almost embarrassing. The reason it works is
+where the elegance lives.
+
+## Why this matters
+
+Most deployed LLMs are adapted, not pre-trained. Customer-support tone, a
+new domain, a safety filter, a refused-style — all of these are tiny
+perturbations on top of a base model that already knows English. PEFT
+methods exploit that to make adaptation cheap, fast, and composable.
+
+## The core observation
+
+For a pre-trained linear layer $W \in \mathbb{R}^{d \times d}$, the *update*
+$\Delta W$ produced by fine-tuning empirically has very low effective rank.
+LoRA encodes that prior into the parameterization:
+
+$$
+W' = W + \Delta W, \qquad \Delta W = B A, \quad A \in \mathbb{R}^{r \times d}, \; B \in \mathbb{R}^{d \times r}
+$$
+
+Freeze $W$. Train only $A$ and $B$. With $r$ as small as 4 or 8, you cover
+most of the useful adaptation directions while updating $\sim 2rd$ instead
+of $d^2$ parameters.
+
+<Callout variant="insight" title="Why low rank is plausible">
+A pre-trained model already has rich features; what fine-tuning needs to
+do is rotate or rescale a small subspace of them. The intrinsic dimension
+of "make this model polite" is probably tens to hundreds, not millions.
+</Callout>
+
+## The math
+
+Initialize $A$ with a small Gaussian and $B = 0$ so the adapter contributes
+zero at step 0. The forward becomes
+
+$$
+y = W x + \alpha \cdot B A x
+$$
+
+where $\alpha/r$ is a fixed scaling factor that decouples the LoRA rank
+from the effective learning rate. Both $A$ and $B$ are trained; gradients
+flow only into them.
+
+```python
+import torch.nn as nn
+
+class LoRALinear(nn.Module):
+    def __init__(self, base: nn.Linear, r=8, alpha=16):
+        super().__init__()
+        self.base = base
+        for p in self.base.parameters():
+            p.requires_grad_(False)
+        d_out, d_in = base.weight.shape
+        self.A = nn.Parameter(torch.randn(r, d_in) * 0.01)
+        self.B = nn.Parameter(torch.zeros(d_out, r))
+        self.scale = alpha / r
+
+    def forward(self, x):
+        return self.base(x) + self.scale * (x @ self.A.T) @ self.B.T
+```
+
+In practice you wrap the $W_Q$, $W_V$, sometimes $W_O$ and MLP projections —
+not every linear layer. The Hugging Face `peft` library does this by name
+match.
+
+## QLoRA: the trick that put it on a laptop
+
+QLoRA freezes the base model in **NF4**, a 4-bit data type whose levels are
+spaced by quantiles of a normal distribution (so they match the actual
+weight distribution rather than uniform spacing). The adapter weights stay
+in bf16. Two extras are decisive in practice:
+
+1. **Double quantization** — quantize the per-block scaling factors
+   themselves, saving another ~0.4 bits per weight.
+2. **Paged optimizers** — when the optimizer's transient state would OOM,
+   page it to CPU memory.
+
+The combination is what makes 65B-parameter QLoRA fine-tuning fit in 48 GB.
+
+<PaperCard
+  title="QLoRA: Efficient Finetuning of Quantized LLMs"
+  authors="Dettmers, Pagnoni, Holtzman, Zettlemoyer"
+  year={2023}
+  url="https://arxiv.org/abs/2305.14314"
+/>
+
+## Practical knobs
+
+- **Rank $r$**: 4–16 covers most tasks. Larger $r$ helps when adaptation is
+  not just stylistic.
+- **$\alpha$**: $\alpha/r \approx 1{-}2$. People debate this; just sweep.
+- **Targets**: at minimum $W_Q, W_V$. Adding MLP projections (DoRA, full
+  PEFT) helps for harder shifts.
+- **Learning rate**: $1\text{e-}4$ to $5\text{e-}4$ — much higher than
+  full fine-tuning's $1\text{e-}5$.
+
+<Callout variant="aside" title="Adapter zoo">
+LoRA is one point in a much larger space: prompt tuning, prefix tuning,
+$(\text{IA})^3$, BitFit, AdaLoRA, DoRA, VeRA. Each pushes a different
+trade-off between expressivity, memory, and merge-ability. PEFT exposes
+them behind a common config.
+</Callout>
+
+## When LoRA is the wrong tool
+
+Pretraining-style distribution shift (new language, new modality,
+unlocking entirely new capabilities) often needs full fine-tuning or a
+higher-rank adapter. LoRA shines for *behavioral* changes; it does not
+manufacture knowledge that the base model lacks.
+
+Treat LoRA as the default. Reach for full fine-tuning when adapters
+plateau and the underlying base genuinely needs more capacity.

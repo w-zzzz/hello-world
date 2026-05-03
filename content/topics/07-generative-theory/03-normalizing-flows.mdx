@@ -1,0 +1,205 @@
+---
+slug: "07-generative-theory/03-normalizing-flows"
+part: "07-generative-theory"
+partTitle: "Generative modeling theory"
+partIndex: 7
+topicIndex: 3
+title: "Normalizing flows"
+hook: "Exact likelihood through invertible transforms."
+estMinutes: 14
+difficulty: 4
+prereqs: ["07-generative-theory/01-vae"]
+hasHeroViz: false
+researchers: ["dinh", "kingma"]
+papers:
+  - title: "Density estimation using Real NVP"
+    authors: "Dinh, Sohl-Dickstein, Bengio"
+    year: 2017
+    url: "https://arxiv.org/abs/1605.08803"
+  - title: "Glow: generative flow with invertible 1x1 convolutions"
+    authors: "Kingma, Dhariwal"
+    year: 2018
+    url: "https://arxiv.org/abs/1807.03039"
+  - title: "Normalizing flows for probabilistic modeling and inference"
+    authors: "Papamakarios, Nalisnick, Rezende, Mohamed, Lakshminarayanan"
+    year: 2021
+    url: "https://arxiv.org/abs/1912.02762"
+hfResources:
+  - kind: "library"
+    title: "nflows — PyTorch normalizing flow library"
+    url: "https://github.com/bayesiains/nflows"
+  - kind: "library"
+    title: "torch.distributions transforms"
+    url: "https://pytorch.org/docs/stable/distributions.html#module-torch.distributions.transforms"
+freeResources:
+  - kind: "blog"
+    title: "Flow-based deep generative models"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2018-10-13-flow-models/"
+  - kind: "blog"
+    title: "Normalizing flows tutorial"
+    source: "Eric Jang"
+    url: "https://blog.evjang.com/2018/01/nf1.html"
+  - kind: "video"
+    title: "Normalizing flows"
+    source: "Pieter Abbeel, Berkeley CS294-158"
+    url: "https://www.youtube.com/watch?v=8XufsgG066A"
+quiz:
+  - id: "flow-q1"
+    question: "Why do normalizing flows give an *exact* log-likelihood while VAEs only give a lower bound?"
+    choices:
+      - "Flows use larger networks."
+      - "The change-of-variables formula gives $\\log p_X(x)$ exactly when the transform $f$ is invertible: $\\log p_X(x) = \\log p_Z(f(x)) + \\log |\\det J_f(x)|$."
+      - "Flows ignore the prior."
+      - "Flows train discriminators instead."
+    answer: 1
+    explanation: "Bijectivity means there is no marginalization over latents — every $x$ has a unique $z$. The cost is steep: every layer must be invertible and have a tractable Jacobian determinant, which constrains architecture choices."
+  - id: "flow-q2"
+    question: "Why are coupling layers (Real NVP) the dominant building block for flows?"
+    choices:
+      - "They have no learnable parameters."
+      - "They are invertible by construction and have a *triangular* Jacobian whose determinant is the product of diagonal entries — $O(d)$ instead of $O(d^3)$."
+      - "They guarantee Lipschitz outputs."
+      - "They eliminate the need for a base distribution."
+    answer: 1
+    explanation: "Splitting the input into two halves and updating one conditioned on the other gives a triangular Jacobian. Inverting and computing $\\log |\\det J|$ both become trivial. This is the key trick that makes flows tractable at moderate dimensions."
+  - id: "flow-q3"
+    question: "Compared to VAEs and diffusion, what is the main practical limitation of normalizing flows for image generation?"
+    choices:
+      - "They cannot be trained with gradients."
+      - "Bijectivity forces the latent dimension to equal the data dimension and constrains expressivity, making it hard to compete on high-resolution natural images."
+      - "They cannot compute likelihoods."
+      - "They require adversarial losses."
+    answer: 1
+    explanation: "VAEs compress, GANs avoid likelihoods, diffusion uses many small steps. Flows must move every pixel through a deep stack of invertible maps with full-dimensional latents — expensive, parameter-hungry, and limited in expressivity per layer. They shine in scientific likelihood-based inference, less so in pixel art."
+  - id: "flow-q4"
+    question: "Where are normalizing flows still the right tool today?"
+    choices:
+      - "Generating high-resolution photographs."
+      - "Density estimation, simulation-based inference, and variational posteriors where exact $\\log p(x)$ is needed."
+      - "Replacing transformers in language modeling."
+      - "Online reinforcement learning."
+    answer: 1
+    explanation: "Flows are uniquely suited to settings where you need calibrated likelihoods — likelihood-free inference (cosmology, particle physics), normalizing-flow variational posteriors, and anomaly detection. Outside those niches, diffusion and autoregressive models usually win on samples."
+---
+
+Normalizing flows are the most mathematically elegant generative model: a
+sequence of invertible neural transformations that turns a complicated data
+distribution into a simple base distribution and back. No lower bound, no
+adversary — just the change-of-variables formula, applied carefully.
+
+## Why this matters
+
+VAEs give you a lower bound on $\log p(x)$. GANs give you no likelihood at
+all. For some problems — anomaly detection, scientific inference, model
+comparison — you need the *real* number. Normalizing flows provide it.
+
+The price is structural. Every layer must be invertible, and the log-Jacobian
+of every layer must be computable. That constraint shapes everything about
+how flows are designed.
+
+## The change of variables, revisited
+
+Let $f: \mathbb{R}^d \to \mathbb{R}^d$ be a smooth bijection and $z = f(x)$.
+If $z$ has density $p_Z$, then $x$ has density
+
+$$
+p_X(x) = p_Z(f(x)) \, \big|\det J_f(x)\big|
+$$
+
+Taking logs,
+
+$$
+\log p_X(x) = \log p_Z(f(x)) + \log \big|\det J_f(x)\big|
+$$
+
+That's the entire framework. Choose $p_Z$ to be something simple
+(a standard Gaussian). Build $f$ as a composition of invertible neural
+layers. Train by maximum likelihood: minimize $-\log p_X(x)$ on data. Sample
+by drawing $z$ and computing $f^{-1}(z)$.
+
+The hard part is making $f$ invertible *and* having a tractable
+$\log|\det J|$. A generic neural network has neither.
+
+## Coupling layers: the workhorse trick
+
+Real NVP introduced the **coupling layer**. Split the input
+$x = (x_1, x_2)$ in half. Then define
+
+$$
+y_1 = x_1, \quad y_2 = x_2 \odot \exp(s(x_1)) + t(x_1)
+$$
+
+where $s$ and $t$ are arbitrary neural networks. Two beautiful properties:
+
+1. **Invertible**: $x_2 = (y_2 - t(y_1)) \odot \exp(-s(y_1))$. The networks
+   $s$ and $t$ don't even need to be invertible — they're only ever evaluated
+   forward.
+2. **Triangular Jacobian**: $\partial y_1 / \partial x_2 = 0$, so
+   $|\det J| = \prod_i \exp(s_i(x_1))$. Compute the log-det in $O(d)$.
+
+Stack many coupling layers, alternating which half gets transformed, and you
+get an expressive bijection. Glow added invertible $1 \times 1$ convolutions
+for richer mixing.
+
+```python
+import torch
+import torch.nn as nn
+
+class CouplingLayer(nn.Module):
+    def __init__(self, dim, hidden):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(dim // 2, hidden), nn.ReLU(),
+            nn.Linear(hidden, dim),       # outputs scale and shift
+        )
+
+    def forward(self, x):
+        x1, x2 = x.chunk(2, dim=-1)
+        s, t = self.net(x1).chunk(2, dim=-1)
+        s = torch.tanh(s)                 # bound the scale for stability
+        y2 = x2 * torch.exp(s) + t
+        log_det = s.sum(dim=-1)
+        return torch.cat([x1, y2], dim=-1), log_det
+
+    def inverse(self, y):
+        y1, y2 = y.chunk(2, dim=-1)
+        s, t = self.net(y1).chunk(2, dim=-1)
+        s = torch.tanh(s)
+        x2 = (y2 - t) * torch.exp(-s)
+        return torch.cat([y1, x2], dim=-1)
+```
+
+<PaperCard
+  title="Density estimation using Real NVP"
+  authors="Dinh, Sohl-Dickstein, Bengio"
+  year={2017}
+  url="https://arxiv.org/abs/1605.08803"
+/>
+
+<Callout variant="info" title="Continuous flows: FFJORD and neural ODEs">
+A different family models the flow as the solution of an ODE
+$\frac{dx}{dt} = f_\theta(x, t)$. Then by the instantaneous change of
+variables, $\partial \log p / \partial t = -\mathrm{tr}(\partial f / \partial x)$ —
+no determinant, just a trace. This is the bridge to neural ODEs and, more
+recently, to flow matching and rectified flow, which now power state-of-the-art
+text-to-image generation.
+</Callout>
+
+## Where flows shine, and where they don't
+
+Normalizing flows shine wherever you need an exact, differentiable
+log-density. Likelihood-free inference (gravitational waves, particle
+physics), variational posteriors with rich shapes (flow-based VAEs), and
+density estimation in moderate dimensions all use them routinely.
+
+They struggle on high-resolution images. The bijectivity constraint forces
+the latent to have the same dimension as the data, every layer pays a
+log-det tax, and depth is expensive. By 2022, diffusion models had displaced
+flows as the go-to for pixel generation — though the *continuous* flow story
+came back through flow matching, which trains a velocity field with a much
+simpler objective and produces straighter, faster sampling trajectories.
+
+Flows are the cleanest probabilistic story in generative modeling. Knowing
+them gives you the right vocabulary for diffusion, flow matching, and any
+future model where the change-of-variables formula does the heavy lifting.

@@ -1,0 +1,231 @@
+---
+slug: "10-cutting-edge/04-in-context-learning"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 4
+title: "In-context learning & emergence"
+hook: "Why few-shot prompting works without training."
+estMinutes: 14
+difficulty: 4
+prereqs: ["04-transformers-llms/03-scaling-laws"]
+hasHeroViz: false
+researchers: ["wei"]
+papers:
+  - title: "Language Models are Few-Shot Learners"
+    authors: "Brown et al. (OpenAI)"
+    year: 2020
+    url: "https://arxiv.org/abs/2005.14165"
+  - title: "Emergent Abilities of Large Language Models"
+    authors: "Wei et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2206.07682"
+  - title: "In-context Learning and Induction Heads"
+    authors: "Olsson et al. (Anthropic)"
+    year: 2022
+    url: "https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html"
+  - title: "Are Emergent Abilities of Large Language Models a Mirage?"
+    authors: "Schaeffer, Miranda, Koyejo"
+    year: 2023
+    url: "https://arxiv.org/abs/2304.15004"
+hfResources:
+  - kind: "blog"
+    title: "Hugging Face — Prompting"
+    url: "https://huggingface.co/docs/transformers/main/en/tasks/prompting"
+freeResources:
+  - kind: "blog"
+    title: "How does in-context learning work?"
+    source: "Stanford AI Lab"
+    url: "https://ai.stanford.edu/blog/understanding-incontext/"
+  - kind: "paper"
+    title: "Transformers learn in-context by gradient descent"
+    source: "von Oswald et al."
+    url: "https://arxiv.org/abs/2212.07677"
+quiz:
+  - id: "icl-q1"
+    question: "Few-shot in-context learning works because:"
+    choices:
+      - "The model is fine-tuned on each prompt."
+      - "Pretraining on long, structured documents teaches the model to do meta-tasks like 'find the pattern in these examples and continue', no parameter update needed."
+      - "The optimizer keeps running at inference."
+      - "The tokens are memorized verbatim."
+    answer: 1
+    explanation: "ICL is implemented entirely by the forward pass; weights are frozen. The capability arises during pretraining because next-token prediction on web data implicitly trains on countless 'list of examples then continue' patterns."
+  - id: "icl-q2"
+    question: "Olsson et al. argue that the mechanistic substrate of ICL is:"
+    choices:
+      - "RoPE."
+      - "Induction heads — pairs of attention heads that detect repeated patterns and copy what came after them."
+      - "Layer normalization."
+      - "Dropout."
+    answer: 1
+    explanation: "Induction heads emerge sharply during training, and their emergence coincides with a sharp gain in ICL ability. The function — match the current token to a previous occurrence and copy what followed — is a mechanistic primitive for pattern continuation."
+  - id: "icl-q3"
+    question: "Schaeffer et al. (2023) argue that many 'emergent' abilities:"
+    choices:
+      - "Are real but rare."
+      - "Are an artifact of using discontinuous, all-or-nothing metrics on smooth underlying capability curves; switching to soft metrics often reveals smooth scaling."
+      - "Are caused by quantization."
+      - "Disappear at scale."
+    answer: 1
+    explanation: "Exact-match accuracy on a multi-step task is a step function of an underlying smoothly improving capability. The 'sudden emergence' is partly a measurement choice. Some abilities still look genuinely emergent on continuous metrics; others do not."
+  - id: "icl-q4"
+    question: "What is the meta-learning view of ICL?"
+    choices:
+      - "ICL is just memorization."
+      - "Pretraining is meta-learning over many tasks; the in-context examples specify the current task, and the forward pass implements something like one step of optimization in activation space."
+      - "ICL requires reinforcement learning."
+      - "The model retrains its weights at inference."
+    answer: 1
+    explanation: "Several papers (von Oswald, Akyürek, Garg) show empirically and theoretically that Transformer ICL on simple problems behaves like implicit gradient descent or ridge regression in activations. The mapping is approximate but striking."
+---
+
+In 2020, GPT-3 demonstrated something the field had not seen before: a
+language model that could *learn from a few examples in its prompt* —
+arithmetic, translation, classification — without any gradient update.
+This is in-context learning (ICL). It is the capability that turned LLMs
+from autocomplete into general-purpose problem solvers.
+
+## Why this matters
+
+ICL is the reason a single API call can do so much. Without it, every
+new task would require fine-tuning. With it, you can specify a task by
+showing a handful of examples — and the model "gets it." The phenomenon
+is also a window into how Transformers actually use their parameters,
+because nothing is being updated.
+
+## The setup
+
+A few-shot prompt looks like:
+
+```
+English: hello → French: bonjour
+English: cat   → French: chat
+English: book  → French: ?
+```
+
+The model completes with `livre`. No fine-tuning happened. The mapping
+"English → French" is inferred from the in-context examples, which
+specify the *task*, while the parameters that were learned during
+pretraining specify *how to apply such tasks*.
+
+Brown et al. quantified this systematically: zero-shot, one-shot, and
+$k$-shot performance, varying with model size. The headline finding —
+$k$-shot accuracy improves dramatically with scale, far past where
+zero-shot stops improving — was the empirical foundation of the LLM era.
+
+## What is happening mechanically?
+
+Two complementary stories.
+
+### The mechanistic story: induction heads
+
+Olsson et al. (2022) identified **induction heads**: a circuit of two
+attention heads that
+
+1. The first writes the previous token into the next position's
+   residual stream.
+2. The second, at the current position, queries for a previous
+   occurrence of the current token, and copies whatever came *after* it.
+
+This is exactly the algorithm for "if I saw `A B ... A`, predict `B`."
+The circuit emerges abruptly during training. ICL ability — measured by
+loss on contexts where it should help — improves abruptly at the same
+training step. It is the cleanest known instance of a capability
+appearing because a specific mechanism appeared.
+
+### The meta-learning story
+
+A different perspective: pretraining on diverse data is *implicit
+meta-learning*. Each document specifies a task (a topic, a register, a
+language); the model's job is to figure out which task and continue. ICL
+is this same skill, applied in real time to a prompt that explicitly
+displays examples.
+
+Several papers — von Oswald et al., Akyürek et al., Garg et al. — show
+that on simple regression tasks, a Transformer's in-context performance
+matches one or more steps of gradient descent on the in-context examples,
+implemented entirely in activations. The model is, in a real sense,
+"running an optimizer in its head."
+
+<Callout variant="insight" title="No backprop at inference">
+The forward pass alone is computing something that *behaves like*
+learning. This does not mean weights update. It means the right linear
+algebra in attention layers can simulate one optimization step over
+the few-shot examples — a striking expressiveness result.
+</Callout>
+
+## Emergence — and the asterisk
+
+Wei et al. (2022) called many ICL abilities **emergent**: below a
+threshold scale, the model is at chance; above it, performance jumps to
+non-trivial. The list included multi-step arithmetic, code generation,
+and long-form reasoning.
+
+Schaeffer et al. (2023) pushed back hard. Their argument: many "sudden
+jumps" are artifacts of *discontinuous metrics* (exact-match, parsed
+correctness) applied to *smoothly improving* underlying skills. Switch
+to log-probability of the correct token and the curve is smooth.
+
+The honest synthesis:
+
+- Some abilities show genuinely abrupt phase transitions even on smooth
+  metrics (induction-head emergence is one).
+- Some look emergent but are measurement artifacts.
+- "Emergent" is a useful descriptor for the *user-facing* behavior;
+  whether the underlying capability is smooth or genuinely phase-
+  transitioning is task-dependent.
+
+```python
+# A toy ICL probe: can the model do a synthetic linear function from k examples?
+import numpy as np
+np.random.seed(0)
+W = np.random.randn(4)            # ground-truth task
+xs = np.random.randn(8, 4)
+ys = xs @ W
+prompt = "\n".join(f"{x} -> {y:.3f}" for x, y in zip(xs[:6], ys[:6]))
+prompt += f"\n{xs[6]} -> ?"
+# Send `prompt` to your LLM; compare the model's float against ys[6].
+```
+
+The pattern of which $k$ are needed and how performance scales with model
+size is one of the standard probes in ICL research.
+
+<PaperCard
+  title="In-context Learning and Induction Heads"
+  authors="Olsson et al. (Anthropic)"
+  year={2022}
+  url="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html"
+/>
+
+## What ICL is not
+
+A few common misconceptions worth retiring:
+
+- **It is not memorization.** Garg et al. show ICL works on tasks the
+  model demonstrably never saw at training (random linear regressions
+  with held-out distributions).
+- **It is not a substitute for fine-tuning** when you have data.
+  Fine-tuning still wins for narrow, repeated tasks; ICL wins for
+  one-off, low-data, or rapidly changing ones.
+- **It is not unlimited.** Long-context retrieval is famously
+  unreliable in the middle of the context ("lost-in-the-middle") and
+  ICL accuracy degrades with too many or noisy examples.
+
+<Callout variant="aside" title="ICL is the foundation of agents">
+Every modern agent loop — ReAct, tool-using assistants, scratchpad
+reasoning — is built on ICL. The user provides the task description;
+recent observations update the conditioning. Without ICL, you would
+need to fine-tune for each new tool.
+</Callout>
+
+## What to read next
+
+Brown et al. for the original demonstration. Wei et al. for the
+emergence claim. Schaeffer et al. for the careful pushback. Olsson et
+al. for the mechanistic interlude. Then a sample of the
+ICL-as-implicit-optimization papers (von Oswald, Akyürek) to see how
+much theoretical traction we have.
+
+ICL is the sharpest example of a deep capability we cannot yet fully
+explain. That is not a finished story — it is an invitation.

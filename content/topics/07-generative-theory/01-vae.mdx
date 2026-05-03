@@ -1,0 +1,209 @@
+---
+slug: "07-generative-theory/01-vae"
+part: "07-generative-theory"
+partTitle: "Generative modeling theory"
+partIndex: 7
+topicIndex: 1
+title: "Variational autoencoders"
+hook: "ELBO, the reparameterization trick, and disentanglement."
+estMinutes: 18
+difficulty: 4
+prereqs: ["01-math/02-probability-information", "03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["kingma"]
+papers:
+  - title: "Auto-encoding variational Bayes"
+    authors: "Kingma, Welling"
+    year: 2014
+    url: "https://arxiv.org/abs/1312.6114"
+  - title: "beta-VAE: learning basic visual concepts with a constrained variational framework"
+    authors: "Higgins, Matthey, Pal, Burgess, Glorot, Botvinick, Mohamed, Lerchner"
+    year: 2017
+    url: "https://openreview.net/forum?id=Sy2fzU9gl"
+  - title: "An introduction to variational autoencoders"
+    authors: "Kingma, Welling"
+    year: 2019
+    url: "https://arxiv.org/abs/1906.02691"
+hfResources:
+  - kind: "library"
+    title: "diffusers AutoencoderKL (the VAE inside Stable Diffusion)"
+    url: "https://huggingface.co/docs/diffusers/api/models/autoencoderkl"
+  - kind: "model"
+    title: "stabilityai/sd-vae-ft-mse"
+    url: "https://huggingface.co/stabilityai/sd-vae-ft-mse"
+freeResources:
+  - kind: "blog"
+    title: "From autoencoder to beta-VAE"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2018-08-12-vae/"
+  - kind: "video"
+    title: "Variational autoencoders"
+    source: "Arxiv Insights"
+    url: "https://www.youtube.com/watch?v=9zKuYvjFFS8"
+  - kind: "blog"
+    title: "Tutorial on variational autoencoders"
+    source: "Carl Doersch"
+    url: "https://arxiv.org/abs/1606.05908"
+quiz:
+  - id: "vae-q1"
+    question: "Why does the VAE optimize the ELBO instead of the true log-likelihood $\\log p_\\theta(x)$?"
+    choices:
+      - "The true log-likelihood is not differentiable."
+      - "$\\log p_\\theta(x)$ requires marginalizing over the latent $z$, which is intractable; the ELBO is a tractable lower bound."
+      - "The ELBO converges faster on convex objectives."
+      - "The two are equivalent in expectation."
+    answer: 1
+    explanation: "$\\log p_\\theta(x) = \\log \\int p_\\theta(x|z) p(z)\\,dz$ has no closed form for nonlinear decoders. Jensen's inequality gives the ELBO, which we can estimate with one Monte Carlo sample per datapoint. The gap between ELBO and log-likelihood is $\\mathrm{KL}(q_\\phi(z|x) \\Vert p_\\theta(z|x))$ — tightening the bound = better posterior approximation."
+  - id: "vae-q2"
+    question: "What problem does the reparameterization trick solve?"
+    choices:
+      - "It removes the KL term from the loss."
+      - "It lets gradients flow through a sampling step by writing $z = \\mu + \\sigma \\odot \\epsilon$ with $\\epsilon \\sim \\mathcal{N}(0, I)$."
+      - "It speeds up the encoder."
+      - "It eliminates the need for a decoder."
+    answer: 1
+    explanation: "Sampling $z \\sim \\mathcal{N}(\\mu, \\sigma^2)$ is not differentiable in $\\mu, \\sigma$. Rewriting the sample as a deterministic function of $(\\mu, \\sigma)$ and external noise $\\epsilon$ moves the stochasticity outside the gradient path, so backprop can flow through $\\mu$ and $\\sigma$."
+  - id: "vae-q3"
+    question: "What does increasing $\\beta$ in a $\\beta$-VAE do?"
+    choices:
+      - "Sharpens reconstructions at the cost of likelihood."
+      - "Strengthens the KL pressure toward $\\mathcal{N}(0, I)$, encouraging factorized (more disentangled) latents at the cost of reconstruction."
+      - "Removes the prior."
+      - "Switches the model from variational to deterministic."
+    answer: 1
+    explanation: "$\\beta$-VAE multiplies the KL term by $\\beta > 1$. A heavier KL pushes $q_\\phi(z|x)$ closer to the unit Gaussian, which empirically encourages each latent dimension to capture an independent factor of variation. The cost is blurrier reconstructions — a Pareto trade-off, not a free lunch."
+  - id: "vae-q4"
+    question: "Why are VAE samples often blurrier than GAN or diffusion samples?"
+    choices:
+      - "VAEs are trained on too little data."
+      - "The Gaussian likelihood + pixel-wise MSE objective averages over plausible reconstructions, smearing high-frequency detail."
+      - "The latent space is too small."
+      - "The encoder is too shallow."
+    answer: 1
+    explanation: "When the decoder is uncertain, MSE rewards the conditional mean, which is a blur of the modes. GANs replace this with an adversarial loss; diffusion models predict noise across many timesteps. Modern systems use the VAE as a perceptual encoder (Stable Diffusion's latent space) and run the generative process in that lower-dimensional space."
+---
+
+The VAE is the reason a lot of modern generative models *work*. Stable
+Diffusion's latent space is a VAE. The probabilistic graphical-model framing
+that VAEs popularized — encoder, decoder, latent prior, ELBO — is the lingua
+franca of all latent-variable modeling.
+
+If you understand the VAE, you understand half of what diffusion is doing.
+
+## Why this matters
+
+Pixels are the wrong space to model. They're high-dimensional, redundant,
+and full of perceptually irrelevant variation (sensor noise, JPEG artifacts).
+A good generative model should operate in a *compressed, semantic* space.
+
+The VAE gives us two things at once: an **encoder** that compresses data into
+a structured latent, and a **decoder** that maps latents back to data. Unlike
+a vanilla autoencoder, the VAE imposes a probabilistic structure that makes
+the latent space *generative* — sampling from the prior produces plausible
+data, not nonsense.
+
+<Callout variant="insight" title="The whole field's debt to VAEs">
+Every text-to-image model you use ships with a VAE. Stable Diffusion encodes
+images to a $4 \times 64 \times 64$ latent and runs diffusion there, then
+decodes once at the end. The 8x compression is the difference between a
+research toy and a product.
+</Callout>
+
+## The model
+
+A VAE assumes data is generated by a two-step process:
+
+1. Sample a latent $z \sim p(z) = \mathcal{N}(0, I)$.
+2. Sample data $x \sim p_\theta(x|z)$ from a decoder.
+
+The marginal $p_\theta(x) = \int p_\theta(x|z) p(z)\,dz$ is what we'd like to
+maximize. It's intractable. So we introduce an **encoder**
+$q_\phi(z|x) = \mathcal{N}(\mu_\phi(x), \mathrm{diag}(\sigma_\phi^2(x)))$
+that approximates the posterior $p_\theta(z|x)$, and optimize a tractable
+lower bound.
+
+## The ELBO
+
+By Jensen's inequality,
+
+$$
+\log p_\theta(x) \ge \mathbb{E}_{q_\phi(z|x)}[\log p_\theta(x|z)] - \mathrm{KL}(q_\phi(z|x) \Vert p(z))
+$$
+
+The right-hand side is the **evidence lower bound** (ELBO). Two terms:
+
+- **Reconstruction**: how well the decoder reproduces $x$ from $z \sim q_\phi(z|x)$.
+- **KL regularizer**: how close the posterior approximation is to the prior.
+
+Maximizing the ELBO simultaneously trains a good autoencoder *and* keeps the
+latent distribution close to a standard Gaussian — which means we can sample
+new data by drawing $z \sim \mathcal{N}(0, I)$ and decoding.
+
+## The reparameterization trick
+
+The reconstruction term is an expectation over $q_\phi(z|x)$. To get a
+gradient we need to backpropagate through the sampling step — but sampling
+is not differentiable. The fix:
+
+$$
+z = \mu_\phi(x) + \sigma_\phi(x) \odot \epsilon, \quad \epsilon \sim \mathcal{N}(0, I)
+$$
+
+Now the randomness lives in $\epsilon$, which has no learnable parameters,
+and gradients flow cleanly through $\mu_\phi$ and $\sigma_\phi$. This single
+trick is what made VAEs trainable end-to-end.
+
+```python
+import torch
+import torch.nn.functional as F
+
+def vae_loss(x, encoder, decoder, beta=1.0):
+    mu, log_var = encoder(x)                      # (B, d)
+    eps = torch.randn_like(mu)
+    z   = mu + torch.exp(0.5 * log_var) * eps     # reparameterized sample
+    x_hat = decoder(z)
+    recon = F.mse_loss(x_hat, x, reduction="sum")
+    # KL(N(mu, sigma^2) || N(0, I)) closed-form:
+    kl    = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+    return recon + beta * kl
+```
+
+## $\beta$-VAE and disentanglement
+
+Setting $\beta > 1$ in the KL term encourages the encoder to use the latent
+budget more parsimoniously. Empirically, this tends to align individual
+latent dimensions with independent factors of variation in the data — pose,
+lighting, identity. The result is *disentanglement*: latent traversal along
+one axis changes one human-meaningful attribute.
+
+This isn't free. Higher $\beta$ degrades reconstruction. Disentanglement
+without supervision is also impossible in the worst case (Locatello et al.,
+2019), so any disentanglement you observe relies on inductive biases that
+are hard to characterize.
+
+<PaperCard
+  title="Auto-encoding variational Bayes"
+  authors="Kingma, Welling"
+  year={2014}
+  url="https://arxiv.org/abs/1312.6114"
+/>
+
+<Callout variant="warning" title="Posterior collapse">
+A common failure: the decoder becomes powerful enough to generate $x$ without
+using $z$, so the encoder's KL collapses to zero and $q_\phi(z|x) \approx p(z)$
+for all $x$. The model degenerates into an unconditional generator. KL
+annealing, free bits, and weaker decoders are the usual mitigations.
+</Callout>
+
+## Where VAEs sit today
+
+Pure pixel-space VAEs are no longer state of the art for image generation.
+GANs took over for sharpness; diffusion took over for quality and
+controllability. But the VAE is still load-bearing — every modern latent
+diffusion system uses one as the perceptual front-end. The framework also
+underwrites variational inference broadly: VQ-VAE for tokenized images, NVAE
+for hierarchical latents, and any place you see "ELBO" in a paper.
+
+The ELBO and reparameterization trick are not historical curiosities. They
+are the toolkit you'll reach for any time you need to learn a probabilistic
+latent variable model end-to-end.

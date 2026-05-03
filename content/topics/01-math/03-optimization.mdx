@@ -1,0 +1,262 @@
+---
+slug: "01-math/03-optimization"
+part: "01-math"
+partTitle: "Mathematical foundations"
+partIndex: 1
+topicIndex: 3
+title: "Optimization: SGD, momentum, Adam"
+hook: "Walk down a non-convex hill without falling off."
+estMinutes: 20
+difficulty: 3
+prereqs: ["01-math/01-linear-algebra"]
+hasHeroViz: true
+vizKey: "gradient-descent"
+researchers: ["kingma", "ruder"]
+papers:
+  - title: "Adam: A Method for Stochastic Optimization"
+    authors: "Kingma, Ba"
+    year: 2015
+    url: "https://arxiv.org/abs/1412.6980"
+  - title: "An overview of gradient descent optimization algorithms"
+    authors: "Sebastian Ruder"
+    year: 2017
+    url: "https://arxiv.org/abs/1609.04747"
+  - title: "Decoupled Weight Decay Regularization"
+    authors: "Loshchilov, Hutter"
+    year: 2019
+    url: "https://arxiv.org/abs/1711.05101"
+hfResources:
+  - kind: "doc"
+    title: "torch.optim — Optimizers in PyTorch"
+    url: "https://pytorch.org/docs/stable/optim.html"
+  - kind: "library"
+    title: "bitsandbytes — 8-bit Adam and friends"
+    url: "https://huggingface.co/docs/bitsandbytes/main/en/index"
+freeResources:
+  - kind: "blog"
+    title: "Why Momentum Really Works"
+    source: "Distill (Gabriel Goh)"
+    url: "https://distill.pub/2017/momentum/"
+  - kind: "blog"
+    title: "An overview of gradient descent optimization algorithms"
+    source: "Sebastian Ruder"
+    url: "https://www.ruder.io/optimizing-gradient-descent/"
+  - kind: "course"
+    title: "Stanford CS231n — Optimization notes"
+    url: "https://cs231n.github.io/neural-networks-3/"
+quiz:
+  - id: "opt-q1"
+    question: "What problem does momentum solve in plain gradient descent?"
+    choices:
+      - "It guarantees convergence to a global minimum"
+      - "It removes the need for a learning rate"
+      - "It dampens oscillation across high-curvature directions and accelerates progress along low-curvature directions"
+      - "It reduces memory usage"
+    answer: 2
+    explanation: "On ill-conditioned losses, GD bounces across the steep direction while crawling along the shallow one. Momentum averages successive gradients, canceling the oscillation and reinforcing the consistent component — equivalent to a heavy ball with friction."
+  - id: "opt-q2"
+    question: "Adam adapts per-parameter learning rates using:"
+    choices:
+      - "The Hessian"
+      - "Running estimates of the gradient's first moment (mean) and second moment (uncentered variance)"
+      - "The exact loss curvature along each axis"
+      - "A separate validation set"
+    answer: 1
+    explanation: "Adam keeps EMAs $m_t$ (first moment) and $v_t$ (second moment) of the gradient, then updates with $m_t / (\\sqrt{v_t} + \\epsilon)$. This rescales each parameter's step by an estimate of recent gradient magnitude, giving sparse-feature-friendly adaptive rates without computing a Hessian."
+  - id: "opt-q3"
+    question: "Why does AdamW separate weight decay from the gradient update?"
+    choices:
+      - "It is faster to compute"
+      - "Adam's adaptive denominator $\\sqrt{v_t}$ shrinks L2 regularization unequally across parameters; decoupling decay restores its intended effect"
+      - "It prevents NaN values"
+      - "It guarantees convexity"
+    answer: 1
+    explanation: "L2 regularization adds $\\lambda \\theta$ to the gradient, which Adam then divides by $\\sqrt{v_t}$ — so heavy-gradient parameters get less regularization. AdamW applies $\\theta \\leftarrow \\theta - \\eta \\lambda \\theta$ directly, recovering true weight decay. This consistently improves generalization on Transformers."
+  - id: "opt-q4"
+    question: "Stochastic gradient descent is preferred over full-batch GD primarily because:"
+    choices:
+      - "Stochastic gradients are unbiased estimates of the true gradient, and the noise often helps escape saddle points and shallow minima"
+      - "It always converges faster in wall-clock time"
+      - "It avoids the need for differentiability"
+      - "It eliminates overfitting"
+    answer: 0
+    explanation: "Minibatch gradients are noisy but unbiased. The noise acts as implicit regularization, helping escape saddles and find flatter minima — and crucially, you can do many noisy steps in the time one full-batch step would take."
+---
+
+Training a modern neural network is, mechanically, just gradient descent. But
+the loss surface has tens of billions of dimensions, the gradients are
+stochastic, the geometry is wildly non-convex, and the budget is finite. The
+difference between a model that converges in 8 hours and one that diverges in
+8 minutes is almost always *which* gradient descent variant you used and how
+you tuned it.
+
+This topic is about understanding the surprisingly small set of ideas — step
+size, momentum, adaptive scaling, decay — that make this work in practice.
+
+## Why this matters
+
+Optimization is the *only* mechanism by which neural networks learn. Every
+architectural innovation, every clever loss function, every prompt
+distillation pipeline ultimately bottoms out in: take a gradient, take a step.
+Get this wrong and the rest is theater.
+
+It also matters economically. A frontier training run costs tens of millions
+of dollars; the choice of optimizer (AdamW vs Lion vs Shampoo), warmup, and
+LR schedule visibly moves the final loss. Scaling laws are *conditional* on
+near-optimal optimization — and that "near-optimal" is the work of the
+optimizer designer.
+
+<Embed viz="gradient-descent" />
+
+## Gradient descent, the simplest possible algorithm
+
+To minimize a scalar loss $L(\theta)$ over parameters $\theta \in \mathbb{R}^d$:
+
+$$
+\theta_{t+1} = \theta_t - \eta \, \nabla L(\theta_t)
+$$
+
+The gradient $\nabla L$ points uphill; we walk downhill. The learning rate
+$\eta$ controls step size. That's the whole algorithm. Everything else in
+this article is about making this one update behave well in practice.
+
+A first-order Taylor expansion shows why this works locally: for small
+$\eta$, $L(\theta - \eta \nabla L) \approx L(\theta) - \eta \|\nabla L\|^2$.
+You decrease loss whenever the gradient is non-zero — until $\eta$ is too big
+and the second-order term explodes you.
+
+<Callout variant="insight" title="Why non-convex isn't fatal">
+Classical optimization theory sweats over local minima. In high-dimensional
+deep learning, almost all critical points are *saddle points* — directions
+where you can still descend. Empirically, SGD finds basins that generalize
+well; the geometry has more in common with a vast plateau than a hilly
+landscape.
+</Callout>
+
+## Stochastic gradients
+
+You almost never compute $\nabla L$ exactly — that would require a forward
+pass over the entire dataset per step. Instead you sample a minibatch
+$\mathcal{B}$ and compute
+
+$$
+\hat{g}_t = \frac{1}{|\mathcal{B}|} \sum_{x \in \mathcal{B}} \nabla \ell(x; \theta_t)
+$$
+
+which is an *unbiased* estimate of the true gradient. The variance of this
+estimate is the noise that gives SGD its name and a lot of its surprisingly
+good behavior. Noise helps escape saddle points and biases the trajectory
+toward flatter minima — flatter in the Hessian-eigenvalue sense — which
+correlate with better generalization.
+
+## Momentum: a heavy ball with memory
+
+Plain SGD on an ill-conditioned loss zigzags: the gradient flips sign
+across high-curvature directions while making slow progress along
+low-curvature ones. **Momentum** smooths this:
+
+$$
+v_{t+1} = \mu v_t + \hat{g}_t, \qquad \theta_{t+1} = \theta_t - \eta v_{t+1}
+$$
+
+with $\mu \in [0, 1)$ (typically $0.9$). Successive gradients average out
+along oscillating directions and reinforce along consistent ones. This is
+mathematically equivalent to a heavy ball with friction rolling on the loss
+surface — and it makes a measurable difference, especially early in training.
+
+Distill's [Why Momentum Really Works](https://distill.pub/2017/momentum/) is
+the canonical visual treatment. Read it.
+
+## Adaptive methods: Adam
+
+Different parameters in a network have wildly different gradient
+magnitudes — embeddings see sparse updates, biases see dense ones, attention
+projections see scaling that depends on $d_k$. A single global $\eta$ is a
+compromise. **Adam** (Kingma & Ba, 2015) adapts per-parameter:
+
+$$
+m_t = \beta_1 m_{t-1} + (1 - \beta_1) \hat{g}_t
+$$
+$$
+v_t = \beta_2 v_{t-1} + (1 - \beta_2) \hat{g}_t^{\odot 2}
+$$
+$$
+\theta_{t+1} = \theta_t - \eta \, \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+$$
+
+with bias-corrected $\hat{m}_t = m_t / (1 - \beta_1^t)$, $\hat{v}_t$
+analogously. Defaults $\beta_1=0.9, \beta_2=0.999, \epsilon=10^{-8}$ are good
+enough for most workloads. The denominator $\sqrt{\hat{v}_t}$ rescales each
+parameter by its recent gradient magnitude — implicitly preconditioning
+without ever forming a Hessian.
+
+<PaperCard title="Adam: A Method for Stochastic Optimization" authors="Kingma, Ba" year={2015} url="https://arxiv.org/abs/1412.6980" />
+
+## AdamW and decoupled weight decay
+
+The original Adam paper folded L2 regularization into the gradient. That's
+broken: the adaptive denominator divides the regularization too, so heavily
+updated parameters get under-regularized. **AdamW** (Loshchilov & Hutter)
+fixes this by applying weight decay directly:
+
+$$
+\theta_{t+1} = \theta_t - \eta \!\left( \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} + \lambda \theta_t \right)
+$$
+
+This single change improved Transformer training enough that AdamW is now
+the default for essentially every LLM training run.
+
+```python
+import torch
+
+model = torch.nn.Linear(1024, 1024)
+
+opt = torch.optim.AdamW(
+    model.parameters(),
+    lr=3e-4,            # the "Karpathy constant"
+    betas=(0.9, 0.95),  # tighter beta_2 than vanilla Adam — common in LLM training
+    weight_decay=0.1,
+)
+
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    opt, max_lr=3e-4, total_steps=10_000, pct_start=0.05
+)
+```
+
+## Schedules: warmup and decay
+
+Constant LR is a recipe for divergence early (gradients are huge before any
+structure has formed) or stalling late (a fine-tune phase wants smaller
+steps). The empirically dominant schedule has two phases:
+
+1. **Warmup**: linearly ramp $\eta$ from $0$ to $\eta_\text{max}$ over the
+   first few percent of steps.
+2. **Decay**: cosine or linear annealing from $\eta_\text{max}$ to a small
+   floor.
+
+Cosine schedules are the default in essentially every recent LLM paper.
+Chinchilla, Llama, Mistral — same shape, different hyperparameters.
+
+<Callout variant="warning" title="The most common training failure">
+"My loss spiked after step 50" is almost always a learning rate too high in
+the first few iterations. The fix is warmup, not lowering peak LR. Skipping
+warmup is responsible for more failed runs than any other single mistake.
+</Callout>
+
+## Beyond Adam
+
+There's a steady stream of would-be Adam replacements: Lion (sign-momentum),
+Sophia (diagonal Hessian preconditioner), Shampoo (full-matrix
+preconditioning), distributed Shampoo, Muon. Some win in specific regimes;
+none have displaced AdamW as the default. The practical lesson: optimizer
+choice is high-leverage but not magic. Tune AdamW + cosine + warmup well
+before chasing exotic alternatives.
+
+## Why this lasts
+
+Architectures will keep changing — attention, Mamba, whatever comes next —
+but the optimization stack underneath is remarkably stable. Adam (2015) is a
+decade old and still the workhorse. Understanding *why* it works equips you
+to debug training runs, design schedulers, and read every infrastructure
+paper from FSDP to ZeRO. Get this layer right and the rest of the curriculum
+becomes practical, not theoretical.

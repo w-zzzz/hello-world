@@ -1,0 +1,211 @@
+---
+slug: "06-multimodal/01-clip"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 1
+title: "CLIP & contrastive vision-language"
+hook: "Aligning images and text in one shared space."
+estMinutes: 16
+difficulty: 3
+prereqs: ["03-deep-learning/02-cnn", "03-deep-learning/04-attention"]
+hasHeroViz: true
+vizKey: "embedding-explorer-3d"
+researchers: ["radford"]
+papers:
+  - title: "Learning Transferable Visual Models From Natural Language Supervision (CLIP)"
+    authors: "Radford, Kim, Hallacy, Ramesh, Goh, Agarwal, Sastry, Askell, Mishkin, Clark, Krueger, Sutskever"
+    year: 2021
+    url: "https://arxiv.org/abs/2103.00020"
+  - title: "Sigmoid Loss for Language Image Pre-Training (SigLIP)"
+    authors: "Zhai, Mustafa, Kolesnikov, Beyer"
+    year: 2023
+    url: "https://arxiv.org/abs/2303.15343"
+  - title: "Reproducible scaling laws for contrastive language-image learning (OpenCLIP)"
+    authors: "Cherti, Beaumont, Wightman, Wortsman, Ilharco, Gordon, Schuhmann, Schmidt, Jitsev"
+    year: 2022
+    url: "https://arxiv.org/abs/2212.07143"
+hfResources:
+  - kind: "model"
+    title: "openai/clip-vit-large-patch14"
+    url: "https://huggingface.co/openai/clip-vit-large-patch14"
+  - kind: "model"
+    title: "google/siglip-so400m-patch14-384"
+    url: "https://huggingface.co/google/siglip-so400m-patch14-384"
+  - kind: "library"
+    title: "open_clip"
+    url: "https://huggingface.co/laion"
+freeResources:
+  - kind: "blog"
+    title: "OpenAI CLIP — Connecting Text and Images"
+    source: "OpenAI"
+    url: "https://openai.com/index/clip/"
+  - kind: "blog"
+    title: "Multi-modal contrastive learning"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2021-05-31-contrastive/"
+quiz:
+  - id: "clip-q1"
+    question: "What is CLIP's training objective?"
+    choices:
+      - "Predict the next token of caption."
+      - "Symmetric InfoNCE: maximize cosine similarity between matched (image, caption) pairs in a batch and minimize it for the $N^2 - N$ mismatched pairs."
+      - "Reconstruct the image from the caption."
+      - "Predict masked tokens."
+    answer: 1
+    explanation: "CLIP encodes a batch of $N$ images and $N$ captions into normalized vectors, computes the $N \\times N$ cosine-similarity matrix, and applies cross-entropy in both directions: each image should pick its true caption as the most similar, and vice versa. This is the InfoNCE / symmetric contrastive loss."
+  - id: "clip-q2"
+    question: "Why does CLIP enable zero-shot classification?"
+    choices:
+      - "It memorizes ImageNet."
+      - "Class names can be embedded as text ('a photo of a cat'); the image embedding is then compared to each class embedding via cosine similarity. No fine-tuning needed."
+      - "It uses linear probes."
+      - "It is fine-tuned on each class."
+    answer: 1
+    explanation: "Because text and images live in the same space, you can classify an image by computing similarity to text prompts of each candidate label. CLIP trained on 400M (image, caption) pairs reached competitive ImageNet accuracy with *zero* labeled examples — the textbook 'foundation model' demonstration."
+  - id: "clip-q3"
+    question: "Where does CLIP show up downstream?"
+    choices:
+      - "Nowhere — it was superseded."
+      - "As the text encoder in Stable Diffusion, the image encoder in LLaVA / VLMs, and the basis of vision-text retrieval and CLIP-score evaluation."
+      - "Only in OpenAI products."
+      - "Only in classification."
+    answer: 1
+    explanation: "CLIP's frozen image and text encoders ended up everywhere: SD 1.x used CLIP's text encoder; SD 2/3 use OpenCLIP/T5; LLaVA uses CLIP-ViT-L/14 as its image tokenizer; CLIPScore is a standard image-caption alignment metric. Few 2021 papers had this much downstream impact."
+  - id: "clip-q4"
+    question: "What does SigLIP change vs CLIP?"
+    choices:
+      - "Bigger model."
+      - "Replaces softmax cross-entropy across the whole batch with a per-pair sigmoid loss, which removes the $N^2$ all-to-all dependency and trains better at large batch sizes / sharded settings."
+      - "Adds RLHF."
+      - "Uses pixels directly."
+    answer: 1
+    explanation: "Sigmoid loss treats each (image, text) pair independently as a binary classification (matched or not). This decouples the loss across batch elements, so you can shard across many GPUs without all-gather, and it scales more cleanly. SigLIP is now the default image encoder for many open VLMs."
+---
+
+CLIP is the architecture that taught computers to *understand* images by
+reading captions. Until 2021, computer vision lived in a 1000-class
+ImageNet world: a model could tell a Persian cat from a Siamese cat, but it
+had no idea what "Persian" or "cat" *meant*. CLIP shattered that ceiling by
+training a single model on 400 million internet image-text pairs with a
+contrastive objective. The result was a model that could classify, retrieve,
+caption, and ground language to vision — all without task-specific
+fine-tuning.
+
+Half of modern multimodal AI runs on CLIP or its descendants. Understanding
+the contrastive recipe is the foundation for LLaVA, Stable Diffusion's text
+conditioning, and most vision-language evaluation.
+
+## The setup
+
+CLIP has two towers:
+
+- An **image encoder** $f_{\text{img}}$ — originally a ResNet, later ViT —
+  that maps an image to a vector $u \in \mathbb{R}^d$.
+- A **text encoder** $f_{\text{txt}}$ — a Transformer — that maps a caption
+  to a vector $v \in \mathbb{R}^d$.
+
+Both vectors are L2-normalized. For a matched (image, caption) pair, we
+want $u \cdot v$ large; for a mismatched pair, small.
+
+## Symmetric InfoNCE
+
+Given a batch of $N$ pairs $\{(x_i, t_i)\}$, encode them to
+$\{(u_i, v_i)\}$ and form the $N \times N$ similarity matrix
+$S_{ij} = u_i^\top v_j / \tau$ where $\tau$ is a learned temperature. The
+loss is symmetric cross-entropy over rows and columns:
+
+$$
+\mathcal{L} = -\frac{1}{2N}\sum_{i=1}^{N}\Big[ \log \frac{e^{S_{ii}}}{\sum_j e^{S_{ij}}} + \log \frac{e^{S_{ii}}}{\sum_j e^{S_{ji}}} \Big]
+$$
+
+The first term: each image should pick its true caption out of the $N$
+candidates. The second term: each caption should pick its true image. The
+$N^2 - N$ mismatched pairs are the negatives — no explicit sampling needed.
+
+The temperature $\tau$ matters. Too large and softmax flattens, gradients
+vanish. Too small and softmax saturates. CLIP learns it.
+
+```python
+import torch, torch.nn.functional as F
+
+def clip_loss(image_emb, text_emb, temperature):
+    # both are (B, d) and L2-normalized
+    logits = (image_emb @ text_emb.T) / temperature  # (B, B)
+    targets = torch.arange(len(logits), device=logits.device)
+    loss_i = F.cross_entropy(logits, targets)        # row-wise
+    loss_t = F.cross_entropy(logits.T, targets)      # col-wise
+    return (loss_i + loss_t) / 2
+```
+
+That's the entire training objective.
+
+## Why contrastive over generative
+
+You could imagine training a generative caption model — given an image,
+maximize $\log p(\text{caption} \mid \text{image})$. People did. CLIP's
+authors argued it was the wrong abstraction. Captions are ambiguous:
+"dog" and "puppy" and "Golden Retriever" might all be correct for the same
+image. Generative training wastes capacity on surface form.
+
+Contrastive training only cares whether the image and caption are *the
+matched pair* in this batch. It throws away the linguistic detail in favor
+of *alignment*. This turned out to be both faster (an order of magnitude)
+and better at the resulting downstream tasks.
+
+<Embed viz="embedding-explorer-3d" />
+
+## Zero-shot classification
+
+The cleanest CLIP demo: classify ImageNet without ever training on
+ImageNet labels.
+
+1. Take the 1000 class names.
+2. Embed each as text: *"a photo of a \{class\}"* (the prompt template
+   matters; CLIP authors found small wins from ensembling templates).
+3. For a test image, compute its embedding.
+4. Predict the class whose text embedding has highest cosine similarity.
+
+CLIP-ViT-L/14 reached ~76% top-1 on ImageNet zero-shot — competitive with
+fully supervised ResNets from a few years prior, with no ImageNet
+supervision at all.
+
+<PaperCard title="Learning Transferable Visual Models From Natural Language Supervision (CLIP)" authors="Radford et al." year={2021} url="https://arxiv.org/abs/2103.00020" />
+
+## Where CLIP sits in modern systems
+
+- **Stable Diffusion 1.x** uses CLIP's text encoder to condition image
+  generation. SD 2/3 use OpenCLIP and T5.
+- **LLaVA** and most open VLMs feed CLIP-ViT image patches into an LLM as
+  visual tokens.
+- **DALL-E 2** uses CLIP embeddings as the bridge between text and image
+  diffusion.
+- **Image search** at scale runs on CLIP-style embeddings.
+- **CLIPScore** is the standard automatic metric for image-caption
+  alignment.
+
+Few 2021 papers had this much downstream impact. The contrastive recipe
+turned out to generalize — to audio (CLAP), 3D, video, even protein
+sequences.
+
+<Callout variant="insight" title="The data, not the loss">
+CLIP's loss is a 5-line idea. Its dataset — 400M (image, caption) pairs
+scraped from the web — was the actually new thing. LAION later released a
+2B-pair public dataset (LAION-2B) and OpenCLIP reproductions matched or
+exceeded CLIP. The recipe scales with data; the loss is incidental.
+</Callout>
+
+## SigLIP and what came next
+
+The 2023 SigLIP paper replaced CLIP's batch-wide softmax with a
+per-pair sigmoid loss. Each (image, text) pair becomes an independent
+binary classification: "match or not?" This eliminates the all-to-all
+dependency in the loss, which lets you shard much larger batches across
+GPUs without all-gather communication. SigLIP and SigLIP 2 are now the
+default image encoders for most open VLMs (PaliGemma, Idefics, recent
+LLaVA variants).
+
+The contrastive paradigm is settling into a stable engineering recipe.
+The action has moved on — to generative multimodal models (next topics) —
+but the embeddings produced by CLIP/SigLIP-style training remain the
+substrate underneath them.

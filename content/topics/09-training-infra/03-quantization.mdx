@@ -1,0 +1,196 @@
+---
+slug: "09-training-infra/03-quantization"
+part: "09-training-infra"
+partTitle: "Training & inference infrastructure"
+partIndex: 9
+topicIndex: 3
+title: "Quantization (GPTQ, AWQ, NF4)"
+hook: "Smaller numbers, same model, less memory."
+estMinutes: 12
+difficulty: 3
+prereqs: ["09-training-infra/02-lora-qlora"]
+hasHeroViz: false
+researchers: ["dettmers", "frantar"]
+papers:
+  - title: "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers"
+    authors: "Frantar, Ashkboos, Hoefler, Alistarh"
+    year: 2022
+    url: "https://arxiv.org/abs/2210.17323"
+  - title: "AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration"
+    authors: "Lin, Tang, Tang, Yang, Chen, Wang, Xiao, Dang, Han"
+    year: 2023
+    url: "https://arxiv.org/abs/2306.00978"
+  - title: "LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale"
+    authors: "Dettmers, Lewis, Belkada, Zettlemoyer"
+    year: 2022
+    url: "https://arxiv.org/abs/2208.07339"
+hfResources:
+  - kind: "library"
+    title: "Transformers — Quantization overview"
+    url: "https://huggingface.co/docs/transformers/main/en/quantization/overview"
+  - kind: "library"
+    title: "bitsandbytes"
+    url: "https://huggingface.co/docs/bitsandbytes/main"
+  - kind: "model"
+    title: "TheBloke quantized models collection"
+    url: "https://huggingface.co/TheBloke"
+freeResources:
+  - kind: "blog"
+    title: "A visual guide to quantization"
+    source: "Maarten Grootendorst"
+    url: "https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-quantization"
+quiz:
+  - id: "quant-q1"
+    question: "Symmetric per-tensor INT8 quantization maps $w \\in [-r, r]$ to integers via $q = \\text{round}(w / s)$ with $s = r / 127$. What is the dominant source of error?"
+    choices:
+      - "Floating-point underflow."
+      - "Outlier weights or activations forcing $r$ to be large, which makes $s$ coarse for the typical-magnitude majority."
+      - "Rounding to even."
+      - "The integer wrap-around."
+    answer: 1
+    explanation: "A handful of large entries set the scale and waste resolution on the bulk. Per-channel scales, group quantization, and outlier-aware schemes (LLM.int8, AWQ) directly address this."
+  - id: "quant-q2"
+    question: "GPTQ's key idea is:"
+    choices:
+      - "Round each weight independently."
+      - "Quantize columns one at a time and compensate the remaining columns using the inverse Hessian of the layer's reconstruction loss on calibration data."
+      - "Train the model from scratch in INT4."
+      - "Replace softmax with sign."
+    answer: 1
+    explanation: "GPTQ frames per-layer quantization as a constrained least-squares problem and uses the (Cholesky-factored) Hessian to spread each column's rounding error onto the unquantized columns, dramatically reducing the layer-wise loss."
+  - id: "quant-q3"
+    question: "AWQ argues that you should:"
+    choices:
+      - "Quantize all weights uniformly."
+      - "Identify the small fraction of 'salient' weight channels — those associated with large activations — and protect them via per-channel scaling before quantization."
+      - "Quantize activations only."
+      - "Use 1-bit weights."
+    answer: 1
+    explanation: "Activations often have a heavy-tailed distribution; the weights aligned with those large activations carry most of the model's quality. AWQ rescales those channels so quantization noise lands on less important directions."
+  - id: "quant-q4"
+    question: "Why does NF4 (NormalFloat-4) outperform uniform INT4 for LLM weights?"
+    choices:
+      - "It uses more bits."
+      - "Its 16 levels are spaced by quantiles of the standard normal distribution, matching the empirical weight distribution and minimizing expected MSE."
+      - "It is differentiable."
+      - "It only quantizes biases."
+    answer: 1
+    explanation: "Pretrained weights are approximately Gaussian per block. Information-theoretically, the optimal quantizer for a known distribution places levels at its quantiles. NF4 does that for the standard normal."
+---
+
+A 70B model in fp16 is 140 GB. The same model in 4-bit is 35 GB. The
+parameters did not change; only the data type did. Quantization is the
+single highest-leverage trick for inference economics, and it is the
+quietly load-bearing piece behind every "run a frontier model on consumer
+hardware" demo.
+
+## Why this matters
+
+Inference cost scales with bytes moved more than with FLOPs. Every
+generated token reads the entire model from HBM at least once; halving the
+weight precision approximately halves latency on memory-bound workloads.
+For long-context, KV cache is also dominated by precision. Get this right
+and your serving cost drops by 4x with no architecture change.
+
+## The precision ladder
+
+Modern LLM stacks operate across at least four formats:
+
+- **fp32** — historical default, nobody uses for weights anymore.
+- **bf16 / fp16** — training and high-accuracy inference. 16 bits.
+- **fp8 / INT8** — fast on Hopper (FP8) and most GPUs (INT8). 2x smaller.
+- **INT4 / NF4** — inference-only, 4x smaller than fp16.
+
+The general rule: you can usually drop one rung with negligible loss
+post-training; dropping two needs care; dropping three (1–2 bits) needs
+quantization-aware training or distillation.
+
+## The arithmetic
+
+Symmetric uniform quantization maps a tensor by
+
+$$
+q = \mathrm{clip}\!\left(\mathrm{round}\!\left(\frac{w}{s}\right), -2^{b-1}, 2^{b-1}-1\right), \qquad \hat w = s \cdot q
+$$
+
+with scale $s$ chosen per-tensor, per-channel, or per-group (block of 64–
+128 weights). Finer granularity reduces the impact of outliers but adds
+metadata cost. Asymmetric variants add a zero-point.
+
+For activations the story is harder: their distribution shifts per token,
+so static per-tensor scales fail and dynamic / per-token scales are
+necessary. This is what made INT8 weight-only quantization easy and INT8
+activation quantization a research project.
+
+## GPTQ: rounding with memory
+
+Naive rounding ignores layer-level error. GPTQ formulates per-layer
+quantization as
+
+$$
+\min_{\hat W} \; \| WX - \hat W X \|_F^2
+$$
+
+on a small calibration set $X$, then uses the Hessian
+$H = 2 X X^\top$ to greedily quantize one column of $W$ at a time and
+update the remaining columns to cancel as much of the introduced error as
+possible. The result: 4-bit GPTQ recovers most of the original perplexity
+that naive RTN destroys.
+
+<Callout variant="insight" title="Why activation-aware?">
+A weight matters as much as the activations it multiplies. AWQ formalizes
+that: a channel with large activations is "salient." Pre-scale those
+channels before quantization and you spend resolution where it pays.
+</Callout>
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AwqConfig
+
+quant_cfg = AwqConfig(bits=4, group_size=128, version="gemm")
+model = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Meta-Llama-3-8B-Instruct",
+    quantization_config=quant_cfg,
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+```
+
+## NF4 and 4-bit inference
+
+NF4 (from QLoRA) places its 16 representable values at the quantiles of a
+standard normal — so a block of weights normalized to unit variance sees
+near-optimal levels. Combined with double quantization (compress the
+per-block scales themselves) and a fast dequantize-then-matmul kernel,
+NF4 has become a practical default for 4-bit LLM weights.
+
+<PaperCard
+  title="GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers"
+  authors="Frantar, Ashkboos, Hoefler, Alistarh"
+  year={2022}
+  url="https://arxiv.org/abs/2210.17323"
+/>
+
+## What about activations and KV cache?
+
+Beyond weights, two more places matter:
+
+- **Activations**. Tools like SmoothQuant rebalance the dynamic range
+  between weights and activations so both can fit INT8. FP8 on Hopper sidesteps
+  most of this with a hardware-friendly format.
+- **KV cache**. For long contexts the cache dwarfs the weights. INT8/FP8
+  KV-cache compression (vLLM, TensorRT-LLM) is now standard.
+
+<Callout variant="warning" title="Calibration set quality matters">
+Quantization quality depends on the few hundred samples you calibrate on.
+Use in-distribution data; in particular, code models calibrated on prose
+will degrade on code. This is the closest "post-training quantization"
+gets to fine-tuning.
+</Callout>
+
+## When to QAT
+
+Quantization-aware training simulates quant noise during fine-tuning so
+the model adapts. It is overkill for weight-only INT4 but increasingly
+standard for sub-4-bit (1–2 bit) regimes such as BitNet and AQLM. Expect
+QAT to matter more as the precision floor keeps dropping.

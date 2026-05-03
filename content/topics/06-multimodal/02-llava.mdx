@@ -1,0 +1,191 @@
+---
+slug: "06-multimodal/02-llava"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 2
+title: "LLaVA & VLMs"
+hook: "Vision encoders + LLMs = visual instruction following."
+estMinutes: 14
+difficulty: 3
+prereqs: ["06-multimodal/01-clip", "04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["liu-llava"]
+papers:
+  - title: "Visual Instruction Tuning (LLaVA)"
+    authors: "Liu, Li, Wu, Lee"
+    year: 2023
+    url: "https://arxiv.org/abs/2304.08485"
+  - title: "Improved Baselines with Visual Instruction Tuning (LLaVA-1.5)"
+    authors: "Liu, Li, Li, Lee"
+    year: 2023
+    url: "https://arxiv.org/abs/2310.03744"
+  - title: "Flamingo: a Visual Language Model for Few-Shot Learning"
+    authors: "Alayrac, Donahue, Luc, Miech, Barr, Hasson, Lenc, Mensch, Millican, Reynolds, Ring, Rutherford, Cabi, Han, Gong, Samangouei, Monteiro, Menick, Borgeaud, Brock, Nematzadeh, Sharifzadeh, Binkowski, Barreira, Vinyals, Zisserman, Simonyan"
+    year: 2022
+    url: "https://arxiv.org/abs/2204.14198"
+hfResources:
+  - kind: "model"
+    title: "llava-hf/llava-1.5-7b-hf"
+    url: "https://huggingface.co/llava-hf/llava-1.5-7b-hf"
+  - kind: "model"
+    title: "google/paligemma2-3b-mix-224"
+    url: "https://huggingface.co/google/paligemma2-3b-mix-224"
+  - kind: "model"
+    title: "Qwen/Qwen2.5-VL-7B-Instruct"
+    url: "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct"
+freeResources:
+  - kind: "blog"
+    title: "Vision Language Models Explained"
+    source: "Hugging Face"
+    url: "https://huggingface.co/blog/vlms"
+  - kind: "blog"
+    title: "LLaVA project page"
+    source: "Liu et al."
+    url: "https://llava-vl.github.io/"
+quiz:
+  - id: "llava-q1"
+    question: "How does LLaVA connect a vision encoder to an LLM?"
+    choices:
+      - "By fine-tuning the LLM on raw pixels."
+      - "A small projection (originally a linear layer, later an MLP) maps CLIP-ViT image patch embeddings into the LLM's token embedding space, and they are prepended to the text tokens."
+      - "By a separate cross-attention block on every layer."
+      - "By a diffusion bridge."
+    answer: 1
+    explanation: "LLaVA's recipe is strikingly simple: take a frozen CLIP-ViT, take a pre-trained LLM, train a tiny projector (a few million parameters) so image patches become 'visual tokens' in the LLM's input. The LLM then treats them like any other tokens. Most modern VLMs follow this pattern."
+  - id: "llava-q2"
+    question: "What two-stage training does LLaVA use?"
+    choices:
+      - "Pretraining and SFT only."
+      - "Stage 1: align the projector by training only it on (image, caption) pairs. Stage 2: visual instruction tuning — fine-tune the projector + LLM on multimodal instruction data."
+      - "RLHF then SFT."
+      - "Distillation from GPT-4V."
+    answer: 1
+    explanation: "Stage 1 freezes everything except the projector and trains it as a 'visual tokenizer' so the LLM can read images. Stage 2 unfreezes the LLM and trains end-to-end on instruction data (often GPT-4-generated multimodal QA). This staged approach uses far less data than training from scratch."
+  - id: "llava-q3"
+    question: "What is the dominant alternative to the LLaVA-style 'projector + LLM' design?"
+    choices:
+      - "There is none."
+      - "Cross-attention based architectures (Flamingo, Idefics) where vision tokens are injected via separate cross-attention layers, often without modifying the LLM."
+      - "Diffusion-based VLMs."
+      - "RNN-based VLMs."
+    answer: 1
+    explanation: "Flamingo (DeepMind, 2022) interleaves vision tokens via gated cross-attention layers inserted between the LLM's existing layers, so the original LLM's text-only behavior is preserved. LLaVA-style 'just prepend visual tokens' is simpler and now more common, but both designs are alive."
+---
+
+The LLaVA paper landed in April 2023 with a deceptively simple thesis: take a
+strong vision encoder, take a strong LLM, glue them together with a small
+projector, train on synthetic visual instruction data, and you get a
+GPT-4V-quality model for a few thousand dollars. The recipe was so
+unreasonably effective that nearly every open-weights vision-language model
+since — Idefics, PaliGemma, MiniGPT-4, InternVL, Qwen-VL, Pixtral, Molmo —
+is a variation on it.
+
+If CLIP taught an image encoder to *speak the same language* as text, LLaVA
+taught the LLM to *see*.
+
+## The architecture, in three pieces
+
+```
+Image  →  [Vision encoder]  →  patch embeddings  →  [Projector]  →  visual tokens
+                                                                          ↓
+Text instruction  →  [Tokenizer]  →  text tokens  →  [LLM (causal)]  →  output text
+                                                          ↑
+                                                     visual tokens prepended
+```
+
+- **Vision encoder**: a frozen CLIP-ViT-L/14 in original LLaVA; SigLIP in
+  most recent VLMs. It produces $n$ patch embeddings per image (e.g.,
+  576 patches for 336×336 input).
+- **Projector**: originally a single linear layer, later a 2-layer MLP. Its
+  job is to map vision-encoder vectors into the LLM's input embedding
+  space. Tiny in parameter count (~10M).
+- **LLM**: any decoder-only model — Vicuna in original LLaVA, Llama 3 /
+  Qwen / Gemma in newer ones.
+
+At inference, the image becomes a sequence of visual tokens that the LLM
+reads exactly like text. The whole interaction is autoregressive: the
+model attends from text → image and from later text → earlier text and
+images.
+
+## Two-stage training
+
+**Stage 1: Feature alignment.** Freeze both the vision encoder and the LLM.
+Train *only* the projector on a corpus of (image, caption) pairs, with the
+loss being next-token prediction of the caption given the visual tokens.
+This is essentially teaching the projector to be a *translator* from
+CLIP-space to LLM-token-space.
+
+**Stage 2: Visual instruction tuning.** Unfreeze the LLM (the vision
+encoder can stay frozen or be fine-tuned). Train on multimodal instruction
+data — questions about images, conversational image analysis, visual
+reasoning. LLaVA's clever trick was generating this data by feeding image
+captions to GPT-4 (text-only at the time) and asking it to invent
+plausible questions and answers. Synthetic instruction data, validated by
+the eventual model's competence.
+
+```python
+from transformers import LlavaForConditionalGeneration, AutoProcessor
+from PIL import Image
+
+processor = AutoProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf")
+model = LlavaForConditionalGeneration.from_pretrained("llava-hf/llava-1.5-7b-hf")
+
+img = Image.open("cat.jpg")
+prompt = "USER: <image>\nWhat is in the image and what mood does it convey? ASSISTANT:"
+inputs = processor(images=img, text=prompt, return_tensors="pt")
+out = model.generate(**inputs, max_new_tokens=200)
+print(processor.decode(out[0], skip_special_tokens=True))
+```
+
+That's a complete VLM inference call. The `<image>` placeholder is where
+the projector's visual tokens are spliced in.
+
+<PaperCard title="Visual Instruction Tuning (LLaVA)" authors="Liu, Li, Wu, Lee" year={2023} url="https://arxiv.org/abs/2304.08485" />
+
+## Cross-attention vs prepending: two design philosophies
+
+Flamingo (2022) did it differently: rather than prepend visual tokens, it
+inserted *gated cross-attention* layers between the LLM's existing layers.
+The visual information enters laterally; the original LLM's text-only
+behavior is preserved when the gates are zero.
+
+Trade-offs:
+
+- **LLaVA-style prepending**: simpler, fewer new parameters, but the LLM's
+  context length is consumed by visual tokens (576+ tokens per image is
+  heavy on long-context tasks).
+- **Flamingo-style cross-attention**: scales better to many images and
+  videos (visual data doesn't bloat the context), but adds new layers and
+  more complex training.
+
+The community has mostly converged on LLaVA-style for single-image use
+and Flamingo-style for video / many-image use.
+
+<Callout variant="insight" title="Why so little new ML">
+LLaVA contains essentially no new ML. CLIP existed. LLMs existed. Linear
+projections existed. The contribution was *the recipe* — pick the right
+components, freeze the right pieces, train on the right data, in the right
+order. This is increasingly true of frontier work: the algorithms are old,
+the engineering is new.
+</Callout>
+
+## Where VLMs are in 2026
+
+- **Open-weights frontier**: Qwen2.5-VL, InternVL3, Pixtral, Molmo, Llama
+  3.2-Vision — all within striking distance of GPT-4V on standard
+  benchmarks.
+- **Image resolution**: a major axis of progress. Early LLaVA was 336×336.
+  Recent VLMs use dynamic tiling (slice large images into patches and feed
+  each tile through the encoder) to handle 4K inputs.
+- **Video**: extending LLaVA to video by sampling frames and feeding their
+  visual tokens. LongVA, Video-LLaVA, and Qwen2.5-VL push toward
+  hour-long video understanding.
+- **Native multimodal**: GPT-4o and Gemini are trained from scratch with
+  image, audio, and video tokens in the same model — bypassing the
+  "encoder + LLM" decomposition entirely.
+
+The frontier is shifting toward truly unified multimodal foundation models.
+LLaVA's specific architecture may not survive that shift, but its lesson —
+*language is a remarkably good interface for any modality* — almost
+certainly will.

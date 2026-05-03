@@ -1,0 +1,204 @@
+---
+slug: "01-math/02-probability-information"
+part: "01-math"
+partTitle: "Mathematical foundations"
+partIndex: 1
+topicIndex: 2
+title: "Probability & information theory"
+hook: "Why entropy, KL divergence, and likelihood are everywhere."
+estMinutes: 18
+difficulty: 3
+prereqs: ["01-math/01-linear-algebra"]
+hasHeroViz: false
+researchers: ["mackay"]
+papers:
+  - title: "A Mathematical Theory of Communication"
+    authors: "Claude E. Shannon"
+    year: 1948
+    url: "https://people.math.harvard.edu/~ctm/home/text/others/shannon/entropy/entropy.pdf"
+  - title: "Auto-Encoding Variational Bayes"
+    authors: "Kingma, Welling"
+    year: 2014
+    url: "https://arxiv.org/abs/1312.6114"
+hfResources:
+  - kind: "course"
+    title: "Hugging Face Deep RL Course — Probability primer"
+    url: "https://huggingface.co/learn/deep-rl-course/unit1/introduction"
+  - kind: "doc"
+    title: "torch.distributions — probability distributions in PyTorch"
+    url: "https://pytorch.org/docs/stable/distributions.html"
+freeResources:
+  - kind: "book"
+    title: "Information Theory, Inference, and Learning Algorithms"
+    source: "David MacKay"
+    url: "https://www.inference.org.uk/itila/book.html"
+  - kind: "video"
+    title: "A Short Introduction to Entropy, Cross-Entropy and KL-Divergence"
+    source: "Aurélien Géron"
+    url: "https://www.youtube.com/watch?v=ErfnhcEV1O8"
+  - kind: "blog"
+    title: "Visual Information Theory"
+    source: "Christopher Olah"
+    url: "https://colah.github.io/posts/2015-09-Visual-Information/"
+quiz:
+  - id: "prob-q1"
+    question: "Minimizing the cross-entropy $H(p, q) = -\\sum_x p(x) \\log q(x)$ between data distribution $p$ and model $q$ is equivalent to:"
+    choices:
+      - "Maximizing the entropy of $q$"
+      - "Maximum likelihood estimation of $q$ on samples from $p$"
+      - "Minimizing the variance of $q$"
+      - "Maximizing the mutual information $I(p; q)$"
+    answer: 1
+    explanation: "Cross-entropy decomposes as $H(p) + D_{KL}(p \\Vert q)$. Since $H(p)$ doesn't depend on parameters, minimizing cross-entropy minimizes KL — which is exactly maximum likelihood when $p$ is the empirical distribution."
+  - id: "prob-q2"
+    question: "Why is KL divergence $D_{KL}(p \\Vert q)$ asymmetric — i.e., $D_{KL}(p \\Vert q) \\ne D_{KL}(q \\Vert p)$ in general?"
+    choices:
+      - "It is a bug in the definition"
+      - "Because $\\log$ is asymmetric"
+      - "Because it measures the expected extra bits to encode samples from $p$ using a code optimized for $q$ — a directional comparison"
+      - "Because $p$ and $q$ live on different sample spaces"
+    answer: 2
+    explanation: "KL is a coding-theoretic quantity: how inefficient your $q$-optimized code is on real samples from $p$. The 'reference' distribution matters, so swapping $p$ and $q$ generally changes the answer — and which direction you optimize affects mode-seeking vs mode-covering behavior."
+  - id: "prob-q3"
+    question: "A model assigns probability $0.01$ to the correct class. What is its negative log-likelihood (in nats) for that example?"
+    choices:
+      - "$\\approx 0.01$"
+      - "$\\approx 4.6$"
+      - "$\\approx 100$"
+      - "$0$"
+    answer: 1
+    explanation: "$-\\ln 0.01 \\approx 4.605$. Cross-entropy loss is exactly this quantity averaged over a batch — confidently wrong predictions blow up logarithmically, which is why label smoothing and gradient clipping help."
+  - id: "prob-q4"
+    question: "What does the entropy $H(X)$ of a discrete random variable measure?"
+    choices:
+      - "The variance of $X$"
+      - "The minimum expected number of bits (or nats) needed to describe a sample from $X$"
+      - "The probability of the most likely outcome"
+      - "The number of distinct values $X$ can take"
+    answer: 1
+    explanation: "Shannon's source coding theorem: $H(X)$ is the optimal expected code length. Uniform distributions maximize entropy; deterministic ones have $H = 0$. This is why entropy regularization in RL encourages policies to keep options open."
+---
+
+If you only learn one piece of math beyond linear algebra for ML, learn the
+basics of probability and information theory. Loss functions, generative
+models, RL exploration bonuses, calibration, sampling — they are all
+information theory in different costumes.
+
+The remarkable thing is how few primitives you actually need. Three concepts —
+**likelihood, entropy, and KL divergence** — generate most of the field.
+
+## Why this matters
+
+Cross-entropy loss is maximum likelihood. Variational autoencoders optimize a
+KL-bounded ELBO. Diffusion models match score functions, which are gradients
+of log densities. RLHF's reward modeling is a Bradley–Terry likelihood. Even
+the temperature you set in `softmax` is a Lagrange multiplier on entropy.
+
+When you read a new ML paper and see something that looks like a derivation
+out of nowhere, nine times out of ten the author is just rewriting one of
+these three quantities.
+
+<Callout variant="insight" title="The unifying picture">
+A model is a distribution $q_\theta$. A dataset is samples from a true
+distribution $p$. Almost every ML objective is some form of "make $q_\theta$
+close to $p$ in KL" — what differs is how you measure it and what tractable
+upper bound you minimize.
+</Callout>
+
+## Random variables and expectation
+
+A random variable $X$ takes values $x \in \mathcal{X}$ with probability $p(x)$.
+The **expectation** is $\mathbb{E}_{x \sim p}[f(x)] = \sum_x p(x) f(x)$
+(or an integral in the continuous case). Almost every loss in ML is
+$\mathbb{E}_{x \sim p_\text{data}}[\ell(x; \theta)]$, estimated by the
+sample mean over a minibatch.
+
+Two distributions worth memorizing:
+
+- **Bernoulli$(p)$**: a single biased coin. Logistic regression's output.
+- **Categorical$(\boldsymbol{\pi})$**: a $K$-sided die with probabilities $\pi_k$.
+  The output of every classification head ever.
+
+## Entropy: how surprising is a distribution?
+
+The **Shannon entropy** of a discrete distribution $p$ is
+
+$$
+H(p) = -\sum_x p(x) \log p(x)
+$$
+
+It is the average information content (in nats if $\log$ is natural; bits if
+log base 2) of a sample. Uniform distributions are maximally entropic;
+delta functions have $H = 0$. Entropy bounds how well any code or model can
+compress samples from $p$ — Shannon's source coding theorem.
+
+In ML you'll see entropy as a *regularizer*: maximum-entropy RL adds
+$\beta H(\pi)$ to keep policies stochastic; label smoothing softens targets
+toward higher entropy to combat overconfidence.
+
+## KL divergence: distance between distributions
+
+$$
+D_{KL}(p \,\Vert\, q) = \sum_x p(x) \log \frac{p(x)}{q(x)} = \mathbb{E}_{x \sim p}\!\left[\log \frac{p(x)}{q(x)}\right]
+$$
+
+KL is non-negative ($\ge 0$, with equality iff $p = q$ almost everywhere) but
+not symmetric and not a metric. The asymmetry is *the* point: $D_{KL}(p \Vert q)$
+penalizes putting $q$-mass where there's no $p$-mass — "mode-covering". The
+reverse, $D_{KL}(q \Vert p)$, penalizes putting $q$-mass where there's no
+$p$-mass either, but in the opposite direction — "mode-seeking". VAEs
+minimize one direction; some GAN variants the other; this single sign choice
+explains a lot of qualitative differences in generative models.
+
+<PaperCard title="A Mathematical Theory of Communication" authors="Claude E. Shannon" year={1948} url="https://people.math.harvard.edu/~ctm/home/text/others/shannon/entropy/entropy.pdf" />
+
+## Cross-entropy = MLE
+
+Cross-entropy is
+
+$$
+H(p, q) = -\sum_x p(x) \log q(x) = H(p) + D_{KL}(p \,\Vert\, q)
+$$
+
+If $p$ is the empirical distribution (one-hot on the true label), then
+$H(p, q) = -\log q(y_\text{true})$, the **negative log-likelihood** of the
+correct class. Minimizing cross-entropy on a dataset is *exactly* maximum
+likelihood — they are the same algorithm written in different notation.
+
+```python
+import torch
+import torch.nn.functional as F
+
+logits = torch.randn(4, 10, requires_grad=True)   # (B, classes)
+target = torch.tensor([3, 1, 4, 1])
+
+# Cross-entropy = NLL on log-softmax. Same gradient, same number.
+ce = F.cross_entropy(logits, target)
+nll = F.nll_loss(F.log_softmax(logits, dim=-1), target)
+print(torch.allclose(ce, nll))   # True
+```
+
+## Likelihood, in one sentence
+
+Given data $\{x_i\}$ assumed iid from $p_\theta$, the **likelihood** is
+$L(\theta) = \prod_i p_\theta(x_i)$ and the **log-likelihood** is
+$\sum_i \log p_\theta(x_i)$. Maximum likelihood estimation picks the $\theta$
+that makes the data most probable. Most modern objectives are either
+exact MLE (autoregressive LMs), a tractable lower bound on MLE (VAEs' ELBO),
+or a KL-equivalent surrogate (score matching, contrastive divergence).
+
+<Callout variant="info" title="Three formulas to keep in your pocket">
+1. Cross-entropy decomposition: $H(p, q) = H(p) + D_{KL}(p \Vert q)$.
+2. Mutual information: $I(X; Y) = D_{KL}(p_{XY} \Vert p_X p_Y)$ — how far joint is from independent.
+3. ELBO: $\log p(x) \ge \mathbb{E}_q[\log p(x, z)] - \mathbb{E}_q[\log q(z)]$.
+</Callout>
+
+## What to do next
+
+Read MacKay's *Information Theory, Inference, and Learning Algorithms* —
+chapters 2, 4, and 22 in particular. It is free, beautifully written, and
+ends up being the prerequisite for variational inference, MDL,
+compression-based generalization arguments, and a half-dozen modern papers.
+
+Once these three quantities feel automatic, ELBO derivations stop looking
+like magic and start looking like bookkeeping.

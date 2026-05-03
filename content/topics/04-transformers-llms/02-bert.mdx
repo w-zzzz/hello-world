@@ -1,0 +1,177 @@
+---
+slug: "04-transformers-llms/02-bert"
+part: "04-transformers-llms"
+partTitle: "Transformers & LLMs"
+partIndex: 4
+topicIndex: 2
+title: "BERT & masked language models"
+hook: "Bidirectional context, MLM, and the encoder era."
+estMinutes: 16
+difficulty: 3
+prereqs: ["03-deep-learning/04-attention"]
+hasHeroViz: false
+researchers: ["devlin"]
+papers:
+  - title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    authors: "Devlin, Chang, Lee, Toutanova"
+    year: 2018
+    url: "https://arxiv.org/abs/1810.04805"
+  - title: "RoBERTa: A Robustly Optimized BERT Pretraining Approach"
+    authors: "Liu, Ott, Goyal, Du, Joshi, Chen, Levy, Lewis, Zettlemoyer, Stoyanov"
+    year: 2019
+    url: "https://arxiv.org/abs/1907.11692"
+  - title: "DeBERTa: Decoding-enhanced BERT with Disentangled Attention"
+    authors: "He, Liu, Gao, Chen"
+    year: 2020
+    url: "https://arxiv.org/abs/2006.03654"
+hfResources:
+  - kind: "model"
+    title: "google-bert/bert-base-uncased"
+    url: "https://huggingface.co/google-bert/bert-base-uncased"
+  - kind: "model"
+    title: "answerdotai/ModernBERT-base"
+    url: "https://huggingface.co/answerdotai/ModernBERT-base"
+  - kind: "course"
+    title: "Hugging Face — Fine-tuning BERT for classification"
+    url: "https://huggingface.co/learn/llm-course/chapter3"
+freeResources:
+  - kind: "blog"
+    title: "The Illustrated BERT, ELMo, and co."
+    source: "Jay Alammar"
+    url: "https://jalammar.github.io/illustrated-bert/"
+  - kind: "blog"
+    title: "ModernBERT: Smarter, Better, Faster, Longer"
+    source: "Answer.AI / LightOn"
+    url: "https://huggingface.co/blog/modernbert"
+quiz:
+  - id: "bert-q1"
+    question: "What is the masked language modeling (MLM) objective?"
+    choices:
+      - "Predict the next token given previous tokens."
+      - "Replace ~15% of tokens with [MASK] and predict the originals using bidirectional context."
+      - "Predict whether two sentences are similar."
+      - "Reconstruct an image from its patches."
+    answer: 1
+    explanation: "BERT randomly masks ~15% of tokens and trains the encoder to reconstruct them using both left and right context. This bidirectionality is what next-token prediction explicitly forbids — and it is why BERT excelled at understanding tasks (classification, NER) but cannot generate fluently."
+  - id: "bert-q2"
+    question: "Why can't BERT generate text fluently?"
+    choices:
+      - "Its tokenizer is too small."
+      - "It has no causal mask, so generation would require sampling from a non-autoregressive distribution; MLM is a reconstruction objective, not a sequential one."
+      - "It uses LayerNorm in the wrong place."
+      - "It was only trained on Wikipedia."
+    answer: 1
+    explanation: "BERT models $p(x_{\\text{masked}} | x_{\\text{visible}})$, not $p(x_t | x_{<t})$. The two distributions are different and the former does not factorize into a sampling procedure that produces coherent long text. Decoder-only LMs have a cleaner generative story."
+  - id: "bert-q3"
+    question: "Which of the following is closest to the modern role of encoder-only models?"
+    choices:
+      - "They have been entirely replaced by GPT-style models."
+      - "They remain dominant for retrieval, classification, and embedding tasks where you need a single dense vector per input."
+      - "They are only used in academia."
+      - "They are used exclusively for image tasks."
+    answer: 1
+    explanation: "Encoder-only models like BERT, RoBERTa, and ModernBERT (2024) still beat decoder-only LMs at producing strong contextual embeddings cheaply. Almost every embedding model on MTEB is encoder-only. Generative tasks went to decoders; representational tasks stayed with encoders."
+---
+
+Before GPT-3 ate the world, the dominant Transformer paradigm was BERT.
+2018 to roughly 2021 was the encoder era: every NLP leaderboard was a fight
+between BERT, RoBERTa, ALBERT, ELECTRA, DeBERTa. Then decoder-only LLMs
+absorbed most of the public attention. But encoders never went away — they
+just specialized.
+
+If you do retrieval, classification, named-entity recognition, or any task
+where you want a single dense vector per input, you are probably still using
+a BERT descendant. Understanding *why* BERT and GPT diverged tells you
+something deep about what self-supervision can and cannot extract.
+
+## The MLM objective
+
+BERT is trained to reconstruct masked tokens:
+
+$$
+\mathcal{L}_{\text{MLM}} = -\mathbb{E}_{x, M} \sum_{i \in M} \log p_\theta(x_i \mid x_{\setminus M})
+$$
+
+where $M$ is a random subset of positions (typically 15%) replaced by a
+special `[MASK]` token. The crucial difference from GPT: when predicting
+$x_i$, the model can attend to *all* other positions, including those after
+$i$. The attention is bidirectional.
+
+This buys representational power. The contextual embedding of "bank" in *"I
+sat on the river bank"* genuinely incorporates "river" — both forward and
+backward influence. Decoder-only models can recover this through depth, but
+encoders get it for free.
+
+<Callout variant="info" title="Why exactly 15%?">
+The 15% number is a lever: too low and you get little supervision per
+example; too high and you destroy the context the model needs to reconstruct
+the targets. The original BERT also reserves 10% of masked positions to
+*not* be replaced and 10% to be replaced by a random token — small details
+that subsequent models (RoBERTa, DeBERTa) tweaked or removed.
+</Callout>
+
+## Architecture: the same stack, used differently
+
+A BERT block is structurally identical to a GPT block — multi-head
+self-attention plus an MLP, with residuals and LayerNorm — minus the causal
+mask. The model emits a contextual vector for every token; for downstream
+tasks you typically:
+
+- **Classify**: take the `[CLS]` token's final hidden state, feed to a linear classifier.
+- **Tag** (NER, POS): apply a per-token head to every output position.
+- **Embed**: mean-pool the token vectors and use the result as a sentence representation.
+
+```python
+from transformers import AutoTokenizer, AutoModel
+import torch
+
+tok = AutoTokenizer.from_pretrained("google-bert/bert-base-uncased")
+model = AutoModel.from_pretrained("google-bert/bert-base-uncased")
+
+inputs = tok("The river bank was muddy.", return_tensors="pt")
+with torch.no_grad():
+    out = model(**inputs).last_hidden_state  # (1, T, 768)
+sentence_emb = out.mean(dim=1)               # mean-pool to (1, 768)
+```
+
+That sentence embedding lives in a 768-dim space where semantically similar
+sentences are nearby. This is the foundation of vector search and most
+modern RAG pipelines.
+
+## What BERT can't do, and why decoder-only won
+
+BERT cannot generate fluent text. The MLM objective trains $p(x_i \mid x_{\setminus i})$
+in isolation — it does not factorize into a coherent sampling procedure for
+producing arbitrary new sequences. People have tried: iterative refinement,
+non-autoregressive generation, blockwise denoising. None of it matched the
+quality of plain autoregressive decoding.
+
+Decoder-only models, by contrast, *are* a sampling procedure. The same model
+that scores a sequence can produce one. Once GPT-3 showed that scaling a
+decoder gets you understanding *for free*, the asymmetry became fatal: why
+maintain two architectures when one covers both?
+
+<PaperCard title="BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding" authors="Devlin, Chang, Lee, Toutanova" year={2018} url="https://arxiv.org/abs/1810.04805" />
+
+## The 2024 encoder revival
+
+In late 2024, Answer.AI and LightOn released **ModernBERT** — a 22-layer
+encoder with a 8192-token context, RoPE, GeGLU, and Flash Attention. It
+beat the original BERT by huge margins on retrieval, classification, and
+code understanding while running faster on modern hardware. The lesson:
+encoders had been frozen in 2019 while decoders absorbed every architectural
+improvement. Bring those improvements back to encoders and they are still
+the right tool for "produce a vector" tasks.
+
+If your application is "given an input, produce a label, a score, or an
+embedding" — not "produce more text" — you almost certainly want an encoder.
+The decoder hype obscured this, but the production ML world quietly never
+left.
+
+## Practical takeaways
+
+- For **classification, NER, retrieval, embeddings**: use BERT / RoBERTa / DeBERTa / ModernBERT.
+- For **generation, chat, agents, code**: use decoder-only.
+- For **embedding-quality leaderboards** (MTEB), encoder backbones still dominate, often paired with contrastive fine-tuning.
+
+The encoder era ended as the dominant paradigm, not as a useful one.

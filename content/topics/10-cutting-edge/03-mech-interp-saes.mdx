@@ -1,0 +1,288 @@
+---
+slug: "10-cutting-edge/03-mech-interp-saes"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 3
+title: "Mechanistic interpretability & SAEs"
+hook: "Reading the mind of a neural network."
+estMinutes: 20
+difficulty: 5
+prereqs: ["04-transformers-llms/01-gpt"]
+hasHeroViz: false
+researchers: ["olah", "nanda"]
+papers:
+  - title: "Toy Models of Superposition"
+    authors: "Elhage et al. (Anthropic)"
+    year: 2022
+    url: "https://transformer-circuits.pub/2022/toy_model/index.html"
+  - title: "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning"
+    authors: "Bricken et al. (Anthropic)"
+    year: 2023
+    url: "https://transformer-circuits.pub/2023/monosemantic-features/index.html"
+  - title: "Scaling Monosemanticity: Extracting Interpretable Features from Claude 3 Sonnet"
+    authors: "Templeton et al. (Anthropic)"
+    year: 2024
+    url: "https://transformer-circuits.pub/2024/scaling-monosemanticity/index.html"
+  - title: "A Mathematical Framework for Transformer Circuits"
+    authors: "Elhage et al. (Anthropic)"
+    year: 2021
+    url: "https://transformer-circuits.pub/2021/framework/index.html"
+hfResources:
+  - kind: "library"
+    title: "TransformerLens"
+    url: "https://github.com/TransformerLensOrg/TransformerLens"
+  - kind: "library"
+    title: "SAELens"
+    url: "https://github.com/jbloomAus/SAELens"
+  - kind: "model"
+    title: "Gemma Scope SAEs"
+    url: "https://huggingface.co/google/gemma-scope"
+freeResources:
+  - kind: "blog"
+    title: "Neuronpedia — Browse SAE features"
+    source: "Neuronpedia"
+    url: "https://www.neuronpedia.org/"
+  - kind: "blog"
+    title: "An Interpretability Illustrated"
+    source: "Neel Nanda"
+    url: "https://www.neelnanda.io/mechanistic-interpretability"
+  - kind: "course"
+    title: "ARENA Mech-Interp Curriculum"
+    source: "ARENA"
+    url: "https://arena3-chapter1-transformer-interp.streamlit.app/"
+quiz:
+  - id: "mi-q1"
+    question: "What is 'superposition' in mechanistic interpretability?"
+    choices:
+      - "Quantum effects in transformers."
+      - "Networks representing more features than they have neurons by encoding them as linear combinations in shared neuron directions, accepting interference."
+      - "Stacking layers."
+      - "Multi-head attention."
+    answer: 1
+    explanation: "When the world has many useful sparse features and the model has fewer neurons, optimal use of capacity is to overload neurons — each feature gets a direction, multiple features share neurons, and the model tolerates the cross-talk because it pays off on average."
+  - id: "mi-q2"
+    question: "Why is a sparse autoencoder a natural tool for un-mixing superposition?"
+    choices:
+      - "It compresses data."
+      - "It learns an over-complete dictionary so each input activation is a sparse combination of dictionary atoms; under sparsity, atoms tend to align with monosemantic directions."
+      - "It is easier to train."
+      - "It uses less memory."
+    answer: 1
+    explanation: "If features are sparse and roughly orthogonal in superposition, sparse coding (with $L_1$ or top-$k$) recovers them up to permutation. The SAE's hidden units, when sparse enough, light up for individual interpretable concepts."
+  - id: "mi-q3"
+    question: "An induction head is a circuit that:"
+    choices:
+      - "Generates random text."
+      - "Detects 'A B ... A' patterns in context and predicts B again — a primitive in-context learning mechanism implemented by a previous-token head feeding into a 'match-and-copy' head."
+      - "Trains the model."
+      - "Adds positional information."
+    answer: 1
+    explanation: "Discovered by Olsson et al., induction heads emerge during training right when in-context learning ability sharply improves. They are concrete evidence that ICL is implemented by identifiable, mechanistic circuitry."
+  - id: "mi-q4"
+    question: "What does 'feature steering' mean in the context of SAEs?"
+    choices:
+      - "Reordering layers."
+      - "Adding (or subtracting) a scaled SAE feature direction to the residual stream at inference time, causally biasing the model toward (or against) that concept."
+      - "Restarting training."
+      - "Pruning weights."
+    answer: 1
+    explanation: "Anthropic's Golden Gate Claude demonstration clamped a 'Golden Gate' feature high. The model's outputs reflected the clamp, providing causal evidence that the feature is a real internal variable rather than a correlational artifact."
+---
+
+For most of deep learning's history we have known *what* networks do —
+they generalize, they hallucinate, they refuse — without knowing *how*
+they do it. Mechanistic interpretability is the bet that we can change
+this: that neural networks are not inscrutable, that they implement
+identifiable algorithms in identifiable parts of their weights, and that
+those algorithms are extractable.
+
+This is no longer purely academic. Anthropic, OpenAI, and DeepMind have
+all built dedicated interpretability teams; SAE-extracted features are
+being used in production for steering and debugging; "alignment" as a
+research program is increasingly inseparable from interpretability.
+
+## Why this matters
+
+Three reasons it matters now and will matter more.
+
+1. **Safety**. The alternative to understanding a model is hoping it
+   behaves. As models get more capable, hope is not a strategy.
+2. **Debugging**. Interpretability is finally producing tools that
+   localize bugs (a head that does the wrong thing, a feature that fires
+   on adversarial inputs).
+3. **Science**. After decades of reproducing brain-imaging-grade
+   correlational claims about what networks "represent," circuits-style
+   work is producing causal, mechanistic explanations.
+
+## The picture: residual stream + circuits
+
+The Anthropic mathematical framework recasts a Transformer as a
+**residual stream** — a high-dimensional vector that every block reads
+from, modifies, and writes back into. Heads and MLPs are *additive
+edits*. The residual stream is the medium in which features live; heads
+and MLPs are the operations that move and transform them.
+
+Two kinds of object live there:
+
+- **Features**: directions in the residual stream that correspond to
+  human-meaningful concepts ("Golden Gate Bridge", "Python identifier",
+  "negation").
+- **Circuits**: subgraphs of attention heads and MLP neurons that
+  implement a specific algorithm (induction, indirect object identification,
+  modular addition).
+
+Mech interp's empirical bet is that *most* of what a model does
+decomposes into a manageable number of features and circuits.
+
+## Superposition: the core obstacle
+
+Why isn't this trivial? Because models do not store one feature per
+neuron. They cannot — they have far more concepts to represent than they
+have neurons in any layer.
+
+The **superposition hypothesis** (Elhage et al., 2022) explains why a
+single neuron lights up for unrelated concepts ("polysemanticity"): if
+features are *sparse* (most are off most of the time), it is information-
+theoretically efficient to pack many of them into the same neuron at the
+cost of occasional interference. The geometry is roughly that the network
+embeds a high-dimensional sparse code into the smaller available
+dimension.
+
+<Callout variant="insight" title="Why polysemantic neurons are not a bug">
+A network with $d$ neurons that needs to represent $D \gg d$ features can
+still do it cheaply if features rarely co-occur: assign each one an
+almost-orthogonal direction in $d$-space and accept rare collisions. The
+remarkable fact is that gradient descent finds these arrangements without
+being told to.
+</Callout>
+
+## Sparse autoencoders: un-mixing superposition
+
+If features are linear combinations in superposition, you can try to
+recover them. Train a wide, sparse autoencoder on the residual stream
+activations:
+
+$$
+z = \mathrm{ReLU}(W_e (x - b) + b_e), \qquad \hat x = W_d z + b_d
+$$
+
+with a reconstruction loss plus a sparsity penalty (typically $L_1$ on
+$z$ or top-$k$). The trick is that the SAE is **over-complete**: $z$ has
+many more dimensions than $x$. Sparsity forces $z$ to be a dictionary
+expansion: each input activation is the sum of a few "atoms" in $W_d$.
+
+Under the superposition hypothesis, those atoms tend to be the underlying
+features. Empirically this works astonishingly well: SAEs trained on a
+real LLM's residual stream produce thousands to millions of features
+that humans can label — concepts, syntactic patterns, places, characters,
+sentiments.
+
+```python
+import torch.nn as nn, torch.nn.functional as F
+
+class SparseAutoencoder(nn.Module):
+    def __init__(self, d_model, d_dict, k=64):
+        super().__init__()
+        self.W_e = nn.Linear(d_model, d_dict, bias=False)
+        self.W_d = nn.Linear(d_dict, d_model, bias=False)
+        self.b_pre = nn.Parameter(torch.zeros(d_model))
+        self.k = k
+
+    def forward(self, x):
+        z = self.W_e(x - self.b_pre)
+        # Top-k SAE: keep the k largest pre-activations, zero the rest
+        topk_vals, topk_idx = z.topk(self.k, dim=-1)
+        z_sparse = torch.zeros_like(z).scatter_(-1, topk_idx, F.relu(topk_vals))
+        x_hat = self.W_d(z_sparse) + self.b_pre
+        return x_hat, z_sparse
+```
+
+Anthropic's *Scaling Monosemanticity* paper extracted ~34M features from
+Claude 3 Sonnet's middle layer. They include features that fire for
+specific code idioms, specific entities, specific affective tones — and
+several with concerning behavior (deception-related, sycophancy-related)
+that Anthropic could *causally* steer.
+
+<PaperCard
+  title="Towards Monosemanticity: Decomposing Language Models With Dictionary Learning"
+  authors="Bricken et al. (Anthropic)"
+  year={2023}
+  url="https://transformer-circuits.pub/2023/monosemantic-features/index.html"
+/>
+
+## Circuits: where features connect
+
+Features by themselves are nouns. Circuits are verbs. A celebrated
+example:
+
+- **Indirect object identification (IOI)**: the model resolves "When
+  Mary and John went to the store, John gave a drink to ___" with
+  "Mary" via a multi-head circuit involving previous-token heads,
+  duplicate-token heads, name-mover heads, and inhibitory heads.
+
+The Wang et al. 2022 paper reverse-engineered this circuit in GPT-2
+small: every step is named, located, and ablated. Removing the circuit
+breaks the behavior; the prediction is mechanistic, not statistical.
+
+A second canonical circuit: **induction heads**. A previous-token head
+writes the current token into the residual stream of the next position;
+a downstream head matches that signature against the current key, and
+copies the token that followed it last time. Together they implement
+"if you saw `A B ... A`, predict `B`." Olsson et al. showed that
+induction heads emerge sharply during training at the same moment ICL
+ability emerges. Strong evidence that ICL has identifiable mechanism.
+
+## Causal interventions: not just looking
+
+A defining commitment of mech interp is that correlation is not enough.
+The standard tools are:
+
+- **Activation patching**: replace a head's output (or a feature's
+  activation) with the corresponding value from a different prompt.
+  Measure how the prediction changes. Localizes which components are
+  causally responsible for which behavior.
+- **Feature steering**: add $\alpha \cdot \mathbf{f}$ to the residual
+  stream and see what happens. Anthropic's Golden Gate Claude clamped a
+  single feature; the model insisted on bringing up the Golden Gate
+  Bridge in nearly every response.
+- **Path patching**: a refinement that isolates *which* downstream
+  computation a given component's output flows into.
+
+<Callout variant="warning" title="Interpretability illusions">
+Linear probes and naive activation analyses produce explanations that
+seem plausible but fail under intervention. If your method only tells
+you "this neuron correlates with X," you don't know whether the network
+*uses* X. The causal-intervention move is what separates mech interp
+from older representation analysis.
+</Callout>
+
+## Where this is going
+
+- **SAEs at scale**: Gemma Scope (DeepMind) and others have released
+  per-layer SAEs trained on frontier-class models. Browsing these on
+  Neuronpedia is a fast way to see the texture.
+- **Cross-coders and transcoders**: extending SAEs to capture the
+  *transformations* features undergo, not just their resting states.
+- **Automating interpretability**: using LLMs to label features at
+  scale. Quality is improving but human verification still matters.
+- **Alignment applications**: deception detection, refusal-circuit
+  analysis, jailbreak diagnostics — production interpretability is
+  starting to ship.
+
+## What to read next
+
+Order matters here.
+
+1. *A Mathematical Framework for Transformer Circuits* — gives you the
+   residual-stream and head-decomposition vocabulary.
+2. *Toy Models of Superposition* — the conceptual bedrock for SAEs.
+3. *Towards Monosemanticity* and *Scaling Monosemanticity* — current
+   state of the art for SAE-based feature extraction.
+4. ARENA's mech-interp curriculum — hands-on, with TransformerLens.
+
+If you can extract a feature with an SAE, find a circuit that uses it,
+and verify the causal role with patching, you have done original
+research-quality mechanistic interpretability. The bar is not where
+people think it is — there is more low-hanging fruit than people
+working on it.

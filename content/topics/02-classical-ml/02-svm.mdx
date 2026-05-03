@@ -1,0 +1,212 @@
+---
+slug: "02-classical-ml/02-svm"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 2
+title: "Support vector machines"
+hook: "Maximum margins and the kernel trick."
+estMinutes: 16
+difficulty: 3
+prereqs: ["02-classical-ml/01-regression"]
+hasHeroViz: false
+researchers: ["vapnik", "scholkopf"]
+papers:
+  - title: "Support-vector networks"
+    authors: "Cortes, Vapnik"
+    year: 1995
+    url: "https://link.springer.com/article/10.1007/BF00994018"
+  - title: "A Tutorial on Support Vector Machines for Pattern Recognition"
+    authors: "Christopher J.C. Burges"
+    year: 1998
+    url: "https://www.di.ens.fr/~mallat/papiers/svmtutorial.pdf"
+hfResources:
+  - kind: "doc"
+    title: "scikit-learn — Support Vector Machines"
+    url: "https://scikit-learn.org/stable/modules/svm.html"
+freeResources:
+  - kind: "course"
+    title: "Stanford CS229 — SVM lecture notes"
+    url: "https://cs229.stanford.edu/notes2022fall/main_notes.pdf"
+  - kind: "book"
+    title: "Learning with Kernels"
+    source: "Schölkopf, Smola"
+    url: "https://mitpress.mit.edu/9780262536578/learning-with-kernels/"
+  - kind: "video"
+    title: "MIT 6.034 — Support Vector Machines"
+    source: "Patrick Winston"
+    url: "https://www.youtube.com/watch?v=_PwhiWxHK8o"
+quiz:
+  - id: "svm-q1"
+    question: "What does an SVM maximize?"
+    choices:
+      - "The classification accuracy on training data"
+      - "The margin — the distance from the decision boundary to the nearest training point"
+      - "The likelihood of the data"
+      - "The entropy of the predictions"
+    answer: 1
+    explanation: "The hard-margin SVM finds the hyperplane with the largest gap to the nearest example of either class. Larger margin → better generalization bounds (a classical statistical learning result). Soft-margin SVMs trade off margin against slack."
+  - id: "svm-q2"
+    question: "The kernel trick lets SVMs:"
+    choices:
+      - "Train without computing gradients"
+      - "Operate in a high-dimensional feature space without ever computing the feature vectors explicitly, by using $K(x, x') = \\langle \\phi(x), \\phi(x') \\rangle$"
+      - "Avoid overfitting entirely"
+      - "Handle missing data automatically"
+    answer: 1
+    explanation: "The dual SVM only ever uses inner products $\\langle x_i, x_j \\rangle$. Replace with a kernel $K(x_i, x_j)$ and you implicitly work in $\\phi$'s feature space — possibly infinite-dimensional, as with the RBF kernel — without enumerating it."
+  - id: "svm-q3"
+    question: "In the soft-margin SVM, the regularization parameter $C$ controls:"
+    choices:
+      - "The kernel bandwidth"
+      - "The trade-off between margin width and training violations (slack)"
+      - "The dimension of the feature space"
+      - "The number of support vectors"
+    answer: 1
+    explanation: "Large $C$ heavily penalizes margin violations → narrow margin, low training error, higher variance. Small $C$ allows more violations → wider margin, more bias, better generalization on noisy data. It is the classical regularization knob."
+  - id: "svm-q4"
+    question: "Which examples actually determine the SVM decision boundary?"
+    choices:
+      - "All training points equally"
+      - "Only the support vectors — points on or inside the margin"
+      - "A random subset chosen by SGD"
+      - "Only the centroids of each class"
+    answer: 1
+    explanation: "In the dual solution, most $\\alpha_i = 0$. Only a few examples — the support vectors — have $\\alpha_i > 0$ and influence the boundary. This is also why SVM inference scales with the number of support vectors, not the dataset size."
+---
+
+For a decade, the support vector machine was the model to beat on almost
+every supervised learning benchmark. Deep learning eventually displaced it
+on perception tasks, but SVMs remain a beautifully principled algorithm —
+and the ideas behind them (margin, duality, kernels) keep showing up in
+modern ML, from contrastive learning to neural tangent kernels.
+
+If you understand SVMs, you understand a lot of *why* deep learning works
+when it does.
+
+## Why this matters
+
+Three reasons SVMs still earn space in your head:
+
+1. **Margin maximization** is the cleanest formal connection between
+   geometry and generalization. Vapnik's classical bounds say wider margins
+   imply tighter test error — this idea echoes through modern theory
+   (NTK, double descent, flat minima).
+2. **The kernel trick** is the cleanest example of "compute in an implicit
+   feature space" — an idea that powers attention (a learned, data-dependent
+   kernel), Gaussian processes, and many graph learning methods.
+3. SVMs are still competitive on small, tabular, well-featurized datasets.
+   Deep learning hasn't won everywhere.
+
+## Maximum margin classifier
+
+For linearly separable data with labels $y_i \in \{-1, +1\}$, an SVM finds
+the hyperplane $w^\top x + b = 0$ that maximizes the **margin** — the
+perpendicular distance to the closest training point. Formally:
+
+$$
+\min_{w, b} \tfrac{1}{2} \|w\|^2 \quad \text{s.t.} \quad y_i(w^\top x_i + b) \ge 1 \;\;\forall i
+$$
+
+The margin is $1 / \|w\|$, so minimizing $\|w\|^2$ maximizes the margin.
+This is a convex quadratic program; the global optimum is unique.
+
+The constraint $y_i(w^\top x_i + b) \ge 1$ enforces that all points sit on
+the correct side of the margin. Points satisfying it with equality — the
+ones touching the margin — are the **support vectors**. Everything else has
+zero influence on the solution.
+
+<Callout variant="insight" title="Why the margin matters statistically">
+A larger margin means small input perturbations cannot flip the
+classification. This robustness translates into tighter generalization
+bounds via the VC dimension or, more modernly, Rademacher complexity. It is
+the precursor to flat-minima arguments in deep learning.
+</Callout>
+
+## Soft-margin SVM
+
+Real data isn't linearly separable. Add slack variables $\xi_i \ge 0$:
+
+$$
+\min_{w, b, \xi} \tfrac{1}{2} \|w\|^2 + C \sum_i \xi_i \quad \text{s.t.} \quad y_i(w^\top x_i + b) \ge 1 - \xi_i
+$$
+
+$C$ is the regularization knob. Small $C$ favors wider margins and tolerates
+more misclassification; large $C$ pushes toward zero training error at the
+cost of margin width. Substituting the optimal $\xi_i = \max(0, 1 - y_i (w^\top x_i + b))$
+yields the **hinge loss** formulation:
+
+$$
+\min_{w, b} \;\; \frac{1}{n} \sum_i \max(0, 1 - y_i(w^\top x_i + b)) + \frac{\lambda}{2}\|w\|^2
+$$
+
+which makes SVM training look like any other gradient-based learning
+algorithm — and connects it to L2-regularized linear models.
+
+## The dual and the kernel trick
+
+Lagrangian duality of the SVM QP yields:
+
+$$
+\max_\alpha \; \sum_i \alpha_i - \tfrac{1}{2} \sum_{i,j} \alpha_i \alpha_j y_i y_j \langle x_i, x_j \rangle \;\; \text{s.t.}\; 0 \le \alpha_i \le C, \; \sum_i \alpha_i y_i = 0
+$$
+
+The dual depends on the data only through inner products $\langle x_i, x_j \rangle$.
+Replace the inner product with a **kernel** $K(x_i, x_j) = \langle \phi(x_i), \phi(x_j) \rangle$
+and you operate in the feature space defined by $\phi$ without ever
+materializing $\phi(x)$.
+
+Common kernels:
+
+- **Linear**: $K(x, x') = x^\top x'$.
+- **Polynomial**: $K(x, x') = (x^\top x' + c)^d$.
+- **RBF (Gaussian)**: $K(x, x') = \exp(-\gamma \|x - x'\|^2)$ — implicit
+  feature space is *infinite*-dimensional.
+
+```python
+from sklearn.svm import SVC
+from sklearn.datasets import make_moons
+
+X, y = make_moons(n_samples=400, noise=0.2, random_state=0)
+
+# Linear kernel will fail — the data isn't linearly separable.
+linear = SVC(kernel="linear", C=1.0).fit(X, y)
+rbf    = SVC(kernel="rbf", C=1.0, gamma=1.0).fit(X, y)
+
+print("linear acc:", linear.score(X, y))   # ~0.85
+print("rbf acc:   ", rbf.score(X, y))      # ~0.99
+```
+
+The RBF kernel turns a linearly inseparable two-moons dataset into something
+trivially separable in feature space. You never see the feature space; the
+kernel handles all of it.
+
+<PaperCard title="Support-vector networks" authors="Cortes, Vapnik" year={1995} url="https://link.springer.com/article/10.1007/BF00994018" />
+
+## Why deep learning displaced SVMs (and where SVMs still win)
+
+On raw perception data — images, audio, text — feature engineering matters
+more than the classifier on top. SVMs assumed someone else had done that
+work; deep nets learn the features end-to-end. That's the whole story of
+2012-onward.
+
+But SVMs still win on:
+
+- Small datasets (tens to thousands of examples) with thoughtful features.
+- High-dimensional sparse data (text bag-of-words, kernelized).
+- Problems where calibrated probabilities matter less than a clean decision
+  boundary.
+
+<Callout variant="info" title="The lasting idea">
+Attention's $\mathrm{softmax}(QK^\top)$ is, structurally, a *learned,
+data-dependent kernel* applied to a value matrix. Modern Transformers are
+the kernel trick taken seriously: instead of fixing $K$ a priori, you learn
+the projections $W_Q, W_K$ that define it.
+</Callout>
+
+## What to do next
+
+Skim Burges' 1998 SVM tutorial — still one of the best-written technical
+papers in ML. Then implement a linear SVM with hinge loss and SGD in 30
+lines, and compare against sklearn on a small dataset. The geometry will
+stick once you see it.

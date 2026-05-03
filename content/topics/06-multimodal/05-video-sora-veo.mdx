@@ -1,0 +1,196 @@
+---
+slug: "06-multimodal/05-video-sora-veo"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 5
+title: "Video generation: Sora, Veo, Gen-3"
+hook: "Diffusion in space and time."
+estMinutes: 14
+difficulty: 3
+prereqs: ["06-multimodal/03-diffusion-ddpm-sd"]
+hasHeroViz: false
+researchers: []
+papers:
+  - title: "Video generation models as world simulators (Sora technical report)"
+    authors: "OpenAI"
+    year: 2024
+    url: "https://openai.com/index/video-generation-models-as-world-simulators/"
+  - title: "Veo 3 — Generating video with native audio"
+    authors: "Google DeepMind"
+    year: 2025
+    url: "https://deepmind.google/technologies/veo/"
+  - title: "Movie Gen: A Cast of Media Foundation Models"
+    authors: "Meta AI"
+    year: 2024
+    url: "https://ai.meta.com/research/movie-gen/"
+  - title: "Scalable Diffusion Models with Transformers (DiT)"
+    authors: "Peebles, Xie"
+    year: 2022
+    url: "https://arxiv.org/abs/2212.09748"
+hfResources:
+  - kind: "model"
+    title: "tencent/HunyuanVideo"
+    url: "https://huggingface.co/tencent/HunyuanVideo"
+  - kind: "model"
+    title: "genmo/mochi-1-preview"
+    url: "https://huggingface.co/genmo/mochi-1-preview"
+  - kind: "model"
+    title: "THUDM/CogVideoX-5b"
+    url: "https://huggingface.co/THUDM/CogVideoX-5b"
+freeResources:
+  - kind: "blog"
+    title: "Sora technical report"
+    source: "OpenAI"
+    url: "https://openai.com/index/video-generation-models-as-world-simulators/"
+  - kind: "blog"
+    title: "Open-Sora Plan: Open-Source Large Video Generation Model"
+    source: "PKU-YuanGroup"
+    url: "https://github.com/PKU-YuanGroup/Open-Sora-Plan"
+quiz:
+  - id: "video-q1"
+    question: "What is a *spacetime patch* in Sora-style video models?"
+    choices:
+      - "A 2D image patch."
+      - "A small 3D cube of pixels (e.g. 2 frames × 16×16 pixels) compressed by a video VAE into a token, so the model treats video as a sequence of tokens in space *and* time."
+      - "A bug fix."
+      - "A type of optical flow."
+    answer: 1
+    explanation: "Sora's central design choice: instead of treating video as a stack of images, compress short spacetime cubes into latent tokens with a video autoencoder. The diffusion Transformer then operates on a flat sequence of these patches, generalizing image DiTs to time."
+  - id: "video-q2"
+    question: "Why is a video VAE essential for high-resolution video generation?"
+    choices:
+      - "To save bandwidth."
+      - "Raw video has enormous redundancy (frame-to-frame similarity); a video VAE compresses by ~4× spatially and 4–8× temporally, making diffusion in latent space tractable."
+      - "It is required by the Transformer."
+      - "It enables RLHF."
+    answer: 1
+    explanation: "A 5-second 1080p clip at 24fps is ~120 frames × ~6M pixels — pixel-space diffusion is hopeless. Causal 3D VAEs compress this 30-100× while keeping perceptual quality. Almost every modern video model (Sora, Veo, HunyuanVideo, Mochi) uses one."
+  - id: "video-q3"
+    question: "What does Veo 3 (May 2025) add over earlier video models?"
+    choices:
+      - "Higher FPS only."
+      - "Native synchronized audio generation — the model produces video and aligned audio (dialogue, ambient sound, effects) in one pass, not as separate post-processing."
+      - "Just a bigger model."
+      - "Real-time generation."
+    answer: 1
+    explanation: "Veo 3 was the first widely deployed model to generate video and audio jointly from a single text prompt, with synchronized lip sync and ambient sound. This is a meaningful step toward 'video as a complete medium' rather than 'silent clip + sound design.'"
+---
+
+Video generation went from "amusing 2-second loops" to "minute-long
+photorealistic clips with audio" in roughly 18 months, and the architectural
+recipe stabilized faster than anyone expected. Sora (announced February
+2024), Runway Gen-3 Alpha, Kling, Luma Dream Machine, Pika, Veo 2, Veo 3,
+Meta Movie Gen, HunyuanVideo, Mochi, CogVideoX — all use variants of the
+same core pattern: **a video VAE compresses spacetime into latent patches,
+and a diffusion Transformer denoises them**.
+
+This module is short because the core idea is small. The interesting
+content is in what the move from images to video forces you to confront.
+
+## Spacetime patches: video as a token sequence
+
+The cleanest framing comes from Sora's technical report. A video is a
+3D tensor — height × width × time, plus channels. Cut it into small 3D
+cubes (e.g., 2 consecutive frames × 16 × 16 pixels), pass each through a
+*causal 3D VAE encoder*, and you get a sequence of latent **spacetime
+patches**. Flatten to a 1D sequence and you have a token stream the same
+shape a Transformer expects.
+
+The DiT then denoises this token stream. Conditioning (text prompts,
+sometimes images, sometimes audio) enters via cross-attention or via
+tokens prepended to the sequence. The recipe is essentially "Stable
+Diffusion 3, but now your tokens are spacetime cubes."
+
+Two consequences fall out of this design:
+
+1. **Variable resolution and duration**. Because the model sees a sequence
+   of patches, you can train on (and generate) videos of arbitrary
+   spatial resolution and temporal length, up to memory limits. This is
+   how Sora handles 1920×1080 *and* 1080×1920 *and* square crops with one
+   model.
+2. **Native temporal consistency**. The DiT attends across all spacetime
+   patches simultaneously, so a character's face on frame 1 can directly
+   inform the same face on frame 60 via self-attention. This is much
+   stronger than older "image diffusion + temporal layers" hacks.
+
+## Why the video VAE matters so much
+
+Pixel-space diffusion is hopeless for video. A 5-second 1080p clip at 24fps
+is roughly $120 \times 1920 \times 1080 \times 3 \approx 7.5 \times 10^8$
+pixel values. You cannot do 30 denoising forward passes on that volume.
+
+A causal 3D VAE compresses by perhaps 4× spatially in each dimension and
+4–8× temporally — call it 100× total. The latent video is now ~$10^7$
+values, which is on the order of a single high-resolution image. *Now*
+diffusion is tractable.
+
+"Causal" in the temporal dimension means each compressed latent only
+depends on past frames, which lets the VAE be applied online to streaming
+video. The spatial compression is shared with the standard image VAE
+recipe.
+
+```python
+# Pseudo-pipeline for a Sora-style video model
+# 1. Compress
+latents = video_vae.encode(video)           # (B, C, T', H', W'),  T'=T/4, H'=H/8, W'=W/8
+# 2. Patchify into spacetime tokens
+tokens = patchify_3d(latents, p=(2,2,2))    # (B, N_tokens, D)
+# 3. DiT denoising in latent space
+denoised = dit(noisy_tokens, t, text_emb)   # rectified-flow or eps-prediction
+# 4. Unpatchify, decode
+video_out = video_vae.decode(unpatchify(denoised))
+```
+
+This is also exactly the pattern HunyuanVideo and Mochi-1 publish.
+
+## What video forced researchers to confront
+
+Image diffusion glosses over a few things that video makes painfully
+explicit:
+
+- **Object permanence**: an object that leaves the frame should reappear
+  consistently. Pure feedforward DiTs eventually fail at this for long
+  clips; the field is exploring memory mechanisms (KV-cache reuse,
+  compressed memory tokens, latent state recurrence).
+- **Physics**: cloth folds, water splashes, fluid dynamics. The OpenAI
+  Sora report framed video models as "world simulators" — a deliberately
+  provocative claim. The truth is somewhere in between: the model has
+  learned a *statistical* model of video physics that is *often* but not
+  *always* consistent with reality.
+- **Motion control**: text prompts are coarse for specifying motion.
+  Image-to-video, video-to-video, and pose-controlled generation
+  (DragNUWA, Motion Brush, Wan-controllable) emerged to give finer
+  control.
+- **Audio**: video without audio is not video. Veo 3 (May 2025) made the
+  jointly-generated case mainstream; Movie Gen Audio also operates in
+  this space.
+
+<Callout variant="insight" title="The bitter lesson does video too">
+Hand-engineered temporal modules (3D convs, optical-flow losses,
+frame-interpolation networks) were the dominant approach pre-2023. They
+all lost to "just feed spacetime patches into a big DiT." The same
+pattern that played out in language and images played out in video on a
+faster timescale because researchers knew what to try.
+</Callout>
+
+## The 2025–2026 frontier
+
+- **Length**: Sora and Veo 3 produce minute-long videos at high resolution.
+  Open weights (HunyuanVideo, Mochi) lag at 5–10 seconds but are catching up.
+- **Interactivity**: world-model research (Genie 2, GameNGen, Oasis)
+  treats video models as playable environments — generate the next frame
+  *conditional on user inputs*. This blurs into RL territory.
+- **Real-time**: distilled, few-step video models targeting streaming
+  generation. Decart, Krea, and several research projects are pushing
+  toward 30fps interactive generation.
+- **3D and 4D**: per-pixel depth and Gaussian-splat reconstructions
+  derived from generated video, enabling controllable camera trajectories
+  and scene editing.
+
+If you understand image DiTs and rectified flow, you already understand
+85% of the video story. The remaining 15% is engineering: 3D VAEs,
+sequence parallelism for long-context spacetime tokens, and the data
+pipeline. Video generation is no longer a separate research community — it
+is a special case of diffusion-Transformer engineering scaled to a third
+dimension.

@@ -1,0 +1,247 @@
+---
+slug: "10-cutting-edge/05-rag-long-context"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 5
+title: "RAG & long-context"
+hook: "Grounding generation in retrieved knowledge."
+estMinutes: 16
+difficulty: 3
+prereqs: ["04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["lewis-rag"]
+papers:
+  - title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
+    authors: "Lewis, Perez, Piktus, Petroni, Karpukhin, Goyal, Küttler, Lewis, Yih, Rocktäschel, Riedel, Kiela"
+    year: 2020
+    url: "https://arxiv.org/abs/2005.11401"
+  - title: "Dense Passage Retrieval for Open-Domain Question Answering"
+    authors: "Karpukhin et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2004.04906"
+  - title: "Lost in the Middle: How Language Models Use Long Contexts"
+    authors: "Liu et al."
+    year: 2023
+    url: "https://arxiv.org/abs/2307.03172"
+  - title: "RULER: What's the Real Context Size of Your Long-Context Language Models?"
+    authors: "Hsieh et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2404.06654"
+hfResources:
+  - kind: "library"
+    title: "Sentence Transformers"
+    url: "https://huggingface.co/sentence-transformers"
+  - kind: "model"
+    title: "BAAI/bge-large-en-v1.5"
+    url: "https://huggingface.co/BAAI/bge-large-en-v1.5"
+  - kind: "model"
+    title: "BAAI/bge-reranker-large"
+    url: "https://huggingface.co/BAAI/bge-reranker-large"
+freeResources:
+  - kind: "blog"
+    title: "RAG vs Long-Context: a careful comparison"
+    source: "Pinecone"
+    url: "https://www.pinecone.io/learn/rag-vs-long-context/"
+  - kind: "blog"
+    title: "Building a RAG application from scratch"
+    source: "LangChain"
+    url: "https://python.langchain.com/docs/tutorials/rag/"
+quiz:
+  - id: "rag-q1"
+    question: "Why does RAG help reduce hallucinations?"
+    choices:
+      - "It removes the LLM."
+      - "It conditions generation on retrieved documents, so the model can answer from the provided text rather than from its parametric memory, which is fixed at training time."
+      - "It uses a different decoder."
+      - "It increases training data."
+    answer: 1
+    explanation: "RAG turns 'what does the model remember?' into 'what was just shown?'. The model still has to read and synthesize, but it has source material on hand and can be checked against it."
+  - id: "rag-q2"
+    question: "A standard dense retriever encodes queries and documents into a shared vector space. What loss is typically used to train it?"
+    choices:
+      - "Cross-entropy on token IDs."
+      - "Contrastive loss with in-batch negatives, pulling matching (query, document) pairs together and pushing all other pairs apart."
+      - "L1 regression."
+      - "Reinforcement learning."
+    answer: 1
+    explanation: "DPR-style training treats other documents in the batch as negatives. The encoder learns a similarity space where matching pairs have higher inner product. Hard negatives mined from BM25 are usually added on top."
+  - id: "rag-q3"
+    question: "What is the role of a reranker in a RAG pipeline?"
+    choices:
+      - "It encodes documents."
+      - "It scores (query, document) pairs jointly with a cross-encoder, more accurately than the dense retriever's bi-encoder, but only on the small candidate set the retriever returned."
+      - "It generates the answer."
+      - "It compresses the index."
+    answer: 1
+    explanation: "Bi-encoders are fast (millions of docs) but coarse. Cross-encoders see query and doc together and are slow but accurate. The standard pattern: retrieve 100 with a bi-encoder, rerank to 5 with a cross-encoder, send to the LLM."
+  - id: "rag-q4"
+    question: "What does 'lost in the middle' mean for long-context models?"
+    choices:
+      - "The model forgets old tokens."
+      - "When relevant information is buried in the middle of a long context, models attend less reliably to it than if it were at the start or end — a U-shaped accuracy curve."
+      - "Tokens shift positions."
+      - "Models always use the most recent tokens."
+    answer: 1
+    explanation: "Liu et al. found that placing the answer-bearing passage at the start or end of a long prompt yields much higher accuracy than placing it in the middle. RAG mitigates this by trimming context to the most relevant parts."
+---
+
+A pretrained LLM is a frozen artifact of whatever it saw during training.
+The world keeps moving. Your company's documents change daily. The user
+asks about events from last week. Two strategies handle this:
+
+- **RAG** (retrieval-augmented generation): bolt on an external index;
+  retrieve relevant text per query; let the LLM read it.
+- **Long context**: just stuff everything into the prompt and let the
+  model find what it needs.
+
+These are not opposites. They are points on a spectrum, with different
+costs and failure modes. The right answer is usually both.
+
+## Why this matters
+
+Hallucination is the dominant correctness failure of LLMs. Most
+hallucinations are confabulations from parametric memory — a fact-shaped
+guess. RAG replaces that with retrieval-shaped grounding: the model
+generates from text that is *currently in front of it*. Done well, it
+turns "the model said so" into "the model summarized this source," which
+is auditable and updatable.
+
+## The standard RAG pipeline
+
+A baseline RAG system is four stages.
+
+### 1. Chunking and embedding
+
+Split documents into chunks of a few hundred tokens (semantic, sliding,
+hierarchical — many options, none perfect). Encode each chunk with a
+dense embedding model into a vector $\mathbf{e}_d \in \mathbb{R}^{d}$.
+Store in a vector database (FAISS, Qdrant, pgvector).
+
+### 2. Retrieval
+
+Encode the query: $\mathbf{e}_q$. Retrieve the top-$k$ chunks by inner
+product or cosine similarity:
+
+$$
+\text{score}(q, d) = \frac{\mathbf{e}_q^\top \mathbf{e}_d}{\|\mathbf{e}_q\| \, \|\mathbf{e}_d\|}
+$$
+
+Bi-encoders are fast: a single forward over $q$ and a vector lookup
+across millions of chunks.
+
+### 3. Reranking (optional but standard)
+
+Bi-encoder retrieval is approximate. A **cross-encoder** scores
+$(q, d)$ jointly — concatenate them, run a model, get a score — and
+reranks the top-100 down to the top-5. Slow but much more accurate.
+
+### 4. Generation
+
+Format the top-$k$ chunks into a prompt:
+
+```
+Use the following sources to answer.
+
+[Source 1] ...
+[Source 2] ...
+
+Question: ...
+```
+
+The LLM produces an answer, ideally with citations.
+
+```python
+from sentence_transformers import SentenceTransformer, CrossEncoder
+import numpy as np
+
+embedder = SentenceTransformer("BAAI/bge-large-en-v1.5")
+reranker = CrossEncoder("BAAI/bge-reranker-large")
+
+docs = [...]  # your chunks
+D = embedder.encode(docs, normalize_embeddings=True)
+
+def search(q, k=20, top=5):
+    qv = embedder.encode([q], normalize_embeddings=True)[0]
+    scores = D @ qv
+    idx = np.argpartition(-scores, k)[:k]
+    rerank = reranker.predict([(q, docs[i]) for i in idx])
+    order = np.argsort(-rerank)[:top]
+    return [docs[idx[i]] for i in order]
+```
+
+<PaperCard
+  title="Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
+  authors="Lewis et al."
+  year={2020}
+  url="https://arxiv.org/abs/2005.11401"
+/>
+
+## Long context: just put it all in?
+
+Frontier models routinely accept 128k, 1M, even 10M tokens of context.
+Why retrieve at all? In some workloads — read-this-codebase, summarize-
+this-meeting — long context is genuinely cleaner.
+
+But context is not free. Three problems:
+
+- **Cost**: attention is quadratic at training, KV-cache linear at
+  inference. 1M-token requests cost roughly 100× a 10k-token request.
+- **Lost in the middle**: Liu et al. showed accuracy is U-shaped in
+  position. A relevant passage in the middle of a long context is
+  attended to *less reliably* than one at either end.
+- **Distractors**: more text means more chances for the model to lock
+  onto something irrelevant. RULER and NIAH-class benchmarks show
+  graceful degradation at best.
+
+<Callout variant="insight" title="The actual tradeoff">
+RAG is precise but brittle (bad retrieval = bad answer). Long context
+is forgiving but expensive and noisy. The right system uses RAG to
+narrow the haystack, then long context within the narrowed scope. Pure
+"throw 1M tokens at it" is rarely the optimum.
+</Callout>
+
+## What good RAG looks like in 2025
+
+A handful of patterns matter more than the choice of vector store.
+
+- **Hybrid retrieval**: combine dense (semantic) with BM25 (lexical).
+  Acronyms, code, exact names — sparse retrieval still wins on these.
+- **Query rewriting**: a small LLM rewrites the user query into one or
+  more retrieval-friendly forms (HyDE: hypothetical document embeddings).
+- **Multi-vector / late-interaction** (ColBERT-style): per-token
+  embeddings give better recall at modest extra storage.
+- **Reranking is usually a free win.** Always rerank.
+- **Citations as a first-class output**: train or prompt the model to
+  emit chunk IDs alongside claims; verify post-hoc.
+
+## Failure modes to watch
+
+- **Chunk boundaries split a fact in two.** Hierarchical chunking with
+  parent-document return (chunk for retrieval, parent for context)
+  helps.
+- **The retrieved evidence is wrong.** The model will happily summarize
+  bad sources. Quality of corpus is upstream of quality of generation.
+- **Overconfidence on missing knowledge.** A well-instructed LLM should
+  say "the sources do not address this." Prompt for that explicitly and
+  evaluate it.
+
+<Callout variant="warning" title="Eval before you ship">
+RAG looks good in demos. The honest measure is recall on a held-out QA
+set with ground-truth chunks, plus answer faithfulness on multi-hop
+questions. Without these, you cannot tell if your retriever or your
+generator is the bottleneck — and they need different fixes.
+</Callout>
+
+## Where this is going
+
+- **Long-context models that genuinely retrieve well**: position-
+  invariant attention, retrieval-as-a-built-in primitive.
+- **Agentic RAG**: the model issues multiple search queries, refines
+  them, decides when to stop. Already standard in deep-research products.
+- **Memory + retrieval**: persistent per-user knowledge bases as a
+  first-class part of the LLM stack, not a bolt-on.
+
+The current consensus is sturdy: parametric memory for the long-tail of
+common knowledge, retrieval for everything fresh, specific, or
+auditable. Build for that division of labor.

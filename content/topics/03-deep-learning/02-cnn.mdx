@@ -1,0 +1,238 @@
+---
+slug: "03-deep-learning/02-cnn"
+part: "03-deep-learning"
+partTitle: "Deep learning core"
+partIndex: 3
+topicIndex: 2
+title: "Convolutional networks"
+hook: "Spatial structure, weight sharing, ResNet's residuals."
+estMinutes: 20
+difficulty: 3
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["lecun", "he"]
+papers:
+  - title: "Gradient-Based Learning Applied to Document Recognition"
+    authors: "LeCun, Bottou, Bengio, Haffner"
+    year: 1998
+    url: "http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf"
+  - title: "Deep Residual Learning for Image Recognition"
+    authors: "He, Zhang, Ren, Sun"
+    year: 2016
+    url: "https://arxiv.org/abs/1512.03385"
+  - title: "ImageNet Classification with Deep Convolutional Neural Networks"
+    authors: "Krizhevsky, Sutskever, Hinton"
+    year: 2012
+    url: "https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks"
+hfResources:
+  - kind: "model"
+    title: "microsoft/resnet-50"
+    url: "https://huggingface.co/microsoft/resnet-50"
+  - kind: "course"
+    title: "Hugging Face Computer Vision Course"
+    url: "https://huggingface.co/learn/computer-vision-course/unit0/welcome/welcome"
+freeResources:
+  - kind: "course"
+    title: "Stanford CS231n — Convolutional Neural Networks"
+    url: "https://cs231n.github.io/"
+  - kind: "blog"
+    title: "A guide to convolution arithmetic for deep learning"
+    source: "Dumoulin, Visin"
+    url: "https://arxiv.org/abs/1603.07285"
+  - kind: "blog"
+    title: "Feature Visualization"
+    source: "Distill (Olah, Mordvintsev, Schubert)"
+    url: "https://distill.pub/2017/feature-visualization/"
+quiz:
+  - id: "cnn-q1"
+    question: "Why does weight sharing in convolution layers help on images?"
+    choices:
+      - "It reduces compute by reusing GPUs"
+      - "It enforces translation equivariance — a cat in the corner uses the same detector as a cat in the center — and dramatically reduces parameter count"
+      - "It eliminates the need for backprop"
+      - "It guarantees convex losses"
+    answer: 1
+    explanation: "A convolution slides one small filter across all spatial positions, so the same parameters detect features regardless of location. This matches the structure of natural images (translation invariance is a useful prior) and reduces parameters by a factor of $H \\times W$ versus a fully connected layer."
+  - id: "cnn-q2"
+    question: "Given input $H \\times W$, kernel $k \\times k$, stride $s$, and padding $p$, the output spatial dimension is:"
+    choices:
+      - "$H - k + 1$"
+      - "$\\lfloor (H + 2p - k)/s \\rfloor + 1$"
+      - "$H \\cdot s$"
+      - "$H / k$"
+    answer: 1
+    explanation: "Padding adds $2p$, the kernel consumes $k$, and stride divides the remaining sweep. Memorize this — every shape mismatch in CV comes from getting it wrong, especially when stride doesn't divide the input."
+  - id: "cnn-q3"
+    question: "What does a residual connection $y = x + F(x)$ buy you?"
+    choices:
+      - "Fewer parameters"
+      - "It provides an identity gradient pathway, so gradients flow even when the learned residual $F$'s Jacobian is small — enabling networks of 100+ layers"
+      - "Faster forward inference"
+      - "Translation invariance"
+    answer: 1
+    explanation: "$\\partial y / \\partial x = I + \\partial F / \\partial x$. The identity term means gradient signal reaches early layers regardless of what $F$ does. Pre-residual networks plateaued around 20 layers; ResNets immediately went past 100 and trained cleanly."
+  - id: "cnn-q4"
+    question: "What is the receptive field of a stack of 3 convolutional layers with kernel size 3 and stride 1?"
+    choices:
+      - "3"
+      - "7"
+      - "9"
+      - "27"
+    answer: 1
+    explanation: "Each $3\\times 3$ layer adds 2 to the receptive field: $3, 5, 7$. Stacking small kernels gets the same receptive field as one large kernel but with fewer parameters and more nonlinearity — the VGG insight."
+---
+
+Before Transformers ate computer vision, convolutional networks owned it.
+And while ViTs now match or beat ConvNets on large-scale image
+classification, the ideas that drove CNNs — locality, weight sharing,
+hierarchical receptive fields, residual connections — are baked into how
+the rest of deep learning thinks about structured data.
+
+You'll still meet CNNs constantly: as the vision encoder in CLIP and
+LLaVA, as the U-Net spine of every diffusion model, as detection backbones,
+audio front-ends, and protein structure modules. They are not legacy.
+
+## Why this matters
+
+A fully connected MLP applied to a $224 \times 224 \times 3$ image needs
+about 150,000 parameters per hidden unit and ignores the obvious fact that
+nearby pixels are related. Convolutions enforce two priors that fix this:
+
+- **Locality.** Useful patterns (edges, textures, parts) are local; you
+  don't need to look across the whole image to detect them.
+- **Translation equivariance.** A cat detector should fire on a cat
+  regardless of where the cat is in the image.
+
+Hard-coding these priors is what makes CNNs sample-efficient on visual
+tasks. ViTs eventually learn similar inductive biases from data — but they
+need a lot more of it.
+
+## What a convolution actually does
+
+A 2D convolution slides a small **kernel** $K \in \mathbb{R}^{k \times k}$ over an
+input feature map $X$, producing an output where each spatial position is a
+weighted sum over the local $k \times k$ patch:
+
+$$
+Y_{i, j} = \sum_{u=0}^{k-1} \sum_{v=0}^{k-1} K_{u, v} \cdot X_{i+u, j+v}
+$$
+
+Each layer typically has many filters (channels), so a convolution layer
+maps $C_\text{in}$ input channels to $C_\text{out}$ output channels with
+$k \times k \times C_\text{in} \times C_\text{out}$ parameters — *independent
+of spatial size*. That's the weight-sharing win.
+
+Three knobs control output geometry: **kernel size** $k$, **stride** $s$
+(how far the kernel jumps each step), and **padding** $p$ (zeros added to
+the border). The output height is $\lfloor (H + 2p - k)/s \rfloor + 1$.
+Memorize that formula.
+
+```python
+import torch.nn as nn
+
+block = nn.Sequential(
+    nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),  # downsample 2x
+    nn.BatchNorm2d(64),
+    nn.ReLU(inplace=True),
+    nn.MaxPool2d(kernel_size=3, stride=2, padding=1),       # downsample 2x more
+)
+# Input (B, 3, 224, 224) -> output (B, 64, 56, 56). The classic ResNet stem.
+```
+
+## Hierarchy of receptive fields
+
+A single $3 \times 3$ convolution sees only a tiny patch. Stacking them
+grows the **receptive field** — the region of the input that influences a
+given output position. Two stacked $3 \times 3$ layers see a $5 \times 5$
+patch; three stacked see $7 \times 7$. Going deep buys you global context
+through repeated local computation.
+
+This hierarchy maps onto a feature hierarchy: early layers learn edges and
+oriented gradients, middle layers learn textures and motifs, deep layers
+learn parts and objects. Distill's [Feature Visualization](https://distill.pub/2017/feature-visualization/)
+shows this with hallucinatory clarity.
+
+<Callout variant="insight" title="Why small kernels stacked beat one big kernel">
+Two $3\times 3$ layers have $2 \cdot 9 = 18$ parameters but the same
+$5\times 5$ receptive field as a single layer with 25 parameters — and
+they include a nonlinearity in between, increasing expressiveness. This
+is the central design choice of VGG and basically every CNN since.
+</Callout>
+
+## Pooling and downsampling
+
+To build hierarchy you need to reduce spatial resolution while increasing
+channels. Two ways:
+
+- **Pooling layers** — max-pool or average-pool over $2 \times 2$ windows
+  with stride 2. Parameter-free.
+- **Strided convolution** — convolve with stride 2 to downsample while
+  learning the downsampling filter. Modern nets prefer this.
+
+The classic pyramid: each downsampling step halves height/width and roughly
+doubles channels. Total compute stays roughly constant per stage, but
+spatial detail compresses into channel diversity.
+
+## ResNets and the depth revolution
+
+Up to about 20 layers, deeper CNNs trained better. Past that, plain stacks
+got *worse* — not from overfitting, but from optimization failure.
+Gradients shrank, and training loss itself stopped decreasing.
+
+Kaiming He's 2015 fix was almost embarrassingly simple. Replace each block
+$y = F(x)$ with
+
+$$
+y = x + F(x)
+$$
+
+The **residual connection** lets gradients flow unchanged through the
+identity path. The block is now learning the *deviation from identity*
+rather than the full mapping, which turns out to be much easier to optimize.
+ResNets immediately scaled to 152 layers and crushed ImageNet 2015.
+
+<PaperCard title="Deep Residual Learning for Image Recognition" authors="He, Zhang, Ren, Sun" year={2016} url="https://arxiv.org/abs/1512.03385" />
+
+The residual idea generalized far beyond CNNs. Every Transformer block uses
+it. Every diffusion U-Net uses it. It is, alongside backprop and attention,
+one of the few ideas that you'll meet in every architecture for the rest of
+the curriculum.
+
+## BatchNorm and friends
+
+Each layer's input distribution shifts as upstream parameters update —
+"internal covariate shift". **BatchNorm** standardizes activations across
+the batch dimension, which empirically stabilizes training and lets you use
+much higher learning rates. The actual mechanism is debated (smoother loss
+landscape? implicit regularization? something else?), but the empirical
+benefits are real.
+
+For Transformers and small-batch settings, **LayerNorm** (normalize across
+features within each example) replaced BatchNorm. **GroupNorm** is a middle
+ground useful in vision when batch sizes are small.
+
+## Modern CNNs and the ViT era
+
+Architectures like ConvNeXt, EfficientNet, and RegNet show that careful
+CNN design can match Vision Transformers on most benchmarks. The recipe
+ends up being: depthwise separable convolutions (cheap), large kernels
+(7×7 or 11×11 — recovering global context), inverted bottlenecks
+(MobileNetV2), GELU activations, LayerNorm.
+
+ViTs win at very large scale; CNNs win at small/medium scale and in
+deployment-constrained settings. Both will keep coexisting.
+
+<Callout variant="info" title="What to remember">
+1. Convolution = locality + weight sharing + translation equivariance.
+2. Stack small kernels for cheap, deep receptive fields.
+3. Residual connections are how you train past ~20 layers.
+4. Pooling vs. strided conv is a design choice; the rest of the
+   architecture is a stack of (conv, norm, activation, residual).
+</Callout>
+
+## What to do next
+
+Read CS231n's convolution and ResNet notes. Implement a ResNet-18 from
+scratch in PyTorch. Train it on CIFAR-10 to ~93% accuracy. The whole
+exercise takes a weekend and gives you tactile intuition you'll keep using
+the rest of your career.

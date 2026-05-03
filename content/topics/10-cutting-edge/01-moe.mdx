@@ -1,0 +1,259 @@
+---
+slug: "10-cutting-edge/01-moe"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 1
+title: "Mixture-of-Experts (Mixtral, DeepSeek-V3)"
+hook: "More parameters, same compute per token."
+estMinutes: 16
+difficulty: 4
+prereqs: ["04-transformers-llms/01-gpt"]
+hasHeroViz: false
+researchers: ["shazeer", "lewis-switch"]
+papers:
+  - title: "Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer"
+    authors: "Shazeer, Mirhoseini, Maziarz, Davis, Le, Hinton, Dean"
+    year: 2017
+    url: "https://arxiv.org/abs/1701.06538"
+  - title: "Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity"
+    authors: "Fedus, Zoph, Shazeer"
+    year: 2021
+    url: "https://arxiv.org/abs/2101.03961"
+  - title: "Mixtral of Experts"
+    authors: "Jiang et al. (Mistral AI)"
+    year: 2024
+    url: "https://arxiv.org/abs/2401.04088"
+  - title: "DeepSeek-V3 Technical Report"
+    authors: "DeepSeek-AI"
+    year: 2024
+    url: "https://arxiv.org/abs/2412.19437"
+hfResources:
+  - kind: "model"
+    title: "mistralai/Mixtral-8x7B-v0.1"
+    url: "https://huggingface.co/mistralai/Mixtral-8x7B-v0.1"
+  - kind: "model"
+    title: "deepseek-ai/DeepSeek-V3"
+    url: "https://huggingface.co/deepseek-ai/DeepSeek-V3"
+  - kind: "blog"
+    title: "Mixture of Experts Explained"
+    url: "https://huggingface.co/blog/moe"
+freeResources:
+  - kind: "blog"
+    title: "A visual guide to Mixture of Experts"
+    source: "Maarten Grootendorst"
+    url: "https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts"
+  - kind: "paper"
+    title: "GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding"
+    source: "Lepikhin et al."
+    url: "https://arxiv.org/abs/2006.16668"
+quiz:
+  - id: "moe-q1"
+    question: "Mixtral 8x7B has roughly 47B total parameters but uses only ~13B per token. How?"
+    choices:
+      - "Quantization."
+      - "Each MLP block contains 8 experts; a learned router sends each token to the top-2 experts, so only 2 of 8 expert weights are touched per token."
+      - "It uses fewer layers."
+      - "It is a distilled model."
+    answer: 1
+    explanation: "Mixtral replaces each Transformer MLP with 8 parallel MLPs (the experts). The router picks 2, so per-token compute is similar to a 13B dense model while the parameter count — which lives in HBM but isn't all read per token — is much higher."
+  - id: "moe-q2"
+    question: "Why is a load-balancing auxiliary loss usually added to MoE training?"
+    choices:
+      - "To regularize weights."
+      - "Without it, the router collapses to a few experts; the auxiliary loss penalizes the product of routing probability mass and assignment fraction so usage spreads."
+      - "To increase the number of experts."
+      - "It is purely cosmetic."
+    answer: 1
+    explanation: "Routing is a positive-feedback loop: experts that get more tokens train faster and become more attractive. The Switch/Mixtral aux loss pushes the routing distribution and the empirical assignment toward uniform, preventing dead experts."
+  - id: "moe-q3"
+    question: "DeepSeek-V3 has 671B total parameters but only ~37B active per token. Beyond MoE basics, what is one of its key innovations?"
+    choices:
+      - "Removing attention entirely."
+      - "Auxiliary-loss-free load balancing via a per-expert bias term that the router updates online to equalize expert load."
+      - "Training in 1-bit precision."
+      - "Eliminating the router."
+    answer: 1
+    explanation: "DeepSeek-V3 replaces the auxiliary loss with a dynamically adjusted per-expert routing bias, removing a known source of training-time interference between the language objective and the load-balance objective."
+  - id: "moe-q4"
+    question: "What is the dominant practical cost of MoE inference at small batch sizes?"
+    choices:
+      - "Compute."
+      - "Memory bandwidth: even though only a few experts run per token, *all* experts must reside in HBM, and routing creates uneven, hard-to-batch matmuls."
+      - "Tokenization."
+      - "Random number generation."
+    answer: 1
+    explanation: "MoE shines on big batches where expert matmuls are well-saturated. At batch=1, you pay full memory cost for all experts but compute only a tiny fraction — exactly the wrong arithmetic intensity for most accelerators."
+---
+
+The single most important architecture change in frontier LLMs since the
+Transformer is sparsity. Frontier models are no longer dense matmuls all
+the way down. They are sparse: a giant pool of "expert" sub-networks, of
+which only a tiny fraction runs for any given token.
+
+Mixtral 8x7B (2024) was the first widely-used open-weight MoE. DeepSeek-V3
+(671B total, 37B active) is the current existence proof that you can train
+trillion-class models compute-efficiently. Both are bets on the same idea:
+**parameters are cheap; compute per token is the budget**.
+
+## Why this matters
+
+Scaling a dense Transformer means every token pays for every parameter. If
+parameters could be selectively activated based on the input, you could
+keep adding capacity without adding per-token FLOPs. That is exactly what
+MoE does. Done well, it gives you a model that knows more without taking
+longer to evaluate.
+
+This is no longer fringe. By 2025 a substantial fraction of frontier
+production models — Mixtral, DeepSeek-V2/V3, Qwen-Moe, GPT-4-class systems
+(by widely-reported architecture leaks), Gemini variants — are MoE.
+
+## The architecture
+
+Replace the MLP block of a Transformer layer with $E$ parallel MLPs (the
+experts). A small **router** $g(\cdot)$ — usually a single linear layer
+followed by softmax — produces routing weights for each token, and only
+the top-$k$ experts are actually evaluated:
+
+$$
+y = \sum_{i \in \text{top}_k(g(x))} g(x)_i \cdot \mathrm{Expert}_i(x)
+$$
+
+For Switch Transformer, $k = 1$. For Mixtral and DeepSeek-V3, $k = 2$ and
+$k = 8$ respectively. With $E = 8, k = 2$ you have 4× more parameters per
+MoE layer at constant per-token compute.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class TopKMoE(nn.Module):
+    def __init__(self, dim, hidden, num_experts=8, k=2):
+        super().__init__()
+        self.k = k
+        self.gate = nn.Linear(dim, num_experts, bias=False)
+        self.experts = nn.ModuleList([
+            nn.Sequential(nn.Linear(dim, hidden), nn.SiLU(), nn.Linear(hidden, dim))
+            for _ in range(num_experts)
+        ])
+
+    def forward(self, x):  # x: (B, T, D)
+        logits = self.gate(x)                       # (B, T, E)
+        weights, idx = logits.topk(self.k, dim=-1)
+        weights = F.softmax(weights, dim=-1)
+        out = torch.zeros_like(x)
+        for slot in range(self.k):
+            for e, expert in enumerate(self.experts):
+                mask = (idx[..., slot] == e)
+                if mask.any():
+                    out[mask] += weights[..., slot:slot+1][mask] * expert(x[mask])
+        return out
+```
+
+(Production implementations replace those Python loops with batched
+matmuls, expert-parallel all-to-all, and grouped GEMM kernels — see
+Megablocks, ScatterMoE, and the kernels inside vLLM.)
+
+## The two hard problems
+
+### 1. Routing collapse
+
+Routers are positive-feedback systems: an expert that gets more tokens
+trains faster and gets even better. Without intervention, a handful of
+experts dominate and the rest are dead weight. Switch Transformer
+introduced an **auxiliary load-balance loss**:
+
+$$
+\mathcal{L}_\text{aux} = E \cdot \sum_{i=1}^{E} f_i \, P_i
+$$
+
+where $f_i$ is the fraction of tokens dispatched to expert $i$ and $P_i$
+is the average router probability for $i$. Both quantities equal $1/E$
+under uniform routing, so the loss is minimized there. Add this with a
+small coefficient (usually 0.01) and experts diversify.
+
+DeepSeek-V3 takes a more elegant route: drop the loss entirely, and
+instead carry a **per-expert bias** that the optimizer adjusts online to
+keep loads balanced. The training objective stays purely linguistic; the
+bias absorbs the balancing.
+
+### 2. Token routing across devices
+
+In multi-device training, experts are split across GPUs (expert
+parallelism). Tokens must be **all-to-all**'d to their assigned experts,
+processed, and **all-to-all**'d back. Imbalanced load means GPUs idle
+waiting for the busy ones. **Capacity factors**, expert-choice routing
+(experts pick top-$k$ tokens, dual to tokens picking top-$k$ experts), and
+the new generation of fused dispatchers (DeepEP) all aim at this.
+
+<Callout variant="insight" title="Inverting the routing direction">
+Token-choice routing can drop tokens when an expert hits capacity.
+Expert-choice (Zhou et al., 2022) flips the relation: each expert picks
+its top-$k$ tokens. This guarantees perfect balance and removes dropped
+tokens, at the cost of decoder-side complications (a token's route now
+depends on its peers).
+</Callout>
+
+## Why MoE training is compute-efficient
+
+Empirically, an MoE with $N$ total parameters and $A$ active per token
+behaves *roughly* like a dense model with parameters somewhere between
+$A$ and $\sqrt{NA}$ — far better than $A$, far worse than $N$, but
+fantastic per active FLOP. The exact scaling depends on routing quality,
+expert specialization, and data.
+
+The DeepSeek-V3 report shows the practical upshot: 671B parameters
+trained at the cost of a roughly 37B-active dense model, achieving
+frontier benchmarks at a fraction of the compute budget of comparable
+dense systems.
+
+<PaperCard
+  title="Mixtral of Experts"
+  authors="Jiang et al. (Mistral AI)"
+  year={2024}
+  url="https://arxiv.org/abs/2401.04088"
+/>
+
+## Inference: not free
+
+The catch is that MoE moves the bottleneck from compute to memory.
+Inference at small batches loads all expert weights but uses very few of
+them — terrible arithmetic intensity. This is why MoE serving systems
+push hard on:
+
+- **Expert parallelism**: experts split across GPUs so the entire model
+  sits in aggregate HBM.
+- **Larger batches**: more tokens per step means each expert sees enough
+  work to saturate.
+- **Quantization**: more important than for dense models because memory,
+  not FLOPs, is the binding constraint.
+
+## Open questions
+
+MoE has won at training, but several research questions are open:
+
+- How to do MoE in the attention layer (MoA, switch-head). Current
+  approaches still use dense attention.
+- How many experts is "enough"? DeepSeek-V3 uses 256; the right number
+  with respect to data and compute is unsettled.
+- Routing as an explicit modeling primitive — DeepMind, Anthropic, and
+  others are exploring routers conditioned on context, not just on
+  the current token.
+
+<Callout variant="aside" title="Sparsity is older than you think">
+The 2017 Shazeer et al. paper introduced sparse-gating to LSTMs. The
+Transformer paper followed months later. MoE's mainstream rise had to
+wait for distributed system primitives — all-to-all kernels, expert
+parallelism, balanced routing — to mature, which took roughly five years.
+</Callout>
+
+## What to read next
+
+- Shazeer 2017 → Switch Transformer → Mixtral → DeepSeek-V3, in order.
+  Each refines the routing and balancing story.
+- The HF blog post for the visual intuition.
+- The Megablocks paper for what the kernel side actually looks like.
+
+If you understand why an MoE has more parameters than FLOPs, you have
+internalized the central architectural bet of modern frontier scaling.

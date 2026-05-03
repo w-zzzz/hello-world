@@ -1,0 +1,263 @@
+---
+slug: "10-cutting-edge/02-mamba-ssm"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 2
+title: "Mamba & state-space models"
+hook: "Linear-time alternatives to attention."
+estMinutes: 18
+difficulty: 4
+prereqs: ["03-deep-learning/03-rnn-lstm", "03-deep-learning/04-attention"]
+hasHeroViz: false
+researchers: ["gu", "dao"]
+papers:
+  - title: "Mamba: Linear-Time Sequence Modeling with Selective State Spaces"
+    authors: "Gu, Dao"
+    year: 2023
+    url: "https://arxiv.org/abs/2312.00752"
+  - title: "Efficiently Modeling Long Sequences with Structured State Spaces"
+    authors: "Gu, Goel, Ré"
+    year: 2021
+    url: "https://arxiv.org/abs/2111.00396"
+  - title: "HiPPO: Recurrent Memory with Optimal Polynomial Projections"
+    authors: "Gu, Dao, Ermon, Rudra, Ré"
+    year: 2020
+    url: "https://arxiv.org/abs/2008.07669"
+  - title: "Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality"
+    authors: "Dao, Gu"
+    year: 2024
+    url: "https://arxiv.org/abs/2405.21060"
+hfResources:
+  - kind: "model"
+    title: "state-spaces/mamba-2.8b"
+    url: "https://huggingface.co/state-spaces/mamba-2.8b"
+  - kind: "model"
+    title: "state-spaces/mamba2-2.7b"
+    url: "https://huggingface.co/state-spaces/mamba2-2.7b"
+  - kind: "library"
+    title: "Mamba reference implementation"
+    url: "https://github.com/state-spaces/mamba"
+freeResources:
+  - kind: "blog"
+    title: "A Visual Guide to Mamba and State Space Models"
+    source: "Maarten Grootendorst"
+    url: "https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mamba-and-state"
+  - kind: "blog"
+    title: "The Annotated S4"
+    source: "Sasha Rush, Sidd Karamcheti"
+    url: "https://srush.github.io/annotated-s4/"
+quiz:
+  - id: "mamba-q1"
+    question: "A continuous-time linear SSM evolves $h'(t) = A h(t) + B x(t)$, $y(t) = C h(t)$. Why is the discretized version equivalent to a global convolution?"
+    choices:
+      - "Because $A$ is sparse."
+      - "Because the impulse response $\\bar K_k = \\bar C \\bar A^k \\bar B$ is a fixed kernel; the output is its convolution with the input sequence."
+      - "Because of the FFT."
+      - "It is not — they are unrelated."
+    answer: 1
+    explanation: "Linearity + time-invariance ⇒ the system's behavior is fully described by its impulse response. Convolving the input with that response gives the same output as running the recurrence — the equivalence S4 exploits."
+  - id: "mamba-q2"
+    question: "What is the 'selective' in selective SSM (Mamba)?"
+    choices:
+      - "It selects which layers to skip."
+      - "The state matrices $B, C$ and the timestep $\\Delta$ become input-dependent, so the model can choose what to remember and what to forget per token."
+      - "It chooses random tokens."
+      - "It uses a small attention head."
+    answer: 1
+    explanation: "Classical S4 uses time-invariant SSM parameters — efficient as a convolution but content-blind. Mamba makes them functions of the input, recovering the gating behavior of LSTMs but staying sub-quadratic."
+  - id: "mamba-q3"
+    question: "Why does selectivity break the convolution view?"
+    choices:
+      - "It does not — convolution still works."
+      - "Time-varying parameters mean the system is no longer LTI, so there is no single impulse response. Mamba uses a hardware-aware parallel scan instead."
+      - "It uses too much memory."
+      - "It needs softmax."
+    answer: 1
+    explanation: "Without time-invariance, the elegant FFT/convolution path closes. Mamba's contribution on the systems side is a fused scan kernel that materializes the selective recurrence in SRAM, making it practical."
+  - id: "mamba-q4"
+    question: "Mamba-2 (SSD) reveals which surprising structural connection?"
+    choices:
+      - "Mamba is exactly attention."
+      - "A class of structured-mask attentions and a class of selective SSMs are the same family of operations, related by a 'state-space duality' that lets each be expressed in the other's form."
+      - "Both are RNNs."
+      - "There is no connection."
+    answer: 1
+    explanation: "Dao & Gu 2024 show that 1-semiseparable attention masks and selective SSMs are dual: matmul-based and recurrence-based formulations of the same operation. This unifies the design space and unlocks fast matmul kernels for SSMs."
+---
+
+For seven years, attention has been *the* sequence-modeling primitive.
+Mamba is the most credible alternative to appear in that time. It is not
+a tweak. It rejects the basic premise — that mixing across positions
+should be all-pairs — and instead modernizes a much older idea:
+state-space models from control theory.
+
+Whether Mamba (or its descendants) replace Transformers, lose to a
+hybrid, or remain a niche-but-pivotal tool is genuinely undecided.
+Understanding it is non-negotiable.
+
+## Why this matters
+
+Attention is $O(n^2)$ in compute and memory at training, and during
+inference its KV cache grows with context length. For very long
+sequences (genomics, long-form audio, hours of video, code-bases,
+agent-style rollouts), this scaling is a hard wall. Mamba is
+$O(n)$ in compute and $O(1)$ in inference state — same expressivity
+budget, fundamentally better scaling.
+
+## The state-space recurrence
+
+A continuous-time linear SSM is
+
+$$
+h'(t) = A h(t) + B x(t), \qquad y(t) = C h(t)
+$$
+
+Discretize with timestep $\Delta$ (zero-order hold gives
+$\bar A = \exp(\Delta A)$, $\bar B = (\Delta A)^{-1}(\bar A - I) \cdot \Delta B$),
+and you get an RNN:
+
+$$
+h_k = \bar A h_{k-1} + \bar B x_k, \qquad y_k = C h_k
+$$
+
+The hidden state $h_k \in \mathbb{R}^N$ summarizes everything seen so far.
+Inference is $O(1)$ per step in time and memory — like an RNN.
+
+## S4: making it actually work
+
+The naive approach has two problems. First, with arbitrary $A$ the
+recurrence is unstable or forgets too fast; HiPPO theory provides a
+specific $A$ (a structured matrix) that makes the state hold an
+*optimal polynomial approximation* of the input history.
+
+Second, training the recurrence sequentially is slow on GPUs. But
+because the discretized SSM is linear and time-invariant, it has an
+impulse response
+
+$$
+\bar K = (\bar C \bar B, \; \bar C \bar A \bar B, \; \bar C \bar A^2 \bar B, \dots, \bar C \bar A^{n-1} \bar B)
+$$
+
+and computing $y$ is a *convolution* $y = \bar K * x$, which an FFT does
+in $O(n \log n)$ on the whole sequence in parallel. S4 ties HiPPO
+initialization to a fast convolutional training path. Same model;
+two efficient views.
+
+<Callout variant="insight" title="The big idea of structured SSMs">
+Linearity gives you free parallelism via convolution at training. Time-
+invariance gives you HiPPO-style theoretical foundations. Together they
+produce a model that trains in parallel and runs as a tiny RNN at
+inference. The cost is content-blindness.
+</Callout>
+
+## Why selectivity matters
+
+S4 mixes information using the *same* $A, B, C$ for every token. This is
+fine for signals (audio, time-series) but disastrous for language: the
+right thing to remember depends entirely on what was just said. Attention
+gets this for free — its weights are dynamic functions of the input.
+
+Mamba's contribution is **selective SSM**: make $\Delta, B, C$
+input-dependent.
+
+$$
+\Delta_t = \mathrm{softplus}(W_\Delta x_t), \quad B_t = W_B x_t, \quad C_t = W_C x_t
+$$
+
+Now the recurrence
+
+$$
+h_t = \bar A_t h_{t-1} + \bar B_t x_t
+$$
+
+can decide, per token, how much to keep, what to absorb, and what to
+ignore. Set $\Delta_t \to 0$ and the state is preserved (memory). Set
+$\Delta_t \to \infty$ and the state resets (forgetting). This recovers
+the *gate* of an LSTM, in a much cleaner mathematical frame.
+
+The cost: time-varying parameters break the LTI convolution trick. There
+is no single impulse response. So Mamba pays for selectivity with a
+*sequential* recurrence — but uses a **hardware-aware parallel scan**
+that runs the recurrence in SRAM with $O(n)$ work and good GPU
+utilization.
+
+## A minimal selective SSM step
+
+```python
+import torch
+
+def selective_scan(x, A_log, B, C, dt):
+    # x: (B, L, D), A_log: (D, N), B,C: (B, L, N), dt: (B, L, D)
+    A = -torch.exp(A_log)                        # stable, negative-real eigenvalues
+    dA = torch.exp(dt[..., None] * A)            # (B, L, D, N) discretized A
+    dB = dt[..., None] * B[:, :, None, :]        # discretized B
+    h = torch.zeros(*x.shape[:1], x.shape[-1], A.shape[-1], device=x.device)
+    ys = []
+    for t in range(x.shape[1]):
+        h = dA[:, t] * h + dB[:, t] * x[:, t, :, None]
+        ys.append((h * C[:, t, None, :]).sum(-1))
+    return torch.stack(ys, dim=1)
+```
+
+The reference Mamba kernel is much more careful — fused, in SRAM, scanned
+with Blelloch's parallel-prefix algorithm — but this captures the math.
+
+## Mamba-2 and SSD
+
+Mamba-2 (Dao & Gu, 2024) introduces the **structured state-space
+duality** (SSD): a class of attention with a special "1-semiseparable"
+mask is *equivalent* to a class of selective SSMs. This unifies two
+families that looked unrelated and lets you implement an SSM as a giant
+matmul (good for tensor cores) or as a scan (good for memory).
+
+Practically, SSD blocks are 2–8× faster than Mamba-1 at the same
+quality. Most modern hybrids — Jamba, Zamba, Samba — use Mamba-2-style
+blocks.
+
+<PaperCard
+  title="Mamba: Linear-Time Sequence Modeling with Selective State Spaces"
+  authors="Gu, Dao"
+  year={2023}
+  url="https://arxiv.org/abs/2312.00752"
+/>
+
+## Where Mamba wins, where it loses
+
+Empirically, pure Mamba is competitive with same-size Transformers on
+language modeling and clearly better on very long-context tasks
+(genomics, audio, video). It struggles on tasks that require *exact
+retrieval* across a long context — copying a token from 5000 positions
+back, in-context learning that demands precise attention to specific
+locations. The reason is intuitive: a fixed-size hidden state is a
+lossy summary of the past, while attention has direct random access.
+
+The current consensus, embodied by Jamba and Zamba, is **hybrid**: most
+layers Mamba, a few layers attention. The attention layers handle
+retrieval; the Mamba layers carry long-range structure cheaply.
+
+<Callout variant="warning" title="Don't confuse linear time with linear quality">
+Mamba is linear in compute, not in capability. There is a real
+expressivity gap on retrieval-heavy tasks; it is not closed by simply
+scaling. Treat hybrids as the default until evidence accumulates either
+way.
+</Callout>
+
+## Open frontiers
+
+- **Mamba + MoE**: Jamba combines both. The interactions between
+  selective-state and sparse experts are early-days.
+- **Long-context training**: SSMs are the most natural fit for >1M
+  tokens. The empirical evidence is mounting.
+- **In-context learning** in SSMs: still poorly understood relative to
+  Transformers; circuits-style interpretability is just starting.
+
+## What to read next
+
+Read S4 (or the Annotated S4 walkthrough) before Mamba — selectivity is
+clearer once the LTI base case is in your head. Then Mamba-2 and SSD.
+Then sample a hybrid (Jamba) to see how production architectures stitch
+the pieces together.
+
+You'll know you've understood when "why is attention quadratic, anyway?"
+becomes a real question rather than an axiom.

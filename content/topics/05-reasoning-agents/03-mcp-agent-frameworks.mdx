@@ -1,0 +1,225 @@
+---
+slug: "05-reasoning-agents/03-mcp-agent-frameworks"
+part: "05-reasoning-agents"
+partTitle: "Reasoning & agents"
+partIndex: 5
+topicIndex: 3
+title: "Agent frameworks & MCP"
+hook: "LangGraph, CrewAI, and the Model Context Protocol."
+estMinutes: 14
+difficulty: 3
+prereqs: ["05-reasoning-agents/02-cot-react"]
+hasHeroViz: false
+researchers: ["amodei"]
+papers:
+  - title: "ReAct: Synergizing Reasoning and Acting in Language Models"
+    authors: "Yao, Zhao, Yu, Du, Shafran, Narasimhan, Cao"
+    year: 2022
+    url: "https://arxiv.org/abs/2210.03629"
+  - title: "Reflexion: Language Agents with Verbal Reinforcement Learning"
+    authors: "Shinn, Cassano, Berman, Gopinath, Narasimhan, Yao"
+    year: 2023
+    url: "https://arxiv.org/abs/2303.11366"
+hfResources:
+  - kind: "library"
+    title: "smolagents"
+    url: "https://huggingface.co/docs/smolagents"
+  - kind: "course"
+    title: "Hugging Face Agents Course"
+    url: "https://huggingface.co/learn/agents-course"
+freeResources:
+  - kind: "blog"
+    title: "Introducing the Model Context Protocol"
+    source: "Anthropic (Nov 2024)"
+    url: "https://www.anthropic.com/news/model-context-protocol"
+  - kind: "doc"
+    title: "Model Context Protocol — official spec"
+    source: "modelcontextprotocol.io"
+    url: "https://modelcontextprotocol.io/"
+  - kind: "doc"
+    title: "LangGraph — graph-based agent orchestration"
+    source: "LangChain"
+    url: "https://langchain-ai.github.io/langgraph/"
+  - kind: "doc"
+    title: "CrewAI — multi-agent orchestration"
+    source: "CrewAI"
+    url: "https://docs.crewai.com/"
+quiz:
+  - id: "agent-q1"
+    question: "What problem does the Model Context Protocol (MCP) solve?"
+    choices:
+      - "It speeds up inference."
+      - "It standardizes how LLM-based applications discover and call external tools, resources, and prompts — analogous to LSP for editors."
+      - "It is a new transformer architecture."
+      - "It is a quantization scheme."
+    answer: 1
+    explanation: "Before MCP, every agent framework wired tools differently — N×M integration work between N apps and M tools. MCP defines a JSON-RPC protocol so any MCP client (Claude Desktop, Cursor, Cline) can talk to any MCP server (filesystem, GitHub, Slack, databases). Anthropic open-sourced it in November 2024; OpenAI and Google adopted it in 2025."
+  - id: "agent-q2"
+    question: "What does LangGraph add over basic ReAct loops?"
+    choices:
+      - "A bigger LLM."
+      - "Explicit graph-structured state machines: nodes are functions, edges are conditional transitions, with checkpointing and human-in-the-loop primitives."
+      - "Faster tokenization."
+      - "RLHF training."
+    answer: 1
+    explanation: "LangGraph models an agent as a stateful graph. You define nodes (LLM calls, tool calls, branching logic) and edges (sometimes conditional on LLM output). State is checkpointed; you can pause for human approval, retry, time-travel. This is what production agents need that bare ReAct lacks."
+  - id: "agent-q3"
+    question: "Multi-agent systems (CrewAI, AutoGen) sometimes underperform single-agent loops. Why?"
+    choices:
+      - "Multiple LLMs cost more."
+      - "Each agent-to-agent message is lossy summarization; complex objectives often degrade more than they parallelize, especially without strong specialization."
+      - "Multi-agent systems don't work."
+      - "Tokenizers conflict."
+    answer: 1
+    explanation: "Whenever Agent A hands off to Agent B, information is compressed into a message. On open-ended tasks, this compression often loses what mattered. Anthropic's 'Building effective agents' essay found single-LLM-with-tools loops outperform multi-agent setups for most tasks below a complexity threshold."
+---
+
+You have a base model. You have post-training. You have ReAct. Now you want
+to ship a real agent — something that reads emails, queries databases, edits
+files, runs for hours. You need three things the model alone doesn't give
+you: **state management, tool orchestration, and an interoperable interface
+to the outside world.**
+
+This module is about the engineering layer that sits between an LLM and a
+useful product. It's a moving target — the field churns frameworks
+quarterly — but the underlying patterns are stable.
+
+## What an agent framework actually does
+
+Every agent framework solves some subset of:
+
+- **Looping**: run the model, parse its output, run a tool, feed back, repeat.
+- **State**: keep track of conversation history, intermediate results, retries, and decisions.
+- **Control flow**: branching, parallelism, retries, escalation to humans.
+- **Tool registries**: a clean way to define, discover, and call tools.
+- **Observability**: traces, logs, evals, replay.
+- **Persistence**: checkpoints so a long-running agent can pause and resume.
+
+If you only need a 3-step agent, you can write the loop in 30 lines of
+Python. The frameworks earn their complexity once you have *many* tools,
+*long* runs, *human-in-the-loop* approvals, or *production* reliability
+requirements.
+
+## LangGraph: graphs, not chains
+
+LangGraph models an agent as an explicit state machine. Nodes are
+functions — usually an LLM call or a tool call. Edges are transitions, often
+conditional on the node's output. The state is a typed dictionary that
+flows through the graph.
+
+```python
+from langgraph.graph import StateGraph, END
+from typing import TypedDict, Annotated
+import operator
+
+class State(TypedDict):
+    messages: Annotated[list, operator.add]
+
+def llm_node(s: State):
+    return {"messages": [model.invoke(s["messages"])]}
+
+def should_continue(s: State):
+    last = s["messages"][-1]
+    return "tools" if last.tool_calls else END
+
+graph = StateGraph(State)
+graph.add_node("llm", llm_node)
+graph.add_node("tools", tool_executor)
+graph.add_edge("tools", "llm")
+graph.add_conditional_edges("llm", should_continue)
+graph.set_entry_point("llm")
+agent = graph.compile(checkpointer=sqlite_checkpointer)
+```
+
+The state machine model gives you something that bare ReAct doesn't:
+*time-travel debugging*. Every state transition is checkpointed; you can
+rewind, branch, and re-run. For agents that interact with the real world,
+this matters.
+
+## CrewAI and multi-agent orchestration
+
+CrewAI takes the opposite tack: instead of one LLM with tools, define
+*multiple specialized agents* (Researcher, Writer, Critic) and choreograph
+their interaction. You declare each agent's role, goal, and tools; the
+framework runs the conversation.
+
+This is conceptually elegant. In practice, multi-agent systems often
+underperform single-agent loops on ambiguous tasks, because every
+inter-agent handoff is a *lossy summarization*. Anthropic's engineering
+essay is blunt: most production tasks are best served by one LLM with a
+good toolbelt.
+
+Multi-agent shines when:
+
+1. Subtasks are *genuinely independent* (parallelizable).
+2. Agents have *different specializations* (different prompts, models, or tools).
+3. The orchestrator can *verify* each agent's output cheaply.
+
+Outside those conditions, the additional complexity rarely pays back.
+
+<Callout variant="info" title="Choose the simplest thing that works">
+Start with a single LLM call. If that fails, add tools. If that fails, add a
+loop with tools. If that fails, add explicit state. Only reach for
+multi-agent if you actually need it. Most teams discover their agent
+framework was overkill once they ship.
+</Callout>
+
+## The Model Context Protocol (MCP)
+
+In November 2024, Anthropic launched MCP — an open protocol that
+standardizes how AI applications connect to external tools and data.
+Within months, OpenAI, Google DeepMind, Microsoft, and most major IDEs and
+agent frameworks adopted it. By mid-2025, it had become the de-facto
+"USB-C for AI integrations."
+
+The mental model: **MCP is to AI tools what LSP is to editor language
+support**. Before LSP, every editor implemented every language separately.
+After LSP, write one server per language, and every editor gets it for free.
+
+Concretely:
+
+- An **MCP server** exposes capabilities — *tools* (functions to call),
+  *resources* (read-only data sources), and *prompts* (templates).
+- An **MCP client** (Claude Desktop, Cursor, Cline, custom apps) connects
+  to one or more MCP servers via JSON-RPC over stdio or HTTP.
+- The client lists capabilities, presents them to its LLM, and routes calls.
+
+```python
+# Tiny MCP server (Python SDK)
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("filesystem")
+
+@mcp.tool()
+def read_file(path: str) -> str:
+    """Read a file from disk."""
+    with open(path) as f:
+        return f.read()
+
+if __name__ == "__main__":
+    mcp.run()  # speaks JSON-RPC on stdin/stdout
+```
+
+Any MCP-compatible client can now use this server. The model never sees the
+server code — only its tool schema. This is the integration layer the
+agent ecosystem desperately needed.
+
+## The pragmatics
+
+A useful agent in 2026 looks roughly like this:
+
+- **One strong LLM** (Claude Opus, GPT-4o, Gemini 2.5, DeepSeek-V3).
+- **A graph runtime** for state, retries, checkpointing (LangGraph, or a custom one).
+- **MCP servers** for the tools — filesystem, browser, code execution, your database, your CRM, your knowledge base.
+- **Evals** that run nightly on a frozen task set so you notice regressions.
+- **Observability** (LangSmith, Langfuse, OpenTelemetry) for debugging.
+
+Notice what's *not* on this list: a complicated multi-agent setup, a custom
+prompt-template DSL, a fine-tuned smaller model. You graduate to those when
+the simple stack hits its limit, not before.
+
+## What to study next
+
+- Read Anthropic's *Building effective agents* essay end-to-end — it's the closest thing to a textbook.
+- Skim the MCP spec; build a 30-line MCP server for something you actually use.
+- Move on to multimodal — the next chapter unlocks vision and image generation.

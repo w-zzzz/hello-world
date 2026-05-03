@@ -1,0 +1,226 @@
+---
+slug: "11-niche-pivotal/01-ntk"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 1
+title: "Neural tangent kernels"
+hook: "Infinitely wide nets become kernel machines."
+estMinutes: 14
+difficulty: 5
+prereqs: ["02-classical-ml/02-svm", "03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["jacot"]
+papers:
+  - title: "Neural Tangent Kernel: Convergence and Generalization in Neural Networks"
+    authors: "Jacot, Gabriel, Hongler"
+    year: 2018
+    url: "https://arxiv.org/abs/1806.07572"
+  - title: "Wide Neural Networks of Any Depth Evolve as Linear Models Under Gradient Descent"
+    authors: "Lee, Xiao, Schoenholz, Bahri, Novak, Sohl-Dickstein, Pennington"
+    year: 2019
+    url: "https://arxiv.org/abs/1902.06720"
+  - title: "Feature Learning in Infinite-Width Neural Networks"
+    authors: "Yang, Hu"
+    year: 2021
+    url: "https://arxiv.org/abs/2011.14522"
+hfResources:
+  - kind: "library"
+    title: "neural-tangents (Google)"
+    url: "https://github.com/google/neural-tangents"
+freeResources:
+  - kind: "blog"
+    title: "Some Intuition about the Neural Tangent Kernel"
+    source: "Rajat's blog"
+    url: "https://rajatvd.github.io/NTK/"
+  - kind: "blog"
+    title: "Understanding the Neural Tangent Kernel"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2022-09-08-ntk/"
+quiz:
+  - id: "ntk-q1"
+    question: "In the infinite-width, NTK-parameterized limit, what does training a deep network with gradient flow on MSE loss reduce to?"
+    choices:
+      - "Random forest learning."
+      - "Kernel regression with a fixed kernel — the NTK — evaluated at the network's initialization."
+      - "Bayesian deep learning."
+      - "Logistic regression."
+    answer: 1
+    explanation: "Jacot et al. show that in this limit the network's output evolves linearly in parameter space; gradient flow on MSE has the closed-form trajectory of kernel regression with the NTK $\\Theta(x, x') = \\langle \\nabla_\\theta f(x), \\nabla_\\theta f(x') \\rangle$ evaluated at init."
+  - id: "ntk-q2"
+    question: "Why is the NTK regime called the 'lazy' regime?"
+    choices:
+      - "Because the optimizer is slow."
+      - "Because parameters move infinitesimally far from initialization in relative terms; features are essentially fixed and only their linear combinations adapt."
+      - "Because there is no nonlinearity."
+      - "Because the model is small."
+    answer: 1
+    explanation: "Chizat & Bach gave this name to highlight that the trained network is, to leading order, a linear model on top of frozen random features — useful theoretically, limiting practically because no feature learning happens."
+  - id: "ntk-q3"
+    question: "What does the NTK predict about the convergence rate of training?"
+    choices:
+      - "It does not — it only describes initialization."
+      - "Loss decreases as the spectrum of the NTK Gram matrix; high-eigenvalue components fit fast, low-eigenvalue components fit slowly (spectral bias)."
+      - "It is always linear."
+      - "It depends only on depth."
+    answer: 1
+    explanation: "Decompose the labels in the NTK eigenbasis; each component decays at a rate proportional to its eigenvalue. This explains why neural networks fit smooth (low-frequency) functions much faster than wiggly (high-frequency) ones."
+  - id: "ntk-q4"
+    question: "Why isn't NTK theory the whole story for deep learning?"
+    choices:
+      - "It contradicts experiments."
+      - "Real, finite-width networks leave the lazy regime and learn data-dependent features; NTK predicts no feature learning, but feature learning is the source of much of deep learning's empirical advantage."
+      - "It only applies to CNNs."
+      - "It assumes labels are noisy."
+    answer: 1
+    explanation: "Tensor Programs and µP analyze parameterizations where infinite width still admits feature learning, generalizing NTK. In practice, transfer learning, pretrained representations, and scaling phenomena all live outside the NTK lazy regime."
+---
+
+What does an infinitely wide neural network look like? It turns out that
+in a specific parameterization, training one is *exactly* kernel
+regression. The kernel — the **Neural Tangent Kernel** — is a closed-form
+function determined by the architecture, and the trained network's
+predictions on test inputs have an analytical form.
+
+NTK theory is the cleanest theoretical bridge between deep learning and
+classical statistical learning. It explains real phenomena (spectral
+bias, why training converges, why wide networks generalize). It also
+fails to explain others (feature learning, transfer learning, scaling).
+Knowing where the theory applies and where it breaks down is the point.
+
+## Why this matters
+
+Deep learning works much better than VC bounds say it should. Theorists
+have spent two decades trying to explain this. NTK is one of the few
+results that is mathematically rigorous, derives a tractable model, and
+makes specific predictions that match experiments. Even where it falls
+short, what falls short is informative.
+
+## The setup
+
+Consider an MLP with parameters $\theta$ and output $f_\theta(x)$. Use
+the NTK parameterization (a specific scaling of weights and learning
+rates with width). Take the width $\to \infty$.
+
+At initialization, $f_\theta(x)$ is a Gaussian process. So far, classical
+infinite-width-network folklore.
+
+The new piece is what happens *during training*. With small enough
+learning rate (gradient flow), parameters change very little in
+*relative* terms; the function evolves *linearly* in parameter space:
+
+$$
+f_\theta(x) \approx f_{\theta_0}(x) + \nabla_\theta f_{\theta_0}(x)^\top (\theta - \theta_0)
+$$
+
+Differentiate the gradient-flow ODE through this linearization. The
+result: $f_\theta(x_\text{test})$ at convergence equals the kernel
+regression prediction with kernel
+
+$$
+\Theta(x, x') = \langle \nabla_\theta f_{\theta_0}(x), \nabla_\theta f_{\theta_0}(x') \rangle
+$$
+
+evaluated at initialization. This is the **NTK**. For each architecture
+(MLP, CNN, ResNet) it has a closed-form recursion through the layers.
+
+## What this explains
+
+### Spectral bias
+
+Decompose the targets in the NTK eigenbasis: $y = \sum_i c_i \phi_i$,
+where $\phi_i$ are eigenfunctions of the integral operator with kernel
+$\Theta$. Under gradient flow, the residual decays component-wise:
+
+$$
+r_i(t) = c_i \, e^{-\lambda_i t}
+$$
+
+High-eigenvalue (smooth) components are learned fast; low-eigenvalue
+(wiggly, high-frequency) components are learned slowly. This **spectral
+bias** is observable in real networks: they fit low-frequency
+structure first.
+
+### Convergence
+
+The NTK Gram matrix on the training set is positive definite under mild
+conditions. Gradient descent on MSE loss converges linearly to zero
+training loss at the rate of its smallest eigenvalue. This is why
+massively over-parameterized networks reliably reach zero training
+loss.
+
+### Initialization scaling
+
+NTK derivations make the right initialization scales explicit (LeCun,
+Glorot, He init are all NTK-flavored). They tell you exactly how to
+scale weights so the forward pass and gradients don't blow up with
+depth.
+
+```python
+# A high-level sketch — actual NTK computation uses recursive activation
+# moment formulas; libraries like neural-tangents do this efficiently.
+import jax, jax.numpy as jnp
+from neural_tangents import stax
+
+init_fn, apply_fn, kernel_fn = stax.serial(
+    stax.Dense(512), stax.Relu(),
+    stax.Dense(512), stax.Relu(),
+    stax.Dense(1),
+)
+K_train = kernel_fn(x_train, x_train, "ntk")          # NTK Gram matrix
+K_test  = kernel_fn(x_test,  x_train, "ntk")
+y_pred  = K_test @ jnp.linalg.solve(K_train + 1e-4 * jnp.eye(len(x_train)), y_train)
+```
+
+The same network, trained at infinite width, gives the same predictions
+as this kernel regression. You can sanity-check NTK predictions against
+real wide networks experimentally.
+
+<Callout variant="insight" title="The lazy regime">
+Chizat & Bach named this the *lazy regime*: parameters barely move
+relative to their initial scale. Features (the network's intermediate
+activations) are essentially frozen at their random-initialization
+form; only the readout layer effectively adapts. Useful theoretically.
+Diametrically opposed to what makes pretraining valuable.
+</Callout>
+
+## What it does not explain
+
+NTK predicts that infinite-width networks learn *no features*. They
+behave like fixed-feature kernel machines. But empirically:
+
+- Pretraining matters enormously — there is a real benefit from learned
+  features.
+- Transfer learning works — the features that pretraining produces are
+  reusable across tasks.
+- Scaling laws show that more parameters and more data improve
+  capability in ways that NTK's lazy-regime prediction does not capture.
+
+Yang's **Tensor Programs** and the **µP** parameterization show that the
+infinite-width limit is not unique: under different scaling, you get
+different limits, some of which **do** feature-learn. NTK is one
+specific (and lazy) corner.
+
+<PaperCard
+  title="Neural Tangent Kernel: Convergence and Generalization in Neural Networks"
+  authors="Jacot, Gabriel, Hongler"
+  year={2018}
+  url="https://arxiv.org/abs/1806.07572"
+/>
+
+## When to actually care about NTK
+
+- Designing initialization and learning-rate schedules. The math forces
+  you to get scales right.
+- Predicting which architectures will train well — small-curvature
+  properties of NTK transfer to finite-width regimes.
+- Understanding spectral bias and why networks struggle with
+  high-frequency targets (relevant for implicit-neural-representation
+  work).
+- Reasoning about kernel-regression baselines as a lower bound on what
+  a deep network is doing.
+
+If you walk away with one thing: deep learning is *not* kernel
+regression in practice, but it sometimes behaves like it, and
+understanding when and why is one of the few solid theoretical
+footholds we have.

@@ -1,0 +1,246 @@
+---
+slug: "06-multimodal/03-diffusion-ddpm-sd"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 3
+title: "Diffusion: DDPM & Stable Diffusion"
+hook: "Generation by iteratively denoising."
+estMinutes: 22
+difficulty: 4
+prereqs: ["07-generative-theory/01-vae"]
+hasHeroViz: true
+vizKey: "diffusion-denoise"
+researchers: ["ho", "rombach"]
+papers:
+  - title: "Denoising Diffusion Probabilistic Models (DDPM)"
+    authors: "Ho, Jain, Abbeel"
+    year: 2020
+    url: "https://arxiv.org/abs/2006.11239"
+  - title: "High-Resolution Image Synthesis with Latent Diffusion Models (Stable Diffusion)"
+    authors: "Rombach, Blattmann, Lorenz, Esser, Ommer"
+    year: 2022
+    url: "https://arxiv.org/abs/2112.10752"
+  - title: "Classifier-Free Diffusion Guidance"
+    authors: "Ho, Salimans"
+    year: 2022
+    url: "https://arxiv.org/abs/2207.12598"
+  - title: "Scaling Rectified Flow Transformers for High-Resolution Image Synthesis (SD3)"
+    authors: "Esser, Kulal, Blattmann, Entezari, Müller, Saini, Levi, Lorenz, Sauer, Boesel, Podell, Dockhorn, English, Lacey, Goodwin, Marek, Rombach"
+    year: 2024
+    url: "https://arxiv.org/abs/2403.03206"
+hfResources:
+  - kind: "model"
+    title: "stabilityai/stable-diffusion-3-medium"
+    url: "https://huggingface.co/stabilityai/stable-diffusion-3-medium"
+  - kind: "model"
+    title: "black-forest-labs/FLUX.1-dev"
+    url: "https://huggingface.co/black-forest-labs/FLUX.1-dev"
+  - kind: "library"
+    title: "diffusers"
+    url: "https://huggingface.co/docs/diffusers"
+freeResources:
+  - kind: "blog"
+    title: "What are Diffusion Models?"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2021-07-11-diffusion-models/"
+  - kind: "blog"
+    title: "The Annotated Diffusion Model"
+    source: "Hugging Face"
+    url: "https://huggingface.co/blog/annotated-diffusion"
+  - kind: "video"
+    title: "Diffusion Models | Paper Explanation | Math"
+    source: "Outlier"
+    url: "https://www.youtube.com/watch?v=HoKDTa5jHvg"
+quiz:
+  - id: "diff-q1"
+    question: "What does the forward (noising) process do?"
+    choices:
+      - "It learns to denoise."
+      - "It progressively adds Gaussian noise to a clean sample over $T$ steps according to a fixed variance schedule, eventually reaching ~pure noise."
+      - "It encodes the image into a latent."
+      - "It samples from the prior."
+    answer: 1
+    explanation: "The forward process $q(x_t | x_{t-1}) = \\mathcal{N}(\\sqrt{1-\\beta_t} x_{t-1}, \\beta_t I)$ is *fixed*, not learned. After $T$ steps, $x_T$ is approximately $\\mathcal{N}(0, I)$. We learn to *invert* this — predict the noise that was added, so we can subtract it."
+  - id: "diff-q2"
+    question: "What is the simple, practical training objective DDPM uses?"
+    choices:
+      - "ELBO with a complicated KL term."
+      - "$\\mathcal{L} = \\mathbb{E}_{x_0, \\epsilon, t} \\| \\epsilon - \\epsilon_\\theta(x_t, t) \\|^2$ — predict the noise added, MSE loss."
+      - "Adversarial loss."
+      - "Cross-entropy."
+    answer: 1
+    explanation: "Ho et al.'s simplification was the key practical breakthrough: instead of optimizing the full variational bound, predict the noise $\\epsilon$ at a uniformly sampled timestep $t$, with MSE loss. This *is* the ELBO up to constants under their parameterization, and it trains far more reliably."
+  - id: "diff-q3"
+    question: "Why does Stable Diffusion operate in *latent* space rather than pixel space?"
+    choices:
+      - "To save bandwidth."
+      - "A pre-trained VAE encoder compresses 512×512×3 images into ~64×64×4 latents (≈48× fewer dimensions). Diffusion in latent space is dramatically cheaper while preserving perceptual quality."
+      - "Because pixels are noisy."
+      - "To avoid copyright."
+    answer: 1
+    explanation: "Pixel-space diffusion at 512² is enormously expensive (training and sampling). LDM's insight: train a VAE that compresses imperceptible details, run diffusion in the compressed space, decode at the end. This is what made open-weights high-resolution generation feasible."
+  - id: "diff-q4"
+    question: "What does classifier-free guidance (CFG) do at sampling time?"
+    choices:
+      - "Trains a separate classifier."
+      - "Combines a conditional and an unconditional noise prediction: $\\hat{\\epsilon} = \\epsilon_\\theta(x_t, c) + w (\\epsilon_\\theta(x_t, c) - \\epsilon_\\theta(x_t, \\emptyset))$, amplifying the conditional signal."
+      - "Reduces guidance variance."
+      - "Increases the number of steps."
+    answer: 1
+    explanation: "During training, the model is randomly trained without conditioning (10% of the time). At sampling, you compute both predictions and extrapolate: this concentrates the distribution on conditional samples at the cost of diversity. $w \\approx 7.5$ is a typical SD setting."
+---
+
+Diffusion is the dominant paradigm for generating images, video, audio, 3D
+structure, and increasingly molecules and proteins. It's also one of the
+most beautiful ideas in deep learning: instead of learning to *generate*
+data directly, learn to *denoise* it. Generation becomes the inversion of
+a fixed Gaussian noising process.
+
+The 2020 DDPM paper turned a textbook idea (Sohl-Dickstein 2015) into a
+practical recipe. The 2022 Stable Diffusion paper made it scale. By 2024,
+Stable Diffusion 3, FLUX, Imagen 3, and Sora had pushed diffusion-based
+generation to photorealism.
+
+## The forward process: a fixed Markov chain to noise
+
+Define a sequence of latents $x_0, x_1, \ldots, x_T$ where $x_0$ is the
+clean image and each step adds a small amount of Gaussian noise:
+
+$$
+q(x_t \mid x_{t-1}) = \mathcal{N}\!\big(x_t;\ \sqrt{1-\beta_t}\, x_{t-1},\ \beta_t I\big)
+$$
+
+The schedule $\beta_t$ is fixed — a small linear or cosine ramp. After
+enough steps (DDPM used $T=1000$), the data is washed out: $x_T \approx
+\mathcal{N}(0, I)$.
+
+A useful identity: thanks to the Gaussian closed form, you can sample
+$x_t$ from $x_0$ in one shot:
+
+$$
+x_t = \sqrt{\bar{\alpha}_t}\, x_0 + \sqrt{1-\bar{\alpha}_t}\, \epsilon,\quad \epsilon \sim \mathcal{N}(0, I)
+$$
+
+where $\bar{\alpha}_t = \prod_{s=1}^t (1-\beta_s)$. This is what makes
+training tractable — no need to actually run $t$ noising steps.
+
+## The reverse process: a learned denoiser
+
+The whole game is to *invert* the forward chain. Parameterize a neural
+network $\epsilon_\theta(x_t, t)$ to predict the noise that was added. Then
+the loss is gloriously simple:
+
+$$
+\mathcal{L}_{\text{simple}}(\theta) = \mathbb{E}_{x_0, t, \epsilon}\, \big\| \epsilon - \epsilon_\theta(x_t, t)\big\|^2
+$$
+
+Sample a clean image $x_0$, sample a timestep $t \in \{1, \ldots, T\}$,
+sample noise $\epsilon$, form $x_t$, and ask the network to recover
+$\epsilon$. That's it. No adversarial game, no variational bound to wrestle
+with — just MSE on noise.
+
+The deep claim: this MSE objective is (up to per-timestep weighting) a
+valid lower bound on the data likelihood. Generation by denoising is
+*principled*, not just empirical.
+
+```python
+import torch, torch.nn.functional as F
+
+def diffusion_loss(model, x0, betas):
+    B = x0.size(0)
+    T = len(betas)
+    alpha_bars = torch.cumprod(1 - betas, dim=0)
+    t = torch.randint(0, T, (B,), device=x0.device)
+    a_bar = alpha_bars[t].view(-1, 1, 1, 1)
+    eps = torch.randn_like(x0)
+    x_t = a_bar.sqrt() * x0 + (1 - a_bar).sqrt() * eps
+    eps_pred = model(x_t, t)
+    return F.mse_loss(eps_pred, eps)
+```
+
+That's the training loop. The architecture (U-Net or DiT), the timestep
+embedding, the conditioning — all secondary.
+
+<Embed viz="diffusion-denoise" />
+
+## Sampling: walking back from noise
+
+To generate, start from $x_T \sim \mathcal{N}(0, I)$ and iteratively denoise:
+
+$$
+x_{t-1} = \frac{1}{\sqrt{1-\beta_t}}\Big(x_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}} \epsilon_\theta(x_t, t)\Big) + \sigma_t z
+$$
+
+with $z \sim \mathcal{N}(0, I)$ for $t > 1$ and $\sigma_t = \sqrt{\beta_t}$
+(or another choice). 1000 steps was DDPM's original schedule. Modern
+samplers (DDIM, DPM-Solver, Euler, Heun) can produce equivalent quality in
+20–50 steps by treating the reverse process as an SDE/ODE and using
+higher-order numerical integrators.
+
+## Latent diffusion: Stable Diffusion's contribution
+
+Pixel-space diffusion at 512×512 is brutally expensive. Rombach et al.
+(2022) made the key engineering move: train a VAE that compresses
+512×512×3 images into 64×64×4 latents (a ~48× reduction), and run the
+diffusion model in *latent space*. Decode the final clean latent through
+the VAE to get pixels.
+
+This works because the VAE's lossy compression discards perceptually
+unimportant details — exactly the details that diffusion models waste
+capacity on. The result: open-weights, high-resolution, fast,
+text-conditioned image generation. Stable Diffusion in 2022 was the
+moment generative AI became mainstream.
+
+Conditioning enters via cross-attention: the text encoder (CLIP, T5)
+produces token embeddings, and U-Net layers attend to them at multiple
+resolutions.
+
+<PaperCard title="High-Resolution Image Synthesis with Latent Diffusion Models (Stable Diffusion)" authors="Rombach et al." year={2022} url="https://arxiv.org/abs/2112.10752" />
+
+## Classifier-free guidance
+
+A practical trick that dominates real samplers. During training, randomly
+drop the conditioning (replace text embedding with a null embedding) 10%
+of the time. The model now jointly learns conditional and unconditional
+denoising.
+
+At sampling, *extrapolate*:
+
+$$
+\hat{\epsilon} = \epsilon_\theta(x_t, c) + w\,\big(\epsilon_\theta(x_t, c) - \epsilon_\theta(x_t, \emptyset)\big)
+$$
+
+For $w = 0$, you get the conditional model. For $w > 0$, you push the
+denoising direction *away from unconditional* and *toward conditional*,
+which sharpens the conditional distribution. Most users never see this
+machinery — they see a "guidance scale" slider, often defaulting to ~7.5.
+
+## What changed in 2023–2026
+
+- **DiT** (Diffusion Transformers, Peebles & Xie 2022): replaced U-Net
+  with a Transformer backbone. Cleaner scaling laws. Sora and SD3 are
+  DiTs.
+- **Rectified flow / flow matching** (next topic): replaced the SDE
+  formulation with an ODE that learns straight-line trajectories,
+  enabling fewer-step (sometimes one-step) sampling.
+- **Stable Diffusion 3 / FLUX**: rectified-flow DiTs with multiple text
+  encoders (T5 + CLIP) and 8B+ parameters. Photorealistic, prompt-faithful.
+- **Sora, Veo, Gen-3** (covered later): video diffusion at scale.
+- **Distillation**: turning a 50-step diffusion model into a 1-4 step
+  model via consistency models, LCMs, or adversarial distillation.
+
+<Callout variant="insight" title="Why diffusion beat GANs">
+GANs were the dominant generative model for years and remained competitive
+on quality, but lost on three axes: (1) training stability — diffusion
+just works, GANs need careful hyperparameter tuning; (2) coverage —
+diffusion captures the full distribution, GANs collapse modes; (3)
+controllability — diffusion conditions cleanly via cross-attention, GANs
+were more brittle. The shift was decisive by ~2022.
+</Callout>
+
+## What to study next
+
+- Implement DDPM on MNIST or CIFAR-10 — 200 lines of PyTorch.
+- Read the SD3 paper for the modern DiT + rectified-flow recipe.
+- Move to flow matching — the cleanup of diffusion's mathematics.

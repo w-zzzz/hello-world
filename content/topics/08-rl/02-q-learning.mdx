@@ -1,0 +1,206 @@
+---
+slug: "08-rl/02-q-learning"
+part: "08-rl"
+partTitle: "Reinforcement learning"
+partIndex: 8
+topicIndex: 2
+title: "Q-learning & TD methods"
+hook: "Off-policy learning from a single trajectory."
+estMinutes: 14
+difficulty: 3
+prereqs: ["08-rl/01-mdps"]
+hasHeroViz: false
+researchers: ["sutton"]
+papers:
+  - title: "Q-learning"
+    authors: "Watkins, Dayan"
+    year: 1992
+    url: "https://link.springer.com/article/10.1007/BF00992698"
+  - title: "Human-level control through deep reinforcement learning"
+    authors: "Mnih, Kavukcuoglu, Silver, Rusu, Veness, Bellemare, Graves, Riedmiller, Fidjeland, Ostrovski, et al."
+    year: 2015
+    url: "https://www.nature.com/articles/nature14236"
+  - title: "Rainbow: combining improvements in deep reinforcement learning"
+    authors: "Hessel, Modayil, van Hasselt, Schaul, Ostrovski, Dabney, Horgan, Piot, Azar, Silver"
+    year: 2018
+    url: "https://arxiv.org/abs/1710.02298"
+hfResources:
+  - kind: "course"
+    title: "Hugging Face DRL — Q-learning"
+    url: "https://huggingface.co/learn/deep-rl-course/unit2/introduction"
+  - kind: "library"
+    title: "Stable-Baselines3 (DQN, etc.)"
+    url: "https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html"
+freeResources:
+  - kind: "blog"
+    title: "Demystifying Deep RL: Q-learning"
+    source: "Tambet Matiisen"
+    url: "https://www.intel.com/content/www/us/en/developer/articles/technical/demystifying-deep-reinforcement-learning.html"
+  - kind: "video"
+    title: "Lecture 4 — Model-free prediction"
+    source: "David Silver, DeepMind RL course"
+    url: "https://www.youtube.com/watch?v=PnHCvfgC_ZA"
+  - kind: "course"
+    title: "OpenAI Spinning Up — Q-learning"
+    url: "https://spinningup.openai.com/en/latest/algorithms/sac.html"
+quiz:
+  - id: "qlearn-q1"
+    question: "What makes Q-learning *off-policy*?"
+    choices:
+      - "It does not use rewards."
+      - "Its update target $r + \\gamma \\max_{a'} Q(s', a')$ uses the greedy action, regardless of which action the *behavior* policy actually selected."
+      - "It only works with deterministic environments."
+      - "It does not use bootstrapping."
+    answer: 1
+    explanation: "The TD target bootstraps from $\\max_{a'} Q(s', a')$, which is the value of the *target* (greedy) policy. This is independent of the behavior policy that chose the action — so Q-learning can learn the optimal policy from data collected by any sufficiently exploring policy, including a fully random one."
+  - id: "qlearn-q2"
+    question: "Why does deep Q-learning use a *target network* with delayed parameters?"
+    choices:
+      - "To save memory."
+      - "Because the TD target depends on $Q$ itself; updating online creates a moving target and unstable feedback. A slowly-updated target network breaks the loop."
+      - "To enforce policy entropy."
+      - "Because it is required by the Bellman equation."
+    answer: 1
+    explanation: "If $Q_\\theta$ both produces the prediction and defines the target, gradient steps chase a target that just moved. Mnih et al. (2015) introduced a target network $Q_{\\theta^-}$ updated every $N$ steps; this turns the regression problem into a sequence of fixed-target sub-problems and is the single largest stability fix in DQN."
+  - id: "qlearn-q3"
+    question: "What is the role of $\\varepsilon$-greedy exploration?"
+    choices:
+      - "To regularize the Q-network."
+      - "To balance exploitation (taking $\\arg\\max_a Q(s,a)$) with exploration (taking a uniformly random action with probability $\\varepsilon$) so the agent gathers data on suboptimal actions."
+      - "To eliminate the need for a discount factor."
+      - "To enforce the Markov property."
+    answer: 1
+    explanation: "Without exploration, the greedy policy locks in to whatever Q estimates are best early — even if those estimates are wrong. $\\varepsilon$-greedy is the simplest exploration strategy; entropy bonuses, Boltzmann sampling, and Thompson sampling are richer alternatives."
+  - id: "qlearn-q4"
+    question: "What does *bootstrapping* mean in TD learning?"
+    choices:
+      - "Initializing $Q$ from a pretrained network."
+      - "Updating an estimate using another estimate (e.g., the TD target $r + \\gamma Q(s', a')$ uses the *current* $Q$ as part of the target), rather than waiting for the full Monte Carlo return."
+      - "Training on the same trajectory multiple times."
+      - "Using a replay buffer."
+    answer: 1
+    explanation: "TD methods replace the unknown future return with the model's own estimate of it. This trades unbiased-but-high-variance Monte Carlo returns for biased-but-low-variance estimates — and lets you learn online from incomplete trajectories."
+---
+
+Value iteration assumed you knew the transition dynamics $P$. In real
+problems you don't. Q-learning is the temporal-difference algorithm that
+learns the optimal action-value function from sampled transitions alone —
+no model required. It scales (with neural function approximation) all the
+way up to Atari, robotics, and chip placement.
+
+## Why this matters
+
+This is the first algorithm in the curriculum that *doesn't* assume access
+to the environment's internals. You only see $(s, a, r, s')$ tuples. From
+that you should be able to learn the optimal policy. The fact that this is
+even possible — and that it works without a model — is one of RL's foundational
+achievements.
+
+## Temporal-difference learning
+
+Suppose you observe a transition $(s_t, a_t, r_t, s_{t+1})$ while following
+some policy. The Bellman equation says
+
+$$
+Q^*(s_t, a_t) = \mathbb{E}\!\left[r_t + \gamma \max_{a'} Q^*(s_{t+1}, a')\right]
+$$
+
+We don't know the expectation, but we have one sample of it. **TD(0)** uses
+that sample as a noisy regression target and updates $Q$ a small step toward
+it:
+
+$$
+Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \big[ \underbrace{r_t + \gamma \max_{a'} Q(s_{t+1}, a')}_{\text{TD target}} - Q(s_t, a_t) \big]
+$$
+
+The bracketed quantity is the **TD error**. It is the difference between
+where the value estimate currently is and where one step of bootstrapped
+evidence says it should be. Across many transitions, these stochastic
+updates converge (for tabular Q with appropriate $\alpha$ schedules) to
+$Q^*$.
+
+## On-policy vs off-policy
+
+This is the cleanest dichotomy in RL.
+
+- **SARSA** (on-policy) uses the action *actually taken* by the behavior
+  policy: $r + \gamma Q(s', a')$ where $a' \sim \pi(s')$. It learns the
+  value of the policy you are currently following.
+
+- **Q-learning** (off-policy) uses the *greedy* action: $r + \gamma \max_{a'}
+  Q(s', a')$. It learns the value of the optimal greedy policy regardless
+  of how the data was collected.
+
+The off-policy property is enormously useful. It lets you reuse old data
+(replay buffers), learn from demonstrations, and explore aggressively
+without biasing the value estimate.
+
+```python
+import numpy as np
+
+def q_learning_episode(env, Q, alpha=0.1, gamma=0.99, eps=0.1):
+    s, _ = env.reset()
+    done = False
+    while not done:
+        # epsilon-greedy behavior policy
+        a = np.random.randint(env.action_space.n) if np.random.rand() < eps \
+            else int(np.argmax(Q[s]))
+        s_next, r, terminated, truncated, _ = env.step(a)
+        target = r + (0 if terminated else gamma * np.max(Q[s_next]))
+        Q[s, a] += alpha * (target - Q[s, a])
+        s, done = s_next, terminated or truncated
+    return Q
+```
+
+## Deep Q-Networks
+
+Tabular Q is hopeless when $|\mathcal{S}|$ is large (Atari pixels, continuous
+robot states). The fix is to parameterize $Q_\theta(s, a)$ with a neural
+network and do gradient descent on the squared TD error:
+
+$$
+\mathcal{L}(\theta) = \mathbb{E}_{(s, a, r, s') \sim \mathcal{D}} \!\left[ \big(r + \gamma \max_{a'} Q_{\theta^-}(s', a') - Q_\theta(s, a)\big)^2 \right]
+$$
+
+Two stabilizers from the original DQN paper made this practical:
+
+1. **Replay buffer** $\mathcal{D}$ — store transitions, sample minibatches.
+   Decorrelates updates and reuses experience.
+2. **Target network** $Q_{\theta^-}$ — a slow-moving copy of $\theta$. Used
+   only to compute the TD target. Without this, the target moves whenever
+   the parameters move and training diverges.
+
+<PaperCard
+  title="Human-level control through deep reinforcement learning"
+  authors="Mnih, Kavukcuoglu, Silver et al."
+  year={2015}
+  url="https://www.nature.com/articles/nature14236"
+/>
+
+## What goes wrong, and what to know
+
+<Callout variant="warning" title="The deadly triad">
+Sutton named the combination of (1) function approximation, (2) bootstrapping,
+and (3) off-policy learning the *deadly triad*: any two are fine, all three
+together can diverge. DQN works in practice through the replay buffer,
+target network, and aggressive clipping — but it is not theoretically
+guaranteed to converge, and it sometimes doesn't.
+</Callout>
+
+Modern improvements (Double DQN, dueling networks, prioritized replay,
+distributional RL, n-step returns, noisy nets) are all small fixes to
+specific failure modes. Rainbow combines them and remains a strong baseline
+on discrete-action benchmarks. For continuous actions, the natural
+generalizations are DDPG, TD3, and SAC — value-based methods become trickier
+when $\max_a Q(s, a)$ is no longer a finite max.
+
+## Why TD remains foundational
+
+Q-learning is the first algorithm where you *learn from one transition*.
+Every modern RL system you'll see — replay-buffer based, off-policy, sample
+efficient — owes its inheritance here. Even on-policy actor–critic methods
+share the bootstrapping trick: the critic is essentially a TD target
+generator for the actor.
+
+If MDPs are the language and Bellman is the grammar, TD learning is the
+first complete sentence you learn to write.

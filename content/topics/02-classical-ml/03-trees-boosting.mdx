@@ -1,0 +1,232 @@
+---
+slug: "02-classical-ml/03-trees-boosting"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 3
+title: "Trees, forests & gradient boosting"
+hook: "Why XGBoost still wins on tabular data."
+estMinutes: 14
+difficulty: 2
+prereqs: ["02-classical-ml/01-regression"]
+hasHeroViz: false
+researchers: ["breiman", "freund", "chen"]
+papers:
+  - title: "Random Forests"
+    authors: "Leo Breiman"
+    year: 2001
+    url: "https://link.springer.com/article/10.1023/A:1010933404324"
+  - title: "XGBoost: A Scalable Tree Boosting System"
+    authors: "Chen, Guestrin"
+    year: 2016
+    url: "https://arxiv.org/abs/1603.02754"
+  - title: "Greedy Function Approximation: A Gradient Boosting Machine"
+    authors: "Jerome Friedman"
+    year: 2001
+    url: "https://projecteuclid.org/journals/annals-of-statistics/volume-29/issue-5/Greedy-function-approximation-A-gradient-boosting-machine/10.1214/aos/1013203451.full"
+hfResources:
+  - kind: "library"
+    title: "XGBoost — official documentation"
+    url: "https://xgboost.readthedocs.io/"
+  - kind: "library"
+    title: "LightGBM — Microsoft's gradient boosting library"
+    url: "https://lightgbm.readthedocs.io/"
+  - kind: "library"
+    title: "CatBoost — Yandex's gradient boosting library"
+    url: "https://catboost.ai/docs/"
+freeResources:
+  - kind: "book"
+    title: "The Elements of Statistical Learning — Chapter 10 (Boosting)"
+    source: "Hastie, Tibshirani, Friedman"
+    url: "https://hastie.su.domains/ElemStatLearn/"
+  - kind: "blog"
+    title: "Why do tree-based models still outperform deep learning on tabular data?"
+    source: "Grinsztajn, Oyallon, Varoquaux"
+    url: "https://arxiv.org/abs/2207.08815"
+  - kind: "video"
+    title: "StatQuest — Gradient Boosting"
+    source: "Josh Starmer"
+    url: "https://www.youtube.com/watch?v=3CC4N4z3GJc"
+quiz:
+  - id: "tree-q1"
+    question: "What's the core difference between bagging (random forests) and boosting (XGBoost)?"
+    choices:
+      - "Bagging trains trees in parallel on bootstrap samples and averages them; boosting trains trees sequentially, each fitting the residuals of the previous"
+      - "Boosting uses deeper trees"
+      - "Bagging requires labeled data; boosting doesn't"
+      - "They are different names for the same algorithm"
+    answer: 0
+    explanation: "Bagging reduces variance by averaging independent learners. Boosting reduces bias by adding learners that correct prior errors. Random forests add column subsampling on top of bagging; gradient boosting interprets each new tree as a step of functional gradient descent on the loss."
+  - id: "tree-q2"
+    question: "A decision tree at each split chooses the feature and threshold that:"
+    choices:
+      - "Has the highest correlation with the target"
+      - "Maximizes the reduction in an impurity measure (Gini, entropy, MSE) across the children"
+      - "Minimizes tree depth"
+      - "Equalizes the number of samples in each child"
+    answer: 1
+    explanation: "Greedy splits pick the (feature, threshold) that most cleanly separates the target. For classification: Gini or entropy. For regression: variance / MSE. The greedy choice isn't globally optimal but is fast and works well in practice — especially when ensembled."
+  - id: "tree-q3"
+    question: "Why are gradient-boosted trees still SOTA on most tabular benchmarks?"
+    choices:
+      - "They are faster to train than neural networks"
+      - "They handle heterogeneous features (mixed scales, categoricals, missing values) and learn axis-aligned, hierarchical interactions efficiently — which match how tabular data is actually generated"
+      - "They have more parameters than deep networks"
+      - "They use the kernel trick"
+    answer: 1
+    explanation: "Tabular data is often produced by axis-aligned rules (income > X, age < Y, country == Z). Trees model exactly this. Neural nets must learn axis-aligned splits implicitly via continuous features, which is harder when features have wildly different scales or many categoricals."
+  - id: "tree-q4"
+    question: "What does the learning rate $\\eta$ in gradient boosting control?"
+    choices:
+      - "The depth of each tree"
+      - "How much each new tree contributes to the ensemble — smaller $\\eta$ means more trees but typically better generalization"
+      - "The number of features sampled per split"
+      - "The leaf node count"
+    answer: 1
+    explanation: "Each tree's contribution is multiplied by $\\eta < 1$ (typically 0.05–0.3). Shrinkage spreads the learning over more, smaller updates — same logic as SGD on neural nets. Together with early stopping, this is the main regularization knob in XGBoost."
+---
+
+If your problem comes as rows in a CSV — credit risk, churn prediction, ad
+click-through, almost any business analytics task — the answer is almost
+always gradient-boosted trees. Not because deep learning hasn't been tried
+(it has, repeatedly) but because trees are uncannily well-suited to how
+real-world tabular data is actually generated.
+
+This is the most reliably useful family of models in classical ML. It's
+worth understanding even if your day job is Transformers.
+
+## Why this matters
+
+Three quiet truths of practical ML:
+
+1. Most data in the world is tabular, not pixels or tokens.
+2. On tabular data, a well-tuned XGBoost / LightGBM / CatBoost beats almost
+   every neural architecture you can throw at it (Grinsztajn et al., 2022).
+3. Trees handle messy features — missing values, categoricals, mixed
+   scales — without preprocessing rituals. That makes them the default
+   tool for data scientists, and a strong baseline you should always run.
+
+## Decision trees
+
+A decision tree partitions input space into axis-aligned rectangles. At each
+internal node, it asks a yes/no question about a single feature
+(`income > 50000?`); leaves hold a prediction (a class probability or a
+real number). Training is greedy: at each node, find the split that
+maximizes a purity criterion.
+
+For classification, the **Gini impurity** of a node with class proportions
+$p_k$ is
+
+$$
+G = 1 - \sum_k p_k^2
+$$
+
+The split that minimizes the weighted average Gini in the children is
+chosen. For regression, the analogous criterion is variance reduction.
+
+A single deep tree overfits aggressively — it can memorize the training set
+exactly. The fix is to ensemble.
+
+## Bagging and random forests
+
+**Bagging** (Breiman, 1996): train $T$ trees, each on a bootstrap sample of
+the data; average predictions. Bagging reduces variance because each tree
+sees slightly different data, so their errors are decorrelated.
+
+**Random forests** (Breiman, 2001) add a second layer: at each split, only
+consider a random subset of features. This further decorrelates the trees,
+lowering ensemble variance even more. Forests are robust, parallelizable,
+and need almost no tuning to get a respectable baseline.
+
+<Callout variant="insight" title="Why averaging works">
+If individual trees have variance $\sigma^2$ and pairwise correlation $\rho$,
+the variance of an average of $T$ trees is $\rho \sigma^2 + (1-\rho)\sigma^2/T$.
+Decorrelating the trees (by bootstrap and feature subsampling) drives $\rho$
+down, which drives ensemble variance down even with finite $T$.
+</Callout>
+
+## Gradient boosting
+
+Boosting trains trees sequentially, each one fitting the residuals of the
+previous ensemble. Friedman's elegant reframing: this is **functional
+gradient descent**. The model $F_t(x)$ at step $t$ updates as
+
+$$
+F_{t+1}(x) = F_t(x) + \eta \cdot h_t(x)
+$$
+
+where $h_t$ is a regression tree fit to the negative gradient of the loss
+with respect to $F_t$'s output: $-\partial L / \partial F_t(x_i)$. For MSE
+this is the residual $y_i - F_t(x_i)$; for log-loss it's
+$y_i - \sigma(F_t(x_i))$.
+
+Boosting reduces bias — each new tree corrects the previous mistakes — at
+the cost of higher correlation between learners. The learning rate $\eta$
+(shrinkage) and early stopping keep this from overfitting.
+
+```python
+import xgboost as xgb
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+
+X, y = fetch_openml("adult", return_X_y=True, as_frame=True)
+X = X.apply(lambda c: c.astype("category").cat.codes if c.dtype.name == "category" else c)
+y = (y == ">50K").astype(int)
+
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=0)
+model = xgb.XGBClassifier(
+    n_estimators=500,
+    learning_rate=0.05,
+    max_depth=6,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    early_stopping_rounds=20,
+    eval_metric="logloss",
+)
+model.fit(Xtr, ytr, eval_set=[(Xte, yte)], verbose=False)
+print("test acc:", model.score(Xte, yte))
+```
+
+XGBoost adds three crucial things on top of plain gradient boosting:
+
+1. **Second-order optimization** — uses both the gradient and the Hessian
+   diagonal of the loss when picking splits, so each tree fits a
+   Newton-style approximation rather than the gradient alone.
+2. **Built-in regularization** — $\ell_1$ and $\ell_2$ penalties on leaf
+   weights, plus a complexity term in the split criterion.
+3. **Engineering** — block-compressed feature storage, cache-aware traversal,
+   approximate quantile sketches for huge datasets, GPU support.
+
+LightGBM (histogram-based, leaf-wise growth) and CatBoost (ordered boosting,
+native categorical handling) are sibling libraries with different
+engineering tradeoffs.
+
+<PaperCard title="XGBoost: A Scalable Tree Boosting System" authors="Chen, Guestrin" year={2016} url="https://arxiv.org/abs/2106.03253" />
+
+## When to reach for trees
+
+- Tabular data with mixed feature types.
+- Datasets in the 1k–10M row range where you need a strong baseline in an hour.
+- Problems where calibrated probability matters and you can use isotonic /
+  Platt scaling on top.
+- When you need to ship a model that's small, CPU-friendly, and inspectable
+  (feature importances, SHAP values).
+
+When *not* to: raw images, audio, language. Trees can't learn convolutional
+or attention-like features, and that's where deep nets dominate.
+
+<Callout variant="warning" title="The 'why didn't deep learning win here?' question">
+A 2022 paper (Grinsztajn et al.) systematically benchmarked deep tabular
+methods (TabNet, FT-Transformer, etc.) against gradient-boosted trees on
+45 tabular datasets. Trees won decisively. The hypothesized reasons:
+tabular features are typically axis-aligned, scale-heterogeneous, and have
+information density that doesn't reward representation learning. If your
+problem fits that mold, start with XGBoost.
+</Callout>
+
+## What to do next
+
+Memorize this loop: load data → label-encode categoricals → train an
+XGBoost / LightGBM / CatBoost with sensible defaults → evaluate. It will
+take you 80% of the way on most tabular problems before you've drawn a
+single neural architecture.

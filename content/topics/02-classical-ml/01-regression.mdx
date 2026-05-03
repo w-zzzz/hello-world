@@ -1,0 +1,212 @@
+---
+slug: "02-classical-ml/01-regression"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 1
+title: "Regression & loss functions"
+hook: "From squared error to cross-entropy as max-likelihood."
+estMinutes: 14
+difficulty: 2
+prereqs: ["01-math/02-probability-information"]
+hasHeroViz: false
+researchers: ["lecun"]
+papers:
+  - title: "Ridge Regression: Biased Estimation for Nonorthogonal Problems"
+    authors: "Hoerl, Kennard"
+    year: 1970
+    url: "https://www.jstor.org/stable/1267351"
+  - title: "Regression Shrinkage and Selection via the Lasso"
+    authors: "Tibshirani"
+    year: 1996
+    url: "https://www.jstor.org/stable/2346178"
+hfResources:
+  - kind: "doc"
+    title: "scikit-learn — Linear models"
+    url: "https://scikit-learn.org/stable/modules/linear_model.html"
+  - kind: "doc"
+    title: "torch.nn loss functions"
+    url: "https://pytorch.org/docs/stable/nn.html#loss-functions"
+freeResources:
+  - kind: "book"
+    title: "An Introduction to Statistical Learning"
+    source: "James, Witten, Hastie, Tibshirani"
+    url: "https://www.statlearning.com/"
+  - kind: "book"
+    title: "The Elements of Statistical Learning"
+    source: "Hastie, Tibshirani, Friedman"
+    url: "https://hastie.su.domains/ElemStatLearn/"
+  - kind: "course"
+    title: "Stanford CS229 — Lecture notes"
+    url: "https://cs229.stanford.edu/"
+quiz:
+  - id: "reg-q1"
+    question: "Minimizing mean squared error is equivalent to maximum likelihood under what assumption?"
+    choices:
+      - "Targets are uniformly distributed"
+      - "Targets are Gaussian distributed around the model's prediction with constant variance"
+      - "Targets are Bernoulli"
+      - "Targets are independent of inputs"
+    answer: 1
+    explanation: "If $y \\mid x \\sim \\mathcal{N}(f(x), \\sigma^2)$, the log-likelihood is $-\\frac{1}{2\\sigma^2}(y - f(x))^2 + \\text{const}$. Maximizing it is exactly minimizing MSE. Different noise assumptions give different losses (Laplace → MAE, Bernoulli → BCE)."
+  - id: "reg-q2"
+    question: "Ridge regression and Lasso both add a penalty to the loss. The key behavioral difference is:"
+    choices:
+      - "Ridge is always faster"
+      - "Lasso ($\\ell_1$) drives coefficients to exactly zero, performing feature selection; Ridge ($\\ell_2$) only shrinks them"
+      - "Ridge handles non-linear features; Lasso doesn't"
+      - "Lasso requires the kernel trick"
+    answer: 1
+    explanation: "The $\\ell_1$ ball has corners on the axes; the optimum often sits at one, zeroing out coefficients. The $\\ell_2$ ball is round, so the optimum shrinks toward zero but rarely reaches it. This is why Lasso is used for sparse model selection."
+  - id: "reg-q3"
+    question: "Why is binary cross-entropy preferred over MSE for classification with sigmoid outputs?"
+    choices:
+      - "MSE doesn't converge"
+      - "Cross-entropy gives stronger, well-behaved gradients when predictions are confidently wrong; MSE gradients vanish in saturated regions"
+      - "MSE requires labels in $[-1, 1]$"
+      - "Cross-entropy is faster to compute"
+    answer: 1
+    explanation: "For sigmoid + MSE, the gradient contains a factor $\\sigma'(z)$ that goes to zero when the model is confidently wrong — the worst time to stop learning. With BCE, that factor cancels and the gradient is just (prediction − target)."
+  - id: "reg-q4"
+    question: "What does the bias–variance decomposition tell you about regularization?"
+    choices:
+      - "Regularization always reduces error"
+      - "Regularization deliberately introduces bias to reduce variance, which can lower total expected error"
+      - "Variance is unrelated to model size"
+      - "Bias is a function of the optimizer only"
+    answer: 1
+    explanation: "Expected loss = bias² + variance + noise. Regularization (ridge, dropout, weight decay) shrinks the hypothesis class, raising bias slightly but cutting variance — a net win when variance dominates, which it does on small data."
+---
+
+Regression is where statistics meets ML. It's also where most students first
+realize that "loss function" isn't a design choice you make in isolation —
+it's a probabilistic assumption about how your data was generated. Pick the
+wrong loss and you've quietly fit the wrong model.
+
+This topic ties together least squares, logistic regression, and
+cross-entropy under a single banner: **maximum likelihood estimation**.
+
+## Why this matters
+
+Every supervised learning problem you'll meet — from sklearn's
+`LinearRegression` to a 70B-parameter LLM's next-token predictor — is some
+form of regression with a loss derived from a likelihood. Once you see this,
+the menu of "which loss should I use?" shrinks dramatically. You pick a
+distribution that matches your output, and the loss writes itself.
+
+## Linear regression as MLE
+
+Assume the target is the model's prediction plus Gaussian noise:
+
+$$
+y = w^\top x + b + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, \sigma^2)
+$$
+
+The log-likelihood of a dataset under this model is
+
+$$
+\log L(w, b) = -\frac{1}{2\sigma^2} \sum_i (y_i - w^\top x_i - b)^2 + \text{const}
+$$
+
+Maximizing log-likelihood is exactly minimizing **mean squared error**.
+That's it — that's why MSE is the default for real-valued regression. It's
+not because squares are mathematically convenient (though they are); it's
+because Gaussian noise is the maximum-entropy distribution given a fixed
+variance, and MSE is its log-likelihood.
+
+The closed-form solution is the **normal equations**: $w^* = (X^\top X)^{-1} X^\top y$.
+
+## The bias–variance tradeoff
+
+Regression error decomposes as
+
+$$
+\mathbb{E}[(y - \hat{f}(x))^2] = \underbrace{(\mathbb{E}[\hat{f}(x)] - f(x))^2}_{\text{bias}^2} + \underbrace{\mathbb{V}[\hat{f}(x)]}_{\text{variance}} + \underbrace{\sigma^2}_{\text{noise}}
+$$
+
+Simple models have high bias, low variance. Complex models, the reverse.
+Regularization deliberately raises bias to cut variance — and sometimes the
+total error drops. This is the whole game in classical ML, and a surprising
+amount of intuition for deep learning carries over (think: implicit
+regularization from SGD, weight decay, dropout).
+
+## Ridge and Lasso
+
+Add an $\ell_2$ penalty:
+
+$$
+\hat{w} = \arg\min_w \|y - Xw\|_2^2 + \lambda \|w\|_2^2
+$$
+
+This is **ridge regression**. It has a closed form too — $w^* = (X^\top X + \lambda I)^{-1} X^\top y$ —
+and the regularizer makes $X^\top X + \lambda I$ invertible even when $X^\top X$
+is singular (collinear features).
+
+Replace the $\ell_2$ with $\ell_1$ and you get **Lasso**. The $\ell_1$ ball
+has corners on the coordinate axes, so the optimum often sits at zero for
+many features — automatic feature selection. Ridge shrinks; Lasso shrinks
+and selects.
+
+<Callout variant="insight" title="Probabilistic view of regularization">
+Ridge = Gaussian prior on weights. Lasso = Laplace prior. Maximum a
+posteriori (MAP) estimation under those priors gives exactly these
+penalties. "Regularization" and "Bayesian prior" are two names for the same
+mathematical move.
+</Callout>
+
+## From regression to classification: logistic and softmax
+
+For binary classification, model $p(y=1 \mid x) = \sigma(w^\top x + b)$ with
+$\sigma$ the sigmoid. The Bernoulli log-likelihood is
+
+$$
+\log L = \sum_i y_i \log p_i + (1 - y_i) \log (1 - p_i)
+$$
+
+— **binary cross-entropy** with a minus sign. For $K$-way classification,
+replace sigmoid with softmax and Bernoulli with categorical, and you get
+plain cross-entropy. There is no "switch" between regression and
+classification; you switched the noise model and the math followed.
+
+```python
+import torch
+import torch.nn.functional as F
+
+# regression
+y_hat = torch.randn(32)
+y     = torch.randn(32)
+mse   = F.mse_loss(y_hat, y)              # Gaussian likelihood
+
+# classification
+logits = torch.randn(32, 10)
+labels = torch.randint(0, 10, (32,))
+ce     = F.cross_entropy(logits, labels)  # categorical likelihood
+```
+
+<PaperCard title="Regression Shrinkage and Selection via the Lasso" authors="Tibshirani" year={1996} url="https://www.jstor.org/stable/2346178" />
+
+## Why cross-entropy beats MSE for classification
+
+You *can* train a classifier with MSE on softmax outputs. It works badly.
+The reason: MSE's gradient through softmax contains a saturation factor that
+vanishes precisely when predictions are confidently wrong — exactly when you
+most want a strong learning signal. Cross-entropy's gradient simplifies to
+$(\hat{p} - y)$, which is large for confidently wrong predictions and small
+for confidently right ones. This is the right shape.
+
+<Callout variant="info" title="Picking a loss in five seconds">
+- Real-valued, symmetric noise: MSE.
+- Real-valued, heavy-tailed: MAE / Huber.
+- Binary: BCE (with logits, not probabilities — for stability).
+- Multi-class: cross-entropy.
+- Counts: Poisson NLL.
+- Ranking / preference: Bradley–Terry / pairwise logistic.
+</Callout>
+
+## What to do next
+
+Read the first three chapters of *An Introduction to Statistical Learning*
+(it's free). Then implement linear regression, ridge, and logistic
+regression from scratch in NumPy. Verify they match `sklearn` to numerical
+precision. Once these clicks, every loss function in the rest of the
+curriculum will feel like an exercise in picking the right likelihood.

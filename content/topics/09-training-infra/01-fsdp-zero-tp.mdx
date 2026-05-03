@@ -1,0 +1,196 @@
+---
+slug: "09-training-infra/01-fsdp-zero-tp"
+part: "09-training-infra"
+partTitle: "Training & inference infrastructure"
+partIndex: 9
+topicIndex: 1
+title: "Distributed training: FSDP, ZeRO, TP"
+hook: "Why a 70B model fits on 8 GPUs."
+estMinutes: 18
+difficulty: 4
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["rajbhandari", "shoeybi", "dean"]
+papers:
+  - title: "ZeRO: Memory Optimizations Toward Training Trillion Parameter Models"
+    authors: "Rajbhandari, Rasley, Ruwase, He"
+    year: 2019
+    url: "https://arxiv.org/abs/1910.02054"
+  - title: "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism"
+    authors: "Shoeybi, Patwary, Puri, LeGresley, Casper, Catanzaro"
+    year: 2019
+    url: "https://arxiv.org/abs/1909.08053"
+  - title: "GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism"
+    authors: "Huang et al."
+    year: 2018
+    url: "https://arxiv.org/abs/1811.06965"
+hfResources:
+  - kind: "library"
+    title: "Hugging Face Accelerate — FSDP guide"
+    url: "https://huggingface.co/docs/accelerate/usage_guides/fsdp"
+  - kind: "blog"
+    title: "Efficient Training on Multiple GPUs"
+    url: "https://huggingface.co/docs/transformers/perf_train_gpu_many"
+freeResources:
+  - kind: "blog"
+    title: "PyTorch FSDP tutorial"
+    source: "PyTorch"
+    url: "https://pytorch.org/tutorials/intermediate/FSDP_tutorial.html"
+  - kind: "paper"
+    title: "PyTorch FSDP: Experiences on Scaling Fully Sharded Data Parallel"
+    source: "Meta AI"
+    url: "https://arxiv.org/abs/2304.11277"
+quiz:
+  - id: "fsdp-q1"
+    question: "What is the key difference between data parallelism and ZeRO-3 / FSDP?"
+    choices:
+      - "ZeRO-3 trains on more data."
+      - "Plain DP replicates the full model on every GPU; ZeRO-3 / FSDP shard parameters, gradients, and optimizer states across GPUs and gather them just-in-time."
+      - "ZeRO-3 only works for inference."
+      - "FSDP requires a special accelerator."
+    answer: 1
+    explanation: "Plain DDP keeps a full replica on each rank, so the largest model you can train is bounded by a single GPU's memory. ZeRO/FSDP partition state and reconstruct each layer's parameters via all-gather right before its forward, freeing them after backward."
+  - id: "fsdp-q2"
+    question: "Tensor parallelism (Megatron-LM style) splits which dimension of a linear layer?"
+    choices:
+      - "The batch dimension."
+      - "The sequence dimension only."
+      - "The hidden dimension of weight matrices, so each GPU computes part of $W x$ and an all-reduce sums the results."
+      - "Nothing — TP is just gradient accumulation."
+    answer: 2
+    explanation: "TP shards a matmul along columns or rows; column-parallel followed by row-parallel uses one all-reduce per MLP block. It scales within a node where NVLink bandwidth is high enough to amortize the collective."
+  - id: "fsdp-q3"
+    question: "Why is pipeline parallelism usually combined with micro-batching?"
+    choices:
+      - "To reduce gradient noise."
+      - "Without micro-batches, all but one stage idle while one minibatch flows through, giving a huge 'pipeline bubble'."
+      - "To ensure deterministic training."
+      - "Pipelines do not support backprop otherwise."
+    answer: 1
+    explanation: "GPipe splits a batch into micro-batches that flow through stages overlapped in time. The bubble fraction shrinks roughly as $(p-1)/(m + p - 1)$ where $p$ is stages and $m$ is micro-batches."
+  - id: "fsdp-q4"
+    question: "What is the right intuition for picking 3D parallelism (DP × TP × PP)?"
+    choices:
+      - "Always maximize TP."
+      - "TP inside a node (NVLink), PP across nodes for layer counts that exceed memory, DP across replicas for throughput."
+      - "Use DP only."
+      - "Pipeline first, then everything else."
+    answer: 1
+    explanation: "TP needs all-reduces every layer, so it is bandwidth-bound and lives within a node. PP communicates only at stage boundaries, so it tolerates slower inter-node links. DP wraps the whole thing for sample throughput."
+---
+
+A 70B-parameter Transformer in float16 weights alone is 140 GB — already past
+any single accelerator. Add gradients, Adam's two moment buffers, and
+activations, and a naive setup needs roughly **16 bytes per parameter** of
+state. The only reason this fits on a few GPUs is a small zoo of
+parallelism strategies, all of which boil down to: *don't keep everything
+everywhere*.
+
+## Why this matters
+
+The constraints on training large models are not algorithmic — they are
+memory and bandwidth. Whether you can train a model at all, how fast a step
+runs, and what utilization you achieve all hinge on which dimensions of work
+you split, across what topology, and which collectives that requires.
+
+Understanding the four primitives — DP, ZeRO, TP, PP — is what separates
+"can launch a training job" from "can debug why the loss is flat at 1024
+GPUs."
+
+## Data parallelism (DDP) and its ceiling
+
+Plain DDP replicates the full model on every rank, splits the batch, and
+all-reduces gradients before the optimizer step. It is dead simple and
+scales near-linearly in throughput, but every rank holds the full state:
+
+$$
+\text{mem}_\text{DDP} \approx \underbrace{2P}_\text{weights} + \underbrace{2P}_\text{grads} + \underbrace{12P}_\text{Adam fp32}
+$$
+
+For a 70B model in mixed precision, that's ~1.1 TB per rank — completely
+infeasible.
+
+## ZeRO and FSDP: shard the state
+
+ZeRO's insight is that a rank does not need optimizer state for parameters
+it isn't currently updating. The three stages partition more aggressively:
+
+- **ZeRO-1**: shard *optimizer states* across DP ranks.
+- **ZeRO-2**: also shard *gradients*.
+- **ZeRO-3** (= PyTorch FSDP): also shard *parameters*. Each layer's weights
+  are all-gathered just before its forward, used, and immediately freed.
+
+The cost is more communication — an extra all-gather per forward and
+backward — but with overlap, modern hardware hides most of it.
+
+<Callout variant="insight" title="The right mental model">
+ZeRO/FSDP turn the GPU cluster into one giant memory pool that you stream
+layer-by-layer through compute. You pay communication for memory; the
+cheaper your interconnect, the worse this trade.
+</Callout>
+
+## Tensor parallelism: split a matmul
+
+For a linear $y = xW$ with $W \in \mathbb{R}^{d \times d'}$, you can split
+$W$ column-wise across $t$ devices and compute partial outputs in parallel.
+Megatron's MLP block uses **column-parallel** followed by **row-parallel**,
+needing a single all-reduce per block. Attention is the same idea on the
+$QKV$ projection.
+
+TP requires per-layer all-reduces, so it is bandwidth-hungry and lives
+*inside* a single NVLink-connected node (typically $t = 8$).
+
+## Pipeline parallelism: split layers across stages
+
+PP partitions the *layer stack* across devices, like a factory line. Without
+care, only one stage works at a time. GPipe / 1F1B schedules use
+micro-batches to keep stages busy:
+
+```python
+# 1F1B-style schedule (sketch)
+for step in range(num_steps):
+    for mb in micro_batches:
+        fwd_in = recv_from_prev()
+        fwd_out = stage.forward(fwd_in)
+        send_to_next(fwd_out)
+    for mb in reversed(micro_batches):
+        bwd_in = recv_from_next()
+        bwd_out = stage.backward(bwd_in)
+        send_to_prev(bwd_out)
+    optimizer.step()
+```
+
+The remaining "bubble" is the unavoidable warmup and cooldown of the
+pipeline.
+
+<PaperCard
+  title="ZeRO: Memory Optimizations Toward Training Trillion Parameter Models"
+  authors="Rajbhandari et al."
+  year={2019}
+  url="https://arxiv.org/abs/1910.02054"
+/>
+
+## 3D parallelism in practice
+
+Frontier training stacks (Megatron-LM, DeepSpeed, NeMo, MaxText) compose all
+three: TP within a node, PP across nodes for very deep models, DP wrapping
+the whole thing. A 70B model on 64 GPUs might use TP=8, PP=4, DP=2.
+
+The art is choosing the split so that no collective is a bottleneck and the
+arithmetic intensity stays high. As a rough rule: prefer TP over PP when you
+have NVLink, prefer PP over TP when you don't, and let FSDP handle whatever
+DP layer wraps it.
+
+<Callout variant="warning" title="Throughput is not utilization">
+A job that scales to 1024 GPUs at 30% MFU (model FLOPs utilization) is
+wasting the same money as a smaller job at 90%. Always look at MFU, not just
+samples/sec, and profile the actual collective overlap before claiming
+linear scaling.
+</Callout>
+
+## What to read next
+
+If you only have time for one resource, work through Stas Bekman's
+*Machine Learning Engineering* book and the PyTorch FSDP source. The
+abstractions stop being magic once you have stepped through one all-gather
+in a debugger.
