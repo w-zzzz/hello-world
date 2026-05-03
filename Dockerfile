@@ -34,6 +34,10 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Satisfies the Zod schema in src/lib/env.ts at build time. This value is never
+# used at runtime — the runner stage does not inherit it, and Railway injects the
+# real DATABASE_URL service variable when the container starts.
+ENV DATABASE_URL="file:./placeholder.db"
 
 # `pnpm build` runs `next build`. If `next.config.ts` enables `output: "standalone"`
 # the runner stage can switch to copying `.next/standalone` for a smaller image.
