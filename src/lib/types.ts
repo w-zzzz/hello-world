@@ -53,6 +53,22 @@ export type Researcher = {
   };
 };
 
+export type PaperStory = {
+  slug: string;
+  title: string;
+  authors: string;
+  year: number;
+  paperUrl: string;
+  topicSlugs?: string[];
+  researcherSlugs?: string[];
+  headline: string;
+  era: string;
+  significance: string;
+  story: string[];
+  pullQuote?: { text: string; source: string };
+  legacy: string;
+};
+
 export type Paper = {
   title: string;
   authors: string;

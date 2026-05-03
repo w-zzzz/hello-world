@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowUpRight, FileText } from "lucide-react";
 import { RESEARCHERS, RESEARCHER_BY_SLUG } from "../../../../content/researchers";
 import { TOPICS } from "../../../../content/curriculum";
 import { ScrollReveal } from "@/components/apple/ScrollReveal";
+import { StoryBlock } from "@/components/researcher/StoryBlock";
+import { STORIES } from "../../../../content/stories";
 
 export function generateStaticParams() {
   return RESEARCHERS.map((r) => ({ slug: r.slug }));
@@ -26,6 +28,10 @@ export default async function ResearcherPage({ params }: { params: Promise<{ slu
 
   // topics that feature this researcher
   const featured = TOPICS.filter((t) => t.researchers.includes(r.slug));
+  // paper origin stories that mention this researcher
+  const featuredStories = STORIES.filter((s) =>
+    (s.researcherSlugs ?? []).includes(r.slug)
+  );
 
   return (
     <main className="pt-32 pb-24">
@@ -113,6 +119,29 @@ export default async function ResearcherPage({ params }: { params: Promise<{ slu
                 </a>
               ))}
             </div>
+          </section>
+        )}
+
+        {r.story && <StoryBlock story={r.story} />}
+
+        {featuredStories.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted-fg)] font-medium">
+              Origin stories
+            </h2>
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+              {featuredStories.map((s) => (
+                <li key={s.slug}>
+                  <Link
+                    href={`/stories/${s.slug}`}
+                    className="block rounded-2xl border border-soft surface p-4 hover:border-[var(--color-accent)]/40 transition-colors"
+                  >
+                    <div className="text-xs text-[var(--color-muted-fg)]">{s.year}</div>
+                    <div className="mt-1 text-sm font-medium leading-tight">{s.title}</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
