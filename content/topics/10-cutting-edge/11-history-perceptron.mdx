@@ -1,0 +1,223 @@
+---
+slug: "10-cutting-edge/11-history-perceptron"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 11
+title: "Perceptron and the first AI winter"
+hook: "Rosenblatt 1958, Minsky-Papert 1969, Lighthill 1973 — the first crash."
+estMinutes: 14
+difficulty: 2
+prereqs: []
+hasHeroViz: false
+researchers: ["hinton"]
+papers:
+  - title: "The Perceptron: A Probabilistic Model for Information Storage and Organization in the Brain"
+    authors: "Frank Rosenblatt"
+    year: 1958
+    url: "https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=b317f6b42a64b5c1a0bcec022a51fc81d1f0a1ba"
+  - title: "Perceptrons: An Introduction to Computational Geometry"
+    authors: "Marvin Minsky, Seymour Papert"
+    year: 1969
+    url: "https://mitpress.mit.edu/9780262631112/perceptrons/"
+  - title: "Artificial Intelligence: A General Survey (the Lighthill Report)"
+    authors: "James Lighthill"
+    year: 1973
+    url: "http://www.chilton-computing.org.uk/inf/literature/reports/lighthill_report/p001.htm"
+freeResources:
+  - kind: "book"
+    title: "The Quest for Artificial Intelligence"
+    source: "Nils Nilsson"
+    url: "https://ai.stanford.edu/~nilsson/QAI/qai.pdf"
+  - kind: "book"
+    title: "Mind Designs II — selected readings"
+    source: "John Haugeland (ed.)"
+    url: "https://mitpress.mit.edu/9780262581530/mind-design-ii/"
+  - kind: "blog"
+    title: "Why XOR mattered: Minsky-Papert revisited"
+    source: "Computer History Museum"
+    url: "https://computerhistory.org/blog/from-the-perceptron-to-the-rebirth-of-deep-learning/"
+quiz:
+  - id: "perc-q1"
+    question: "What did Rosenblatt's perceptron actually do?"
+    choices:
+      - "It was a multi-layer neural network."
+      - "It was a single-layer linear classifier with a hard-threshold activation, trained by an iterative weight-update rule guaranteed to converge for linearly separable problems."
+      - "It was a database."
+      - "It was a symbolic theorem prover."
+    answer: 1
+    explanation: "The Mark I Perceptron was a physical machine implementing $y = \\mathrm{sign}(w \\cdot x + b)$. The Perceptron Convergence Theorem (Novikoff 1962) proved the iterative update converges in finite steps for any linearly separable dataset. The promise was *learning* without symbolic programming — which is why the press coverage was so loud."
+  - id: "perc-q2"
+    question: "What was the central technical critique in Minsky and Papert's 1969 book *Perceptrons*?"
+    choices:
+      - "The perceptron was too slow."
+      - "Single-layer perceptrons cannot represent linearly inseparable functions like XOR, and certain global geometric predicates (parity, connectedness) require either many layers or weights/inputs that grow super-linearly with input size — fundamental representational limits, not just slow convergence."
+      - "It used too much memory."
+      - "It was patented."
+    answer: 1
+    explanation: "Minsky-Papert proved precise computational-geometry limits on what *single-layer* perceptrons could represent and learn. Multi-layer networks could in principle escape these limits, but no efficient training algorithm for them existed in 1969 (backprop was rediscovered for ML in 1986). The book is rigorous; its rhetorical effect on funding was much larger than the strict mathematics implied."
+  - id: "perc-q3"
+    question: "The 'Lighthill Report' (1973) was commissioned by the UK Science Research Council. What did it conclude?"
+    choices:
+      - "AI was making excellent progress."
+      - "AI research had failed to deliver on its grand promises ('combinatorial explosion'); the report recommended cutting most general-AI funding and concentrating on applied subfields, triggering a UK-wide reduction in AI grants."
+      - "Neural networks were the future."
+      - "AI should be classified."
+    answer: 1
+    explanation: "James Lighthill's report criticized the field's overpromising and the lack of practical results. The BBC televised debate that followed — Lighthill vs McCarthy, Michie, Gregory — was watched by tens of thousands and is still on YouTube. UK AI funding was sharply cut for a decade. DARPA pulled back too. This is the canonical *first AI winter*."
+  - id: "perc-q4"
+    question: "What is the durable lesson from the perceptron episode for modern ML?"
+    choices:
+      - "Neural networks cannot work."
+      - "Mathematical limits on a *specific architecture* are real and worth knowing, but they do not generalize to *all* architectures or training regimes — pairing rigorous capability analysis with healthy skepticism of grand claims (in either direction) is the durable practice."
+      - "Hype cycles are inevitable."
+      - "Computers were too slow."
+    answer: 1
+    explanation: "The honest lesson is two-sided. Rosenblatt overpromised: claims that the perceptron would 'walk, talk, see' were not supported by what a single linear layer could do. Minsky-Papert under-imagined: their valid critique of single-layer perceptrons was read as a critique of all neural networks, which it was not. Both kinds of mistake — overclaiming capability and overgeneralizing limits — are present in current AI discourse. Read carefully."
+---
+
+Modern deep learning likes to forget that this is the *third* time neural
+networks have been the future of AI. The first time was Rosenblatt's
+perceptron in 1958, and it ended badly. Knowing why is the cheapest
+inoculation against repeating the mistakes.
+
+This module is short. It is here because anyone who claims AI history
+started with AlexNet (or with ChatGPT) is missing seventy years of context
+that explains why the field works the way it does — including the
+institutional shape of modern AI labs, the funding cycles, and the
+defensive caution of researchers who lived through earlier crashes.
+
+## 1958: the perceptron
+
+Frank Rosenblatt was a Cornell psychologist building a physical neural
+network. The Mark I Perceptron, completed in 1960, was a 400-photocell
+camera connected via potentiometers (the weights, adjusted by motors) to
+hard-threshold output units. Given a picture, it learned to discriminate
+classes by the perceptron update rule:
+
+$$
+w \leftarrow w + \eta\, (y - \hat{y})\, x
+$$
+
+Novikoff (1962) proved this converges in finite steps for any linearly
+separable dataset. That convergence proof is one of the first formal
+learning guarantees in machine learning.
+
+The press coverage was sensational. The *New York Times* in 1958 reported
+that the perceptron would soon "walk, talk, see, write, reproduce itself,
+and be conscious of its existence." Rosenblatt himself was somewhat more
+restrained, but the field's reputation for grand claims was being seeded.
+
+## 1969: Minsky and Papert
+
+Marvin Minsky (MIT) and Seymour Papert (MIT) published *Perceptrons: An
+Introduction to Computational Geometry* in 1969. The book is a serious
+piece of mathematics. Its key results:
+
+1. A single-layer perceptron cannot represent XOR (linearly inseparable).
+2. Certain *global* geometric predicates (parity, connectedness) cannot
+   be computed by a single-layer perceptron whose receptive fields are
+   bounded — even with infinite weights and infinite training time.
+3. Multi-layer networks could in principle compute these things, but no
+   efficient training algorithm existed.
+
+The technical content was correct. The rhetorical effect was much larger
+than the technical scope. Funding agencies and the broader research
+community read the book as "neural networks don't work." Symbolic AI
+absorbed most of the field's resources for the next fifteen years.
+
+In hindsight, the missing ingredient was an efficient way to train
+multi-layer networks. Werbos (1974), then Rumelhart, Hinton, Williams
+(1986), would supply it with backpropagation. By then the first winter
+was at its deepest.
+
+## 1973: the Lighthill Report
+
+In 1972 the UK Science Research Council commissioned applied mathematician
+James Lighthill to evaluate the state of AI research. His 1973 report
+concluded that:
+
+- The field had failed to deliver on its grand promises.
+- The "combinatorial explosion" made search-based methods scale poorly to
+  realistic problems.
+- Most general AI funding should be cut; resources should go to applied
+  subfields (machine vision, speech) where progress was concrete.
+
+The BBC televised a debate in 1973 — Lighthill versus John McCarthy, Donald
+Michie, and Richard Gregory — that you can still watch on YouTube. UK AI
+funding was sharply reduced afterward. DARPA in the US also pulled back.
+The combination of Lighthill in the UK and the post-Mansfield-Amendment
+DARPA cuts in the US produced what historians now call the first AI winter
+(roughly 1974-1980).
+
+## What actually went wrong
+
+Three structural failures, all of which have modern echoes:
+
+1. **Overclaiming**. The perceptron's press coverage — "perceptron will be
+   conscious" — set expectations that no reasonable progress could meet.
+2. **Generalizing from a specific architecture's limits to all of AI**.
+   Minsky-Papert's correct mathematical result about single-layer
+   perceptrons was read as a refutation of neural networks in general.
+3. **Funder fatigue**. Five-year promises plus five years of progress that
+   does not match those promises produces five-year retreats.
+
+The *next* AI winter (1987-1993, the LISP-machine and expert-systems
+collapse) followed essentially the same template — different technology,
+same dynamics.
+
+## What this episode bequeathed to us
+
+- **Backpropagation took 28 years to be rediscovered for ML**. Werbos
+  (1974) had it; the connectionist community did not absorb it until
+  Rumelhart-Hinton-Williams (1986). A whole generation of progress was
+  delayed by funding and attention.
+- **A culture of skepticism about hype**. The neural-network researchers
+  who survived (Hinton, LeCun, Bengio) are unusually careful about
+  capability claims; the field's older voices remember 1969 vividly.
+- **A political case for pluralism in AI research**. Putting all funding
+  on one paradigm makes the next winter worse. The 2020s healthy
+  diversity of approaches (transformers + SSMs + diffusion + neuro-symbolic)
+  is, in part, a hedge.
+
+```text
+Rough chronology to remember:
+  1943   McCulloch-Pitts neuron — formal model
+  1958   Rosenblatt's perceptron, press explosion
+  1962   Novikoff convergence theorem
+  1969   Minsky-Papert Perceptrons
+  1973   Lighthill Report → first AI winter
+  1974   Werbos's PhD: backprop for nets
+  1986   Rumelhart-Hinton-Williams: backprop popularized
+  1989   LeCun: convolutional nets on MNIST
+  1997   LSTM (Hochreiter-Schmidhuber)
+  2006   Hinton: deep belief nets — neural nets re-emerge
+  2012   AlexNet — the second renaissance begins
+```
+
+<Callout variant="insight" title="Why this is in a 2026 ML curriculum">
+Every modern AI researcher will live through at least one capability
+plateau and one funding compression. The first winter is the cleanest
+case study of how *correct mathematics* combined with *overclaimed
+capability* can produce a decade-long retreat. The lessons — be precise
+about what your architecture cannot do, do not let the press extrapolate
+without correction, and value researchers who survived the previous
+winter — are still operational.
+</Callout>
+
+<PaperCard
+  title="Perceptrons: An Introduction to Computational Geometry"
+  authors="Marvin Minsky, Seymour Papert"
+  year={1969}
+  url="https://mitpress.mit.edu/9780262631112/perceptrons/"
+  takeaway="Read the prologue and chapter 0. The math is more interesting than the popular accounts suggest, and the rhetorical care (or lack thereof) is itself a case study in how to communicate technical limits."
+/>
+
+## What to do next
+
+- Watch the 1973 BBC Lighthill debate (it's on YouTube). It is the most
+  vivid existing record of how AI was discussed before the first winter.
+- Read Nils Nilsson's *The Quest for Artificial Intelligence* — the best
+  one-volume history.
+- Skim chapter 1 of Goodfellow-Bengio-Courville's *Deep Learning* for the
+  authoritative modern summary of the perceptron and its descendants.
