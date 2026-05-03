@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-bg: oklch(1 0 0);
+  --color-fg: oklch(0.13 0.005 285);
+  --color-muted: oklch(0.96 0.003 286);
+  --color-muted-fg: oklch(0.55 0.012 286);
+  --color-border: oklch(0.92 0.005 286);
+  --color-card: oklch(1 0 0);
+  --color-card-fg: oklch(0.13 0.005 285);
+  --color-accent: oklch(0.62 0.18 264);
+  --color-accent-fg: oklch(0.99 0 0);
+  --color-ring: oklch(0.62 0.18 264);
+
+  /* Curriculum part hues */
+  --color-part-1: oklch(0.65 0.16 28);   /* math - red */
+  --color-part-2: oklch(0.7 0.16 60);    /* classical - orange */
+  --color-part-3: oklch(0.75 0.18 90);   /* deep learning - yellow-green */
+  --color-part-4: oklch(0.7 0.18 145);   /* transformers - emerald */
+  --color-part-5: oklch(0.7 0.16 195);   /* reasoning - cyan */
+  --color-part-6: oklch(0.65 0.18 240);  /* multimodal - blue */
+  --color-part-7: oklch(0.6 0.22 280);   /* generative - violet */
+  --color-part-8: oklch(0.65 0.22 320);  /* rl - magenta */
+  --color-part-9: oklch(0.6 0.05 250);   /* infra - slate */
+  --color-part-10: oklch(0.62 0.2 350);  /* cutting edge - rose */
+  --color-part-11: oklch(0.55 0.08 200); /* niche - teal */
+
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dark {
+  --color-bg: oklch(0.07 0.005 285);
+  --color-fg: oklch(0.97 0.003 286);
+  --color-muted: oklch(0.16 0.005 286);
+  --color-muted-fg: oklch(0.65 0.012 286);
+  --color-border: oklch(0.22 0.008 286);
+  --color-card: oklch(0.11 0.005 285);
+  --color-card-fg: oklch(0.97 0.003 286);
+  --color-accent: oklch(0.7 0.18 264);
+  --color-accent-fg: oklch(0.13 0.005 285);
+  --color-ring: oklch(0.7 0.18 264);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.011em;
+  }
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-accent), transparent 65%);
+    color: var(--color-fg);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.022em;
+    font-weight: 600;
+  }
+  h1 { letter-spacing: -0.04em; }
+  pre, code, kbd { font-family: var(--font-mono); }
+}
+
+@layer components {
+  .surface {
+    background-color: var(--color-card);
+    color: var(--color-card-fg);
+  }
+  .border-soft {
+    border-color: var(--color-border);
+  }
+  .gradient-mesh {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 0%, color-mix(in oklch, var(--color-part-6), transparent 80%), transparent 60%),
+      radial-gradient(ellipse 70% 60% at 100% 20%, color-mix(in oklch, var(--color-part-7), transparent 80%), transparent 60%),
+      radial-gradient(ellipse 60% 60% at 50% 100%, color-mix(in oklch, var(--color-part-4), transparent 85%), transparent 60%);
+  }
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+}
+
+@layer utilities {
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { scrollbar-width: none; }
+  .anim-fade-up {
+    animation: fadeUp 0.8s var(--ease-apple) both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translate3d(0, 24px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  .anim-blur-in {
+    animation: blurIn 1s var(--ease-apple) both;
+  }
+  @keyframes blurIn {
+    from { opacity: 0; filter: blur(12px); transform: scale(0.985); }
+    to   { opacity: 1; filter: blur(0); transform: scale(1); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
