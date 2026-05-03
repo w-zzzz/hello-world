@@ -1,0 +1,235 @@
+---
+slug: "05-reasoning-agents/05-agentic-coding"
+part: "05-reasoning-agents"
+partTitle: "Reasoning & agents"
+partIndex: 5
+topicIndex: 5
+title: "Agentic coding: Cursor, Claude Code, Cognition"
+hook: "IDE-resident vs autonomous coding agents — tool-use patterns and benchmarks."
+estMinutes: 16
+difficulty: 3
+prereqs: ["05-reasoning-agents/03-mcp-agent-frameworks"]
+hasHeroViz: false
+researchers: ["amodei", "karpathy"]
+papers:
+  - title: "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+    authors: "Jimenez, Yang, Wettig, Yao, Pei, Press, Narasimhan"
+    year: 2024
+    url: "https://arxiv.org/abs/2310.06770"
+  - title: "SWE-agent: Agent-Computer Interfaces Enable Software Engineering Language Models"
+    authors: "Yang, Jimenez, Wettig, Lieret, Yao, Narasimhan, Press"
+    year: 2024
+    url: "https://arxiv.org/abs/2405.15793"
+  - title: "Cognition AI — Introducing Devin, the first AI software engineer"
+    authors: "Cognition Labs"
+    year: 2024
+    url: "https://www.cognition-labs.com/introducing-devin"
+  - title: "Claude 3.7 Sonnet and Claude Code"
+    authors: "Anthropic"
+    year: 2025
+    url: "https://www.anthropic.com/news/claude-3-7-sonnet"
+hfResources:
+  - kind: "dataset"
+    title: "SWE-bench Verified"
+    url: "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+  - kind: "dataset"
+    title: "SWE-bench Multilingual / SWE-bench-Live"
+    url: "https://huggingface.co/datasets/princeton-nlp/SWE-bench"
+freeResources:
+  - kind: "doc"
+    title: "Claude Code documentation"
+    source: "Anthropic"
+    url: "https://docs.anthropic.com/en/docs/claude-code/overview"
+  - kind: "blog"
+    title: "Aider polyglot benchmark"
+    source: "Paul Gauthier"
+    url: "https://aider.chat/docs/leaderboards/"
+  - kind: "blog"
+    title: "Cursor — how does it work?"
+    source: "Cursor team"
+    url: "https://www.cursor.com/blog"
+  - kind: "video"
+    title: "Andrej Karpathy on agentic coding"
+    source: "Karpathy"
+    url: "https://www.youtube.com/watch?v=EWvNQjAaOHw"
+quiz:
+  - id: "agcoding-q1"
+    question: "What distinguishes an *IDE-resident* coding agent (Cursor, Copilot Chat, Continue) from an *autonomous* one (Devin, Claude Code, OpenAI Codex 2025)?"
+    choices:
+      - "Only the model size."
+      - "IDE-resident agents keep the human in the inner loop — they suggest edits and require explicit acceptance per turn — while autonomous agents plan, execute shell commands, run tests, and iterate over many turns before returning to the user."
+      - "Autonomous agents are slower."
+      - "There is no real distinction."
+    answer: 1
+    explanation: "The split is mostly about *who closes the loop*. IDE agents are great at fast tab-completion and inline edits with synchronous review; autonomous agents make their value on longer-horizon tasks — fix this failing test, refactor this module, find why the build broke — at the cost of harder oversight and higher blast radius when they go wrong."
+  - id: "agcoding-q2"
+    question: "Why is *SWE-bench Verified* (the human-filtered subset) considered a more honest benchmark than the original SWE-bench?"
+    choices:
+      - "It is larger."
+      - "Human annotators removed instances where the issue description was ambiguous, the gold patch was wrong, or the test suite was flaky — leaving 500 problems where success genuinely indicates fixing the bug."
+      - "It uses synthetic data."
+      - "It removes Python."
+    answer: 1
+    explanation: "OpenAI's 2024 'Verified' subset (Bowman et al.) was a response to evidence that ~1/3 of original SWE-bench instances had problems. It became the default leaderboard. As of mid-2025, top frontier agents resolve roughly 60-75% of Verified — up from ~5% when the benchmark launched."
+  - id: "agcoding-q3"
+    question: "What does Cognition's *Devin* contribute architecturally that distinguishes it from a typical Claude Code session?"
+    choices:
+      - "A different model."
+      - "A persistent virtual machine, browser, and shell that the agent owns over long horizons (hours), with planning state checkpointed across turns — closer to a remote junior engineer than an inline assistant."
+      - "Better autocomplete."
+      - "Local-first execution."
+    answer: 1
+    explanation: "Devin pioneered the 'agent gets its own sandbox computer' pattern: VM, browser, shell, file system, and the ability to call external services. The product is designed around delegating multi-hour tasks. Claude Code, by contrast, runs locally in your terminal in your repo with your permission per shell call — different trade-offs around oversight and speed."
+  - id: "agcoding-q4"
+    question: "On the Aider polyglot benchmark (which scores models on editing real code in many languages), what dominates the score difference between top frontier models?"
+    choices:
+      - "Raw code generation."
+      - "Whether the model produces *applied* edits that match the requested diff format precisely (whole-file vs unified-diff vs search-replace) and whether it correctly localizes changes — pure code knowledge is roughly tied at the top."
+      - "Tokenizer differences."
+      - "Quantization."
+    answer: 1
+    explanation: "Aider scores depend heavily on edit-format reliability and localization. Models that hallucinate the wrong file path or fail to produce a clean diff lose points even when they 'know' the right answer. Claude 3.7/4 and Sonnet's careful diff format compliance gave them a measurable edge through 2025."
+---
+
+Coding agents went from research demos to a daily tool for millions of
+software engineers in roughly 18 months. The pace surprised even the
+researchers who built them. By mid-2025 the best agents were closing more
+than two-thirds of real GitHub issues on SWE-bench Verified, doing work that
+was inconceivable when the benchmark launched in late 2023.
+
+This module is about the design space — the architectural choices that
+distinguish IDE-resident from autonomous agents — and the benchmarks that
+actually measure progress. Pick the right tool for the right loop length.
+
+## Two design points
+
+The first axis to disentangle is **who closes the loop**.
+
+**IDE-resident agents** (Cursor, GitHub Copilot Chat, Continue, Cody,
+Windsurf) keep a human inline. The model proposes edits; the human reviews
+and accepts. The most powerful versions integrate multi-file edits, repo-wide
+context, and a chat sidebar, but the *unit of work* is one human-approved
+edit at a time.
+
+**Autonomous agents** (Devin, Claude Code, OpenAI Codex 2025, OpenHands,
+SWE-agent) plan, execute, and iterate over many turns before returning. They
+own a shell. They run tests. They read stack traces and try again. The
+human signs off at the end — sometimes after hours of work.
+
+The trade-off is the usual oversight-vs-leverage one. Inline agents are
+safer, faster on small edits, easier to course-correct. Autonomous agents
+are higher leverage on multi-step tasks but harder to oversee and
+catastrophically wrong if their plan is bad.
+
+## The agent-computer interface (ACI)
+
+SWE-agent's central insight (Yang et al. 2024) was that the *interface*
+matters as much as the model. Give the agent purpose-built tools — `find
+file`, `view file with line numbers`, `edit lines`, `run tests` — designed
+for an LLM's context window and error-handling style, and performance jumps
+dramatically with no model change.
+
+Modern autonomous coding agents now standardize on something close to
+SWE-agent's ACI:
+
+- **File-system tools**: `read`, `edit`, `write`, with line-level addressing.
+- **Shell**: `bash` with timeouts, output truncation, working-directory state.
+- **Search**: `grep`/`ripgrep`, semantic search over the repo.
+- **Browser**: for fetching docs (Claude Code uses MCP servers for this).
+- **Process control**: start/stop background processes, view logs.
+
+The MCP standard (Anthropic, late 2024) is the lingua franca for plugging
+these tools into any agent host. In practice this means an MCP server for
+your GitHub, your Sentry, your Linear, your CI — any agent that speaks MCP
+inherits them all.
+
+## The benchmark layer
+
+Two benchmarks dominate practical evaluation in 2025-26:
+
+1. **SWE-bench Verified** (Princeton + OpenAI). 500 hand-filtered real GitHub
+   issues from popular Python repos; the agent must produce a patch that
+   passes the project's hidden test suite. Measures end-to-end bug-fixing.
+2. **Aider polyglot** (Paul Gauthier). 225 Exercism-style problems across
+   Python, JavaScript, Go, Rust, C++, Java, Swift. Measures edit-format
+   compliance and localization in addition to raw correctness.
+
+A typical 2025 leaderboard looks like:
+
+| Agent + model | SWE-bench Verified | Aider polyglot |
+|---|---|---|
+| Claude Code + Claude 4 Opus | ~75% | ~85% |
+| OpenAI Codex 2025 + GPT-5 | ~74% | ~84% |
+| Devin + Claude/GPT mix | ~72% | n/a |
+| Open-weights leader (DeepSeek-V3.1 / R1.5) | ~62% | ~75% |
+
+These numbers move every quarter — treat them as snapshots. The interesting
+thing is the *gap* has narrowed: open models trail closed ones by maybe ten
+points instead of forty.
+
+## What good agentic coding looks like
+
+A few patterns reliably separate good agents from bad:
+
+- **Read before you write.** Strong agents spend most of their tokens reading
+  source. Weak ones jump to edits.
+- **Run tests early and often.** A failing test is the most informative
+  observation an agent can get. Bad agents skip the test step and "ship"
+  patches that don't compile.
+- **Localize precisely.** Knowing which file and which function is more than
+  half the battle. Search, find-references, and ast-grep are underrated.
+- **Surface uncertainty.** A frontier agent should ask the user when the spec
+  is ambiguous, not silently pick a path. (This is one of the hardest things
+  to train.)
+
+```python
+# A sketch of the inner loop most autonomous coding agents run.
+state = init(task, repo)
+while not done(state):
+    obs = render_state(state)             # files, recent commands, test output
+    plan = model.think(obs, history)      # often hidden reasoning tokens
+    action = model.choose_tool(plan)      # file edit, shell command, etc.
+    result = execute(action)
+    state = update(state, action, result)
+    if budget_exceeded(state) or stuck(state):
+        ask_user_or_abort()
+```
+
+## Where this is going
+
+Three trends shape the next year:
+
+1. **Longer horizons.** Multi-day agent runs ('build me this feature, open
+   the PR, address review comments') are now a serious research target.
+   This needs better memory, better planning, and better evaluation.
+2. **Sandboxing as a product.** Cognition's VM, OpenAI's Operator-style
+   browser, Anthropic's Computer Use — secure remote execution
+   environments are becoming the substrate.
+3. **Verifier-grounded RL.** Coding is the perfect domain for RL: tests are
+   automated rewards. DeepSeek-R1 already used this for math; expect a
+   wave of code-RL'd models in 2026.
+
+<Callout variant="insight" title="The 70% problem">
+SWE-bench Verified scores plateaued near 75% through late 2025. The
+remaining 25% is genuinely hard: cross-file refactors, ambiguous specs,
+flaky tests, environment setup. Pushing past that ceiling requires
+better tools and better evaluation, not just bigger models.
+</Callout>
+
+<PaperCard
+  title="SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+  authors="Carlos Jimenez et al."
+  year={2024}
+  url="https://arxiv.org/abs/2310.06770"
+  takeaway="Created the benchmark that gave the field a way to measure agentic coding progress against real software, not LeetCode. Almost every coding-agent paper since 2024 reports SWE-bench numbers."
+/>
+
+## What to do next
+
+- Read the SWE-bench paper, then the SWE-agent paper to see how the
+  agent-computer interface choices map to score gains.
+- Try Claude Code or OpenAI's Codex agent on a real bug in your own repo;
+  watch what it gets right, what it gets wrong, and where you'd want
+  better tools.
+- Skim Aider's docs — the diff-format engineering is genuinely the bottom
+  layer of all autonomous coding work.

@@ -1,0 +1,225 @@
+---
+slug: "06-multimodal/06-vla-and-robotics"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 6
+title: "Vision-language-action models"
+hook: "RT-2, OpenVLA, π_0 — from internet-pretrained to embodied."
+estMinutes: 16
+difficulty: 4
+prereqs: ["06-multimodal/02-llava"]
+hasHeroViz: false
+researchers: ["finn", "levine", "fan-jim"]
+papers:
+  - title: "RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control"
+    authors: "Brohan, Brown, Carbajal, Chebotar, Chen, Choromanski, Ding, et al. (Google DeepMind)"
+    year: 2023
+    url: "https://arxiv.org/abs/2307.15818"
+  - title: "OpenVLA: An Open-Source Vision-Language-Action Model"
+    authors: "Kim, Pertsch, Karamcheti, Xiao, Balakrishna, Nair, Rafailov, Foster, Lam, Sanketi, Vuong, Kollar, Burchfiel, Tedrake, Sadigh, Levine, Liang, Finn"
+    year: 2024
+    url: "https://arxiv.org/abs/2406.09246"
+  - title: "π_0: A Vision-Language-Action Flow Model for General Robot Control"
+    authors: "Black, Brown, Driess, Esmail, Equi, Finn, Fusai, Groom, Hausman, Ichter, Jakubczak, Jones, Ke, Levine, Li-Bell, Mothukuri, Nair, Pertsch, Shi, Tanner, Vuong, Walling, Wang, Zhilinsky"
+    year: 2024
+    url: "https://arxiv.org/abs/2410.24164"
+  - title: "RT-1: Robotics Transformer for Real-World Control at Scale"
+    authors: "Brohan, Brown, Carbajal, et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2212.06817"
+hfResources:
+  - kind: "model"
+    title: "openvla/openvla-7b"
+    url: "https://huggingface.co/openvla/openvla-7b"
+  - kind: "dataset"
+    title: "Open X-Embodiment dataset"
+    url: "https://huggingface.co/datasets/jxu124/OpenX-Embodiment"
+  - kind: "model"
+    title: "lerobot — Hugging Face robotics framework"
+    url: "https://huggingface.co/lerobot"
+freeResources:
+  - kind: "blog"
+    title: "Physical Intelligence: π_0 and π_0.5"
+    source: "Physical Intelligence"
+    url: "https://www.physicalintelligence.company/blog/pi0"
+  - kind: "blog"
+    title: "Open X-Embodiment: cross-embodiment robot learning"
+    source: "Google DeepMind"
+    url: "https://robotics-transformer-x.github.io/"
+  - kind: "video"
+    title: "Sergey Levine — Foundation models for robotics"
+    source: "Berkeley"
+    url: "https://www.youtube.com/watch?v=eUE4P5JhpOU"
+quiz:
+  - id: "vla-q1"
+    question: "What does the *action* part of a VLA model output, and how is it represented for an autoregressive decoder?"
+    choices:
+      - "Raw motor torques in floating point."
+      - "Discretized end-effector deltas (translation, rotation, gripper) tokenized into a small vocabulary; the LLM emits action tokens just like text tokens."
+      - "Pixel images of the next frame."
+      - "Natural-language commands."
+    answer: 1
+    explanation: "RT-2 introduced the discretization trick: bucket each action dimension into ~256 bins and assign each bin a token ID. The model then emits action tokens autoregressively. This made it possible to fine-tune a pre-trained VLM on (image, instruction, action) triples without changing the head."
+  - id: "vla-q2"
+    question: "What does π_0 add over RT-2 / OpenVLA architecturally?"
+    choices:
+      - "It is smaller."
+      - "A flow-matching action expert: instead of autoregressive token-discretized actions, π_0 generates entire continuous action chunks (e.g. 50-step trajectories) via a small transformer trained with conditional flow matching, attached to a pre-trained VLM backbone."
+      - "It removes the language input."
+      - "It only works in simulation."
+    answer: 1
+    explanation: "Discrete tokenization wastes precision and is slow at high control rates. Physical Intelligence's π_0 keeps the VLM (PaliGemma-3B) for perception+language and adds a small flow-matching head that emits dense continuous action chunks at 50 Hz. The chunked, continuous action prediction was a key step toward dexterous manipulation."
+  - id: "vla-q3"
+    question: "Why is the *Open X-Embodiment* dataset a milestone in robot learning?"
+    choices:
+      - "It is the largest video dataset."
+      - "21 institutions pooled trajectories from 22 different robot embodiments (different arms, grippers, sensors) into one dataset, enabling cross-embodiment pre-training — the 'ImageNet moment' the field had been waiting for."
+      - "It contains only one robot."
+      - "It removed the need for fine-tuning."
+    answer: 1
+    explanation: "Robot data has always been the bottleneck because it is expensive and embodiment-specific. Open X-Embodiment (and the related RT-X paper, 2023) showed that pre-training on a *mixture* of robots transfers — RT-2-X, trained on the mix, outperformed single-robot baselines. This is what makes 'foundation models for robots' even plausible."
+  - id: "vla-q4"
+    question: "What is the most honest assessment of where VLAs were as of mid-2026?"
+    choices:
+      - "Solved general robotics."
+      - "Strong on tabletop manipulation with closed action vocabularies; meaningful generalization across instructions and scenes; still poor on long-horizon tasks, contact-rich manipulation, and truly novel embodiments — the 'GPT-2 moment for robots' rather than the 'GPT-4 moment'."
+      - "Worse than scripted pipelines."
+      - "Indistinguishable from human teleoperators."
+    answer: 1
+    explanation: "The honest framing from the labs themselves (Levine, Finn, Black) is that VLAs work but are brittle: they handle the demonstrated distribution well, generalize impressively across language and visual variation within that distribution, and fail on contact-rich, long-horizon, or embodiment-novel tasks. The field is somewhere around the GPT-2 era of language models — clearly the right direction, not yet the product."
+---
+
+For ten years the dream of general-purpose robotics was held back by a data
+problem: robot data is expensive, robot data is embodiment-specific, and no
+one could collect enough of it to train anything that generalized. By
+2024-2026 a new pattern had emerged that finally cracked the cycle. **Take an
+internet-pretrained vision-language model, fine-tune it on a giant pooled
+dataset of real robot trajectories, and let it act.** That is a
+vision-language-action (VLA) model.
+
+It is the most exciting thing happening in robotics in a decade and worth
+understanding even if you never touch a real robot.
+
+## What a VLA actually is
+
+A VLA model maps:
+
+$$
+(\text{image observation},\, \text{language instruction},\, \text{state}) \;\to\; \text{action}
+$$
+
+The image is from the robot's camera (or cameras). The instruction is natural
+language ("put the apple in the bowl"). The state is the proprioceptive
+reading (joint angles, gripper position). The action is whatever the robot
+needs to execute next — typically end-effector pose deltas plus gripper
+command, sometimes joint torques, sometimes a chunk of future actions.
+
+The architecture is almost always:
+
+- A **pre-trained VLM backbone** (PaLI, PaliGemma, LLaVA, Qwen-VL) for
+  the perception + language part.
+- An **action head** that converts the backbone's output into actions.
+
+Two action-head designs dominate:
+
+1. **Action tokenization** (RT-2, OpenVLA). Discretize each action dimension
+   into ~256 bins. Reserve the highest-frequency token IDs in the
+   vocabulary for action bins. Train autoregressively. Cheap; reuses the
+   LLM head; loses precision.
+2. **Continuous action chunks via flow matching** (π_0, π_0.5). Attach a
+   small transformer that generates entire $H$-step continuous action
+   sequences using flow matching (see part 6 topic 4). Faster at
+   inference (single forward pass for $H$ steps), more expressive.
+
+## The data flywheel
+
+The single biggest unlock was *pooling data across robots*. The Open
+X-Embodiment dataset (RT-X, 2023) collected ~1M trajectories from 22
+embodiments at 21 institutions, covering everything from xArm-7 tabletop
+manipulators to Stretch RE-1 mobile manipulators to bimanual ALOHA setups.
+
+Pre-training on the mix gave RT-2-X measurable improvements on each
+individual robot — even though no single robot saw all the data — because
+the perception backbone benefited from variety and the action head learned
+robust action representations across embodiments.
+
+Physical Intelligence (founded 2024) pushed this further: π_0 was trained on
+a curated mix of 7 single- and dual-arm embodiments and 68 task categories
+covering everything from folding laundry to making an espresso. π_0.5 (2025)
+added meaningful "open-vocabulary" generalization — the model performs new
+tasks in homes it has never seen.
+
+## Why language helps so much
+
+Language is the wedge that makes pre-training transfer to robotics. Three
+mechanisms are at play:
+
+1. **Compositional task specification.** "Put the *blue* cup in the *left*
+   drawer" mixes attributes the model has never seen together but knows
+   individually.
+2. **Visual grounding inherited from VLM pre-training.** A VLM that has
+   seen 10B image-text pairs already has rich representations of "cup,"
+   "drawer," "left." Robot fine-tuning teaches it how to *act* with those
+   concepts; it does not have to learn what they look like.
+3. **Chain-of-thought planning.** RT-2 and successors can be prompted to
+   produce intermediate language reasoning (which object, then which
+   action) before emitting actions, improving multi-step task success.
+
+```python
+# Conceptual VLA forward pass (OpenVLA style).
+img    = robot_camera.read()                  # (H, W, 3)
+prompt = f"In: What action should the robot take to {instruction}?\nOut:"
+logits = vlm(image=img, text=prompt)          # next-token over vocab
+action_tokens = logits.argmax(-1)[-7:]        # last 7 tokens = 7 action dims
+action = detokenize(action_tokens)            # (Δx, Δy, Δz, Δrx, Δry, Δrz, gripper)
+robot.execute(action)
+```
+
+## The honest frontier
+
+VLAs work — convincingly, repeatably — on tabletop manipulation tasks within
+the demonstrated distribution. They handle visual and linguistic variation
+beyond what any prior approach could.
+
+What they do *not* yet do:
+
+- **Long-horizon tasks** (cook a meal, fold a basket of laundry end-to-end)
+  remain beyond reliable single-policy execution. Hierarchical planning on
+  top is an active research frontier.
+- **Contact-rich manipulation** (peg insertion, deformable objects) is
+  better with diffusion policies (see part 11 topic 8) than with VLAs.
+  Hybrids are emerging.
+- **Truly novel embodiments** (a humanoid trained on arm data) require
+  more transfer than current methods support; this is what NVIDIA's GR00T
+  (Jim Fan and team) is trying to solve at scale.
+
+Three companies in mid-2026 are pushing the frontier hardest: Physical
+Intelligence (π series), NVIDIA (GR00T), and Google DeepMind (RT-2 lineage,
+Gemini Robotics). They each have different bets on the action head, the
+backbone, and the embodiment scope.
+
+<Callout variant="insight" title="The 'GPT-2 moment' framing">
+Sergey Levine's framing — that VLAs in 2025-26 are the GPT-2 moment for
+robotics — is probably the right calibration. They are real. They
+generalize. They are far from a product. The next few years are about
+whether the same scaling story (more data, bigger models, more diverse
+tasks) will play out as it did for language. Bet on yes, with caveats.
+</Callout>
+
+<PaperCard
+  title="π_0: A Vision-Language-Action Flow Model for General Robot Control"
+  authors="Kevin Black et al. (Physical Intelligence)"
+  year={2024}
+  url="https://arxiv.org/abs/2410.24164"
+  takeaway="The cleanest current statement of the VLA + flow-matching action head recipe. Worth reading even if you do not work in robotics — it is the blueprint of how the field is converging."
+/>
+
+## What to do next
+
+- Watch any of the π_0.5 demo videos with the audio off. Notice how
+  generalist the behavior is and how much language is doing the work.
+- Run OpenVLA in simulation (CARLA, RoboCasa, LIBERO) to feel the
+  inference loop.
+- Read RT-X to understand why cross-embodiment pre-training was the
+  unlock.

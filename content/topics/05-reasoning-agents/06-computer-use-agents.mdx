@@ -1,0 +1,232 @@
+---
+slug: "05-reasoning-agents/06-computer-use-agents"
+part: "05-reasoning-agents"
+partTitle: "Reasoning & agents"
+partIndex: 5
+topicIndex: 6
+title: "Computer-use agents"
+hook: "Anthropic Computer Use, OpenAI Operator, Project Mariner — pixel-grounded vs DOM-grounded."
+estMinutes: 14
+difficulty: 3
+prereqs: ["05-reasoning-agents/02-cot-react", "06-multimodal/02-llava"]
+hasHeroViz: false
+researchers: ["amodei"]
+papers:
+  - title: "Introducing Computer Use, a New Claude 3.5 Sonnet, and Claude 3.5 Haiku"
+    authors: "Anthropic"
+    year: 2024
+    url: "https://www.anthropic.com/news/3-5-models-and-computer-use"
+  - title: "Operator System Card"
+    authors: "OpenAI"
+    year: 2025
+    url: "https://openai.com/index/operator/"
+  - title: "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+    authors: "Zhou, Xu, Zhu, Zhao, Liu, Roukos, Zhang, Nakano, Liu, Liu, Wang, Bisk, Fried, Alon, Neubig"
+    year: 2023
+    url: "https://arxiv.org/abs/2307.13854"
+  - title: "OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments"
+    authors: "Xie, Zhang, Chen, Lou, Ma, Zhang, Xu, Liu, Hou, Li, Yu, Xu, Ben Allal, Sansone, Bekman, Schick, et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2404.07972"
+hfResources:
+  - kind: "model"
+    title: "Anthropic Claude 4 — Computer Use API"
+    url: "https://docs.anthropic.com/en/docs/agents-and-tools/computer-use"
+  - kind: "library"
+    title: "browser-use — open-source browser agent framework"
+    url: "https://github.com/browser-use/browser-use"
+freeResources:
+  - kind: "video"
+    title: "Computer Use demo"
+    source: "Anthropic"
+    url: "https://www.anthropic.com/news/3-5-models-and-computer-use"
+  - kind: "blog"
+    title: "Operator and the building blocks of an agent"
+    source: "OpenAI"
+    url: "https://openai.com/index/computer-using-agent/"
+  - kind: "blog"
+    title: "Project Mariner — research preview"
+    source: "Google DeepMind"
+    url: "https://deepmind.google/technologies/project-mariner/"
+quiz:
+  - id: "cu-q1"
+    question: "What is the central architectural difference between Anthropic's Computer Use and a DOM-grounded browser agent like Project Mariner?"
+    choices:
+      - "Different model sizes."
+      - "Computer Use feeds the model raw screenshots and emits mouse/keyboard actions in pixel coordinates; DOM-grounded agents parse the page structure and act on element IDs / accessibility trees."
+      - "Computer Use only works on Linux."
+      - "Mariner avoids using a model."
+    answer: 1
+    explanation: "Pixel grounding is universal — works on any GUI, including legacy desktop apps — but is sample-inefficient and brittle to layout changes. DOM grounding is more reliable when available but breaks on canvas-rendered apps, video, or non-web surfaces. The frontier labs have made different bets; production systems often combine both."
+  - id: "cu-q2"
+    question: "Why did Anthropic ship Computer Use as a *beta* with explicit warnings to run it in a VM/sandbox?"
+    choices:
+      - "Marketing reasons."
+      - "Computer-use agents have a large attack surface (prompt injection from web pages, accidental destructive actions on the host) — even with a careful model, the failure modes are real, so isolation is the responsible default."
+      - "It only works in beta."
+      - "It cannot be deployed to production."
+    answer: 1
+    explanation: "Anthropic's announcement was unusually candid about risks: prompt injection from a malicious site can cause an agent to exfiltrate data or perform destructive actions. The recommendation is an ephemeral VM, no production credentials, supervised execution. This is the new safety frontier as agents gain real-world action capacity."
+  - id: "cu-q3"
+    question: "On the OSWorld benchmark, computer-use agents in late 2025 achieved roughly what success rate on real desktop tasks (Linux + apps)?"
+    choices:
+      - "Above 95%."
+      - "Roughly 35-50% — strong on simple, well-specified tasks; still poor on multi-application workflows, file system navigation, and tasks that require domain knowledge of obscure apps."
+      - "Exactly 0%."
+      - "Indistinguishable from humans."
+    answer: 1
+    explanation: "OSWorld is hard: the agent has to control a Linux desktop with Chrome, LibreOffice, GIMP, VS Code, etc., and complete tasks like 'reduce all images in this folder to under 100kb and email them as an attachment'. Top scores in late 2025 sat in the 35-50% range — vastly above 2023 baselines but a long way from useful general autonomy."
+  - id: "cu-q4"
+    question: "What does *grounding* mean in the context of GUI agents, and why is it the bottleneck?"
+    choices:
+      - "Connecting to a power source."
+      - "Mapping a model's intended action ('click the Submit button') to precise pixel coordinates or element selectors that actually trigger that action — a vision-perception problem that often fails on small, occluded, or visually unusual targets."
+      - "Memory management."
+      - "Tokenization."
+    answer: 1
+    explanation: "Models reason fine about intent; they fail at pixel-level perception. Click coordinates that miss by 5 pixels, dropdowns that open and close before the agent can scroll, fields that look identical — grounding errors dominate failure analysis. SeeClick, Set-of-Mark prompting, and OCR overlays are all attempts to make grounding more reliable."
+---
+
+In late 2024 the frontier labs each shipped, within months of each other,
+a new modality of agent: one that controls a real computer. Anthropic's
+Computer Use (October 2024), OpenAI's Operator (January 2025), and Google
+DeepMind's Project Mariner (December 2024) all answer the same question —
+*what if the agent could just use the GUI like you do?* — with subtly
+different bets about how.
+
+This module is a tour of the design space. Pixel-grounded versus DOM-grounded.
+Browser-only versus full desktop. What works, what breaks, why this is the
+single most safety-relevant capability the field has shipped in a year.
+
+## Why GUIs at all
+
+The intuitive question is: why use a screen and a mouse at all? Most
+information has an API; most actions can be scripted; agents already use
+tool-call interfaces successfully.
+
+Two answers:
+
+1. **Long-tail integration.** APIs cover the head of the distribution.
+   Internal corporate apps, legacy systems, half-broken government
+   websites, every desktop application that does not expose an
+   automation surface — these have *only* a GUI. A GUI agent solves them
+   uniformly.
+2. **Generalization.** A model that can see a screen and reason about it
+   is a different kind of system than one that calls a fixed list of
+   functions. It learns from the same distribution as humans (screenshots
+   plus actions) and adapts to new interfaces without retraining.
+
+The price is sample inefficiency, brittleness, and — most importantly —
+a much larger attack surface. The agent now reads arbitrary text from
+the web and treats it as instructions.
+
+## Two grounding strategies
+
+The defining technical question for a GUI agent is: how do you *ground* an
+intended action in a concrete one?
+
+**Pixel grounding** (Anthropic Computer Use, OpenAI Operator's CUA model).
+The model sees a screenshot, decides "click the blue Submit button," and
+emits an absolute pixel coordinate `(x, y)` plus an action verb (`click`,
+`type`, `scroll`). Universal — any UI works — but vision is the bottleneck:
+small targets, occluded targets, and scroll-dependent layouts are hard.
+
+**DOM / accessibility grounding** (Project Mariner; many open-source frameworks).
+The agent receives a parsed representation of the page (DOM tree,
+accessibility labels, computed roles) and acts on element IDs. More reliable
+when the structure is good; fails entirely on canvas-rendered apps, video,
+PDF viewers, native desktop programs.
+
+Production systems usually do both: render a screenshot *with element
+boxes overlaid* (Set-of-Mark prompting), pass DOM as auxiliary text, let
+the model reason in pixels and emit actions in selectors when possible.
+
+## Anatomy of a step
+
+A typical Computer Use loop looks like this:
+
+```python
+state = init_environment()  # VM with browser, apps
+goal  = "Find the cheapest direct flight from SFO to JFK on 2026-06-01."
+history = []
+while not done(state):
+    screenshot = grab_screen(state)
+    obs = {"image": screenshot, "url": current_url(state)}
+    plan, action = model.act(goal, obs, history)
+    # action is e.g. {"type": "click", "x": 432, "y": 218}
+    apply(action, state)
+    history.append((obs, action))
+```
+
+Note what's *not* there: a fixed schema for the apps the agent uses, an
+ontology of buttons, a list of allowed actions. The model just sees pixels
+and decides.
+
+## Benchmarks tell the story
+
+Two benchmarks have become standard:
+
+- **WebArena** (CMU, 2023): functional web tasks across realistic clones of
+  shopping, GitLab, Reddit, Wikipedia. Tests web reasoning.
+- **OSWorld** (HKU + Salesforce, 2024): full-desktop tasks on Ubuntu —
+  open this PDF, edit it in LibreOffice, email it via Thunderbird. Tests
+  multi-application workflows.
+
+State of the art as of late 2025:
+
+| System | WebArena | OSWorld |
+|---|---|---|
+| Claude 4 Computer Use | ~58% | ~45% |
+| OpenAI CUA / Operator | ~55% | ~42% |
+| Project Mariner (browser-only) | ~62% on web | n/a (browser-only) |
+| Open-weights leader (UI-TARS-72B etc.) | ~50% | ~35% |
+| Human baseline | ~88% | ~72% |
+
+The gap to humans is the salient fact. We are not close to "general computer
+operator" yet — but we are close enough that the safety conversations have
+become urgent.
+
+## The safety surface
+
+Computer-use agents combine three things that, taken together, are
+qualitatively new:
+
+1. **Reading untrusted text** (web pages, emails) that may contain
+   prompt-injection attacks crafted to redirect the agent.
+2. **Writing untrusted output** (clicks, keystrokes) into systems that
+   may have real consequences (sending money, sending emails, deleting
+   files).
+3. **Persistent state** that an agent can build up over many steps,
+   sometimes hours.
+
+Anthropic's standing recommendation — run only in an ephemeral VM with no
+sensitive credentials, supervise execution, accept that some prompt
+injections will succeed — is the conservative answer. The product
+implications (Operator runs in the cloud in a sandboxed browser; Claude
+Code asks for permission per shell command; Mariner currently restricts
+itself to browser-only research-preview tasks) reflect the same caution.
+
+<Callout variant="insight" title="Why this is not just RPA">
+Robotic Process Automation has scripted GUI control for two decades. The
+qualitative difference here is *generalization*: an RPA bot is brittle to
+any layout change; a GUI agent reads the screen and adapts. This is what
+makes the safety story new — you cannot whitelist the actions in advance,
+because the action space is "anything a person could do at the keyboard."
+</Callout>
+
+<PaperCard
+  title="OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments"
+  authors="Tianbao Xie et al."
+  year={2024}
+  url="https://arxiv.org/abs/2404.07972"
+  takeaway="The benchmark that finally measures real desktop competence — multi-application workflows, file system tasks, browser+app combinations. The gap between top agents and humans here is currently the most honest measure of general computer-use capability."
+/>
+
+## What to do next
+
+- Run Anthropic's Computer Use reference VM. Watch a 5-minute task; you
+  will learn more about the failure modes than any paper can teach you.
+- Read the OpenAI Operator system card; it is one of the more candid
+  safety-focused launches and worth studying as a template.
+- Try `browser-use` (open-source) — it is the easiest way to feel the
+  pixel-vs-DOM trade-off in your hands.

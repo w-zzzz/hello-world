@@ -1,0 +1,221 @@
+---
+slug: "02-classical-ml/07-em-hmm"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 7
+title: "EM algorithm & HMMs"
+hook: "Hidden variables, Baum-Welch, and why HMMs ruled speech for thirty years."
+estMinutes: 16
+difficulty: 3
+prereqs: ["02-classical-ml/05-bayesian-inference"]
+hasHeroViz: false
+researchers: ["koller"]
+papers:
+  - title: "Maximum Likelihood from Incomplete Data via the EM Algorithm"
+    authors: "Dempster, Laird, Rubin"
+    year: 1977
+    url: "https://web.mit.edu/6.435/www/Dempster77.pdf"
+  - title: "A Tutorial on Hidden Markov Models and Selected Applications in Speech Recognition"
+    authors: "Lawrence Rabiner"
+    year: 1989
+    url: "https://www.cs.ubc.ca/~murphyk/Bayes/rabiner.pdf"
+  - title: "Connectionist Temporal Classification"
+    authors: "Graves, Fernández, Gomez, Schmidhuber"
+    year: 2006
+    url: "https://www.cs.toronto.edu/~graves/icml_2006.pdf"
+hfResources:
+  - kind: "library"
+    title: "hmmlearn — HMM toolkit for scikit-learn"
+    url: "https://hmmlearn.readthedocs.io/"
+  - kind: "library"
+    title: "Pomegranate — probabilistic models incl. HMMs"
+    url: "https://pomegranate.readthedocs.io/"
+freeResources:
+  - kind: "course"
+    title: "Stanford CS228 — EM algorithm notes"
+    source: "Stefano Ermon"
+    url: "https://ermongroup.github.io/cs228-notes/learning/latent/"
+  - kind: "blog"
+    title: "What is the expectation-maximization algorithm?"
+    source: "Do, Batzoglou — Nature Biotechnology"
+    url: "https://www.nature.com/articles/nbt1406"
+  - kind: "video"
+    title: "Hidden Markov Models — Stanford CS221"
+    source: "Percy Liang"
+    url: "https://www.youtube.com/watch?v=RWkHJnFj5rY"
+quiz:
+  - id: "em-q1"
+    question: "What does each iteration of EM guarantee?"
+    choices:
+      - "It finds the global maximum of the likelihood."
+      - "The marginal log-likelihood $\\log p(x \\mid \\theta)$ is non-decreasing — never goes down, but may converge to a local maximum or saddle point."
+      - "It converges in one step."
+      - "It removes the need for initialization."
+    answer: 1
+    explanation: "The E-step builds a tight variational lower bound at the current $\\theta$; the M-step maximizes that bound exactly. Because the bound touches the true log-likelihood at the current parameters, raising the bound raises (or holds) the true likelihood. EM is *not* globally optimal — multiple restarts and good initialization (e.g. k-means before GMM-EM) matter."
+  - id: "em-q2"
+    question: "In a Gaussian mixture model, what role do the *responsibilities* $\\gamma_{ik} = p(z_i = k \\mid x_i, \\theta)$ play?"
+    choices:
+      - "They are the cluster centers."
+      - "They are the soft assignments of point $i$ to component $k$ — computed in the E-step and used as weights in the M-step's weighted-mean and weighted-covariance updates."
+      - "They are hyperparameters."
+      - "They are the data."
+    answer: 1
+    explanation: "Responsibilities are the posterior over the latent cluster assignment given current parameters. Hard assignments (argmax) recover k-means; soft assignments give the full GMM. The two-step structure — soft-assign, then re-estimate — is the EM template, and you'll see it everywhere from topic models to PCFG induction."
+  - id: "em-q3"
+    question: "The Baum-Welch algorithm trains an HMM. What is its forward-backward step actually computing?"
+    choices:
+      - "The Viterbi path."
+      - "The marginal posteriors $p(z_t = k \\mid x_{1:T})$ and pairwise marginals $p(z_t = k, z_{t+1} = j \\mid x_{1:T})$ for every time step, in $O(TK^2)$ time."
+      - "The transition matrix directly."
+      - "The likelihood."
+    answer: 1
+    explanation: "Forward gives $p(z_t = k, x_{1:t})$, backward gives $p(x_{t+1:T} \\mid z_t = k)$, their product is the marginal posterior. These marginals are the E-step; the M-step is just normalized counting on these expected sufficient statistics. The dynamic-programming recursion is what makes HMM training tractable."
+  - id: "em-q4"
+    question: "Why did HMMs lose to deep learning for speech recognition around 2012-2015?"
+    choices:
+      - "HMMs are mathematically wrong."
+      - "End-to-end neural models (DeepSpeech, listen-attend-spell) replaced the GMM-HMM acoustic model with a neural net trained with CTC or attention; deep nets learned better features than the Gaussian-mixture observation model and removed the conditional-independence assumptions."
+      - "Speech data ran out."
+      - "EM was patented."
+    answer: 1
+    explanation: "The HMM framework — discrete latent states with Markov transitions — was a beautiful 30-year reign that finally gave way when neural acoustic models plus CTC (a label-loss that handles unaligned sequences) produced lower word error rates with a simpler pipeline. CTC, interestingly, is itself a form of marginalization over latent alignments — EM's spirit lives on."
+---
+
+The EM algorithm is the most important inference algorithm you have probably
+never written from scratch. It is also the single conceptual ingredient that
+made hidden Markov models tractable enough to power every speech recognition
+system from 1980 to 2012, and it turns up in modern training recipes
+disguised under different names.
+
+This module covers EM, then HMMs as the canonical EM application, then a
+brief look at where the ideas have ended up in 2026.
+
+## Latent variables and the missing-data problem
+
+You have data $x$ and a model with latent variables $z$:
+
+$$
+p(x \mid \theta) = \sum_z p(x, z \mid \theta)
+$$
+
+You want $\hat\theta_{\text{MLE}}$. Direct maximization is hard because the
+sum-inside-log destroys the convenient structure of $\log p(x, z \mid \theta)$.
+EM is the standard answer.
+
+## The two steps
+
+**E-step**: at the current $\theta^{(t)}$, compute the posterior over latents
+$q(z) = p(z \mid x, \theta^{(t)})$ and form the *expected complete-data
+log-likelihood*:
+
+$$
+Q(\theta \mid \theta^{(t)}) = \mathbb{E}_{q(z)}[\log p(x, z \mid \theta)]
+$$
+
+**M-step**: maximize $Q$ over $\theta$ to get $\theta^{(t+1)}$.
+
+This guarantees $\log p(x \mid \theta^{(t+1)}) \ge \log p(x \mid \theta^{(t)})$ —
+each iteration cannot decrease the marginal log-likelihood. (The proof is a
+one-line application of Jensen's inequality.)
+
+The view EM-as-coordinate-ascent on a free-energy functional generalizes to
+**variational EM** when the exact posterior $p(z \mid x, \theta)$ is intractable;
+you replace it with the closest tractable $q$. That is the bridge to VAEs,
+which optimize an ELBO with the same shape.
+
+## GMMs in three lines
+
+For a $K$-component Gaussian mixture, the parameters are
+$\theta = \\{\\pi_k, \mu_k, \Sigma_k\\}$.
+
+- E-step: $\gamma_{ik} = \pi_k \mathcal{N}(x_i \mid \mu_k, \Sigma_k) / \sum_j \pi_j \mathcal{N}(x_i \mid \mu_j, \Sigma_j)$
+- M-step: $\pi_k \leftarrow \tfrac{1}{n}\sum_i \gamma_{ik}$, weighted means and covariances for $\mu_k, \Sigma_k$.
+
+Initialize with k-means, run a few dozen iterations, watch the components
+peel off the data. This is how scikit-learn's `GaussianMixture` works under
+the hood.
+
+## Hidden Markov models
+
+An HMM defines a discrete latent sequence $z_{1:T}$ evolving as a Markov chain
+with transition matrix $A$, an emission distribution $p(x_t \mid z_t)$ (often
+a Gaussian per state), and an initial distribution $\pi$.
+
+Three inference questions, each with its own dynamic program:
+
+| Question | Algorithm | Complexity |
+|---|---|---|
+| Likelihood $p(x_{1:T})$ | Forward | $O(TK^2)$ |
+| Most probable path $\arg\max_{z} p(z \mid x)$ | Viterbi | $O(TK^2)$ |
+| Marginal posteriors $p(z_t \mid x_{1:T})$ | Forward-Backward | $O(TK^2)$ |
+
+The **Baum-Welch** algorithm is just EM applied to HMMs: forward-backward in
+the E-step gives the expected sufficient statistics (state occupancy, state
+transitions); the M-step is normalized counting.
+
+```python
+import numpy as np
+
+def forward(pi, A, B):  # B[t, k] = p(x_t | z_t = k)
+    T, K = B.shape
+    alpha = np.zeros((T, K))
+    alpha[0] = pi * B[0]
+    for t in range(1, T):
+        alpha[t] = (alpha[t-1] @ A) * B[t]
+    return alpha  # alpha[t, k] = p(x_{1:t}, z_t = k)
+```
+
+This recursion was written in 1966. It still runs every time you tag a
+part-of-speech sequence in NLTK, segment a CRISPR read, or align a chunk of
+audio to a transcript.
+
+## The thirty-year reign
+
+For thirty years (~1980 to ~2012), every state-of-the-art speech recognizer
+was a **GMM-HMM**: an HMM where each state's emission distribution was a
+Gaussian mixture over MFCC features, trained with Baum-Welch and a
+hand-engineered pronunciation lexicon. Why this won:
+
+1. The conditional-independence assumptions (states Markov, observations
+   conditionally independent given state) made $O(TK^2)$ inference possible.
+2. Baum-Welch is convex enough on the M-step to be reliable.
+3. Pronunciation models, language models, and acoustic models could be
+   composed as weighted finite-state transducers, decoded jointly.
+
+Then deep learning's acoustic features (DNN-HMM hybrids) and end-to-end
+**CTC** (Graves 2006, deployed in DeepSpeech 2014) closed the gap. By 2017
+attention-based models like *listen-attend-spell* and Transformer ASR took
+over the leaderboard, and Whisper (2022) made GMM-HMMs feel like steam
+engines.
+
+But the *algorithmic* lineage is preserved: CTC marginalizes over latent
+alignments by dynamic programming over a lattice — the spirit of forward
+algorithm, now embedded in a deep net.
+
+<Callout variant="insight" title="EM is hiding in modern training">
+Wake-sleep training of Helmholtz machines, contrastive divergence in RBMs,
+the E-step/M-step structure of variational autoencoders, even
+expectation-style updates in some MoE routing — they are all EM in
+different costumes. Once you can spot the pattern (alternate between
+inferring latents and updating parameters that condition on those
+inferred latents), you see it everywhere.
+</Callout>
+
+<PaperCard
+  title="A Tutorial on Hidden Markov Models and Selected Applications in Speech Recognition"
+  authors="Lawrence Rabiner"
+  year={1989}
+  url="https://www.cs.ubc.ca/~murphyk/Bayes/rabiner.pdf"
+  takeaway="The single most-cited tutorial in classical NLP/speech. Forward, backward, Viterbi, Baum-Welch, all derived from first principles with no hand-waving."
+/>
+
+## What to do next
+
+- Implement a 2-state HMM with Gaussian emissions on synthetic data; run
+  Baum-Welch from random init and watch the parameters converge.
+- Read Murphy's PRML chapter on graphical models for the broader context
+  (HMMs are the simplest temporal graphical model).
+- Skim Graves' CTC paper to see how the EM/forward-backward intuition
+  becomes a differentiable loss for end-to-end training.

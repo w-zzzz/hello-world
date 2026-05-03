@@ -16,6 +16,21 @@ export const RESEARCHERS: Researcher[] = [
       { title: "Learning representations by back-propagating errors", year: 1986, url: "https://www.nature.com/articles/323533a0" },
       { title: "Distilling the knowledge in a neural network", year: 2015, url: "https://arxiv.org/abs/1503.02531" },
     ],
+    story: {
+      headline: "How Hinton kept connectionism alive through the AI winter",
+      paragraphs: [
+        "When Geoffrey Hinton arrived in Edinburgh as a graduate student in 1972, neural networks were already considered a dead end. Marvin Minsky and Seymour Papert's 1969 book Perceptrons had argued, persuasively, that simple networks could not even learn the XOR function. Funding evaporated. Departments shut down. Hinton stayed anyway, because he believed brains were the only existence proof of intelligence we had, and brains were obviously networks.",
+        "For the next decade he worked at the margins. He spent the late 1970s in San Diego with David Rumelhart and James McClelland's parallel distributed processing group, then in Pittsburgh on the Boltzmann machine with Terry Sejnowski. The 1986 Nature paper with Rumelhart and Ronald Williams — Learning representations by back-propagating errors — gave the connectionist revival its founding text. Backpropagation, derived independently by several people but popularized by that paper, made multi-layer networks trainable. The argument against perceptrons evaporated in three pages.",
+        "It was not enough. The second AI winter began at the end of the 1980s. By the early 1990s most researchers had moved to support vector machines, kernel methods, and graphical models. Hinton moved to Toronto in 1987, set up a small group, and kept building. Restricted Boltzmann machines, contrastive divergence, deep belief nets — each was a partial answer to the question of how to train depth without backprop drowning in vanishing gradients.",
+        "The breakthrough that ended the winter was AlexNet in 2012. Hinton's students Alex Krizhevsky and Ilya Sutskever trained a deep convolutional network on two GPUs in Krizhevsky's bedroom and crushed the ImageNet competition by ten percentage points. Within a year, every serious vision lab on Earth had switched to deep learning. Google bought Hinton's tiny company DNNresearch in early 2013. Forty years of patient work had finally landed.",
+        "In 2018 Hinton, Yoshua Bengio, and Yann LeCun shared the Turing Award. In 2023 he resigned from Google so he could speak freely about AI risk, telling The New York Times that he regretted his life's work. In 2024 he received the Nobel Prize in Physics for the invention of the Boltzmann machine — the first Nobel ever given for machine learning. He was 76.",
+        "What is striking, looking back, is that almost nothing about Hinton's research program changed. He was always interested in how a network of simple units could learn distributed representations from data. The world caught up.",
+      ],
+      pullQuote: {
+        text: "I console myself with the normal excuse: if I hadn't done it, somebody else would have.",
+        source: "Hinton to The New York Times, May 2023, on his role in deep learning",
+      },
+    },
   },
   {
     slug: "lecun",
@@ -32,6 +47,20 @@ export const RESEARCHERS: Researcher[] = [
       { title: "Gradient-based learning applied to document recognition", year: 1998, url: "http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf" },
       { title: "A path towards autonomous machine intelligence", year: 2022, url: "https://openreview.net/forum?id=BZ5a1r-kVsf" },
     ],
+    story: {
+      headline: "The CNN's lonely decade and the road to JEPA",
+      paragraphs: [
+        "Yann LeCun joined Bell Labs in 1988 with a PhD on backpropagation completed in Paris and a model in his head: a neural network that learned spatial features through convolution and pooling, taking inspiration from Hubel and Wiesel's cat visual cortex. The next year he and his colleagues built LeNet — a convolutional network that read handwritten digits well enough to deploy at AT&T and the US Postal Service. By the late 1990s, LeNet was reading roughly ten percent of the checks deposited in the United States.",
+        "And then nothing. The 1998 paper Gradient-based learning applied to document recognition is one of the most cited papers in computer science, but at the time of publication, the field had moved on. Support vector machines, with their elegant theory, looked like a better bet. LeNet was a curiosity that worked on a niche problem. LeCun spent the early 2000s mostly in academic obscurity at NYU, periodically grumbling that the field had taken a wrong turn.",
+        "He was right. When AlexNet won ImageNet in 2012, it was essentially LeNet scaled up, trained on more data with GPUs and ReLUs. Within months, computer vision had collapsed into a single research program: deep convolutional networks. LeCun, by then at NYU and freshly recruited to lead Facebook AI Research (founded 2013, based at FAIR's Manhattan office), suddenly held the deed to the architecture every vision researcher needed.",
+        "He could have spent the next decade riding CNNs. Instead he kept arguing that supervised learning was a dead end and that the future lay in self-supervised prediction of the world. From 2016 onward, his keynote at every conference made the same case: the cake is self-supervised learning, the icing is supervised, the cherry is reinforcement. In 2022 he formalized this in the Joint Embedding Predictive Architecture (JEPA) position paper — a manifesto arguing that LLMs were the wrong path and that real intelligence requires learning compressed predictive world models.",
+        "It is an unfashionable position in 2026. LLMs work, JEPA does not yet. But LeCun has been the one publicly betting against the consensus from inside one of the largest AI labs in the world, and his record on architectural taste is uncommonly good — convolutional networks, energy-based models, contrastive learning, and self-supervised pre-training were each unfashionable until they were not.",
+      ],
+      pullQuote: {
+        text: "We need machines that can learn how the world works by watching it, not by being told.",
+        source: "LeCun, recurring talk through 2018-2024",
+      },
+    },
   },
   {
     slug: "bengio",
@@ -44,6 +73,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Neural machine translation by jointly learning to align and translate", year: 2014, url: "https://arxiv.org/abs/1409.0473" },
     ],
+    story: {
+      headline: "From soft attention at MILA to a turn toward AI safety",
+      paragraphs: [
+        "Yoshua Bengio's lab at the University of Montreal — eventually rebranded as MILA — was, for nearly two decades, the most productive nursery of deep learning talent on the planet. Ian Goodfellow, Aaron Courville, Hugo Larochelle, David Warde-Farley, Dzmitry Bahdanau, Kyunghyun Cho, and dozens of others passed through. Bengio's stylistic mark on the lab was patience and theoretical taste: when something worked, the question was always why.",
+        "His most influential paper of the deep-learning era is the 2014 Neural Machine Translation paper with Bahdanau and Cho. It introduced the attention mechanism three years before the Transformer paper made attention famous. The decoder learned a soft alignment over the source sentence rather than relying on a single fixed-length thought vector. The mechanism would be retrofitted onto every NMT system within a year, and become the conceptual seed of the entire Transformer family.",
+        "In 2018 Bengio shared the Turing Award with Hinton and LeCun. By 2019 he was the most-cited computer scientist in the world by some measures. Then, around 2022, his public posture began to shift. Instead of announcing the next architectural improvement, he was warning about loss of control. He testified to the US Senate, signed the Future of Life Institute pause letter, and chaired the International AI Safety Report commissioned after the Bletchley AI Safety Summit.",
+        "In 2025 he founded LawZero, a non-profit lab whose stated mission is to research a class of provably honest AI systems — what he calls Scientist AI — designed to advise rather than act, and to never deceive. It is a strange capstone for a career built on engineering bigger and bigger generative models, and that is exactly the point. He has been blunt that he changed his mind because he saw what scaling was producing.",
+        "Bengio's influence on the field is now bifurcated: the technical lineage of MILA continues to produce frontier work, while his second career as the field's elder safety statesman is shaping how governments think about regulation. Both roles draw on the same instinct that made his original work distinctive — the willingness to say, calmly and publicly, what he actually thinks the equations imply.",
+      ],
+      pullQuote: {
+        text: "I feel lost. But you have to keep going.",
+        source: "Bengio to The New York Times, 2024, on his shift toward AI safety",
+      },
+    },
   },
   {
     slug: "ng",
@@ -67,6 +110,20 @@ export const RESEARCHERS: Researcher[] = [
       { label: "YouTube", href: "https://www.youtube.com/@AndrejKarpathy" },
     ],
     keyPapers: [],
+    story: {
+      headline: "Tesla, OpenAI, Eureka — the educator's path through the frontier",
+      paragraphs: [
+        "Andrej Karpathy did his PhD at Stanford with Fei-Fei Li, working on image captioning and visual question answering. The artifact that gave him a reputation, though, was not a paper but a hand-written blog post: The Unreasonable Effectiveness of Recurrent Neural Networks (2015), in which he trained a character-level RNN on Shakespeare and Linux source code and let the network finish the sentence. Reading it remains one of the cleanest introductions to what makes neural networks weird and interesting.",
+        "In 2015 he was a founding member of OpenAI, hired by Greg Brockman and Ilya Sutskever. Two years later he left for Tesla to lead the Autopilot vision team. From 2017 to 2022 he ran a famously hands-on operation that retrained the perception stack from scratch around an end-to-end learned approach, presenting yearly to a room full of skeptical analysts at Tesla AI Day.",
+        "He returned to OpenAI in 2023 for a brief stint and then left again in 2024 to start Eureka Labs, an AI-native education company. The framing was that the missing piece in education is not content but personalized tutoring, and that LLMs make a one-on-one tutor practical for the first time. He has been building it openly, releasing the LLM101n curriculum in fragments alongside the YouTube series Neural Networks: Zero to Hero, which walks through building micrograd, makemore, GPT-2, and a tokenizer from first principles.",
+        "What makes Karpathy unusual among frontier engineers is that he keeps writing the lecture he wished he had. nanoGPT, llm.c, and minGPT are all explicitly pedagogical projects — small, readable codebases that someone learning the field can hold in their head. He once described nanoGPT as the rewrite of GPT-2 he would have wanted in 2019, and it is now the reference implementation everyone reads.",
+        "His career has the unusual property that he keeps refusing to specialize. He went from research to autonomy to education to LLM tooling, each time stripping the work down to its essentials and explaining it to a wider audience. Teaching is the through-line.",
+      ],
+      pullQuote: {
+        text: "The hottest new programming language is English.",
+        source: "Karpathy on X, January 2023",
+      },
+    },
   },
   {
     slug: "sutskever",
@@ -80,6 +137,20 @@ export const RESEARCHERS: Researcher[] = [
       { title: "Sequence to sequence learning with neural networks", year: 2014, url: "https://arxiv.org/abs/1409.3215" },
       { title: "ImageNet classification with deep CNNs", year: 2012, url: "https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks" },
     ],
+    story: {
+      headline: "AlexNet, seq2seq, GPT, and a quiet exit toward safe superintelligence",
+      paragraphs: [
+        "Ilya Sutskever was Geoffrey Hinton's student in Toronto when he, Alex Krizhevsky, and Hinton built AlexNet in 2012. The story has been told many times: a deep convolutional network trained on two GTX 580 GPUs in Krizhevsky's bedroom won the ImageNet challenge by a margin so large the field reorganized around it. Sutskever was the theorist of that team, the one who insisted scale was about to start working.",
+        "He moved to Google Brain in 2013 and a year later co-authored Sequence to Sequence Learning with Oriol Vinyals and Quoc Le. The paper introduced the encoder-decoder architecture that became the standard recipe for translation, summarization, dialogue — most of NLP, until the Transformer replaced the recurrent backbone three years later. The intellectual lineage from seq2seq to GPT runs straight through Sutskever.",
+        "In late 2015 Greg Brockman recruited him as the chief scientist of OpenAI. He was the technical compass for nearly a decade — pushing the lab toward generative pre-training, then toward scaling, then toward the GPT line. At every internal disagreement about what to bet on, the position attributed to Sutskever was the most aggressive one: keep scaling, the next thing will work.",
+        "In May 2024 he left OpenAI after the November 2023 board crisis in which he was briefly involved in firing Sam Altman. A month later he announced Safe Superintelligence Inc. with Daniel Gross and Daniel Levy. SSI's stated and only product is safe superintelligence; it does not plan to ship intermediate models. By 2025 the company had raised over a billion dollars on the strength of his name and a one-page mission.",
+        "Sutskever has always been a quiet, almost mystical figure in the field — given to talks about the soul of the network and the importance of feeling the AGI. The decision to vanish into a single-purpose lab fits him. He bet correctly on scale for over a decade. The next bet is that scale alone is not enough.",
+      ],
+      pullQuote: {
+        text: "It may be that today's large neural networks are slightly conscious.",
+        source: "Sutskever on X, February 2022",
+      },
+    },
   },
   {
     slug: "hassabis",
@@ -92,6 +163,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Mastering the game of Go with deep neural networks and tree search", year: 2016, url: "https://www.nature.com/articles/nature16961" },
     ],
+    story: {
+      headline: "From chess prodigy to AlphaFold's Nobel Prize",
+      paragraphs: [
+        "Demis Hassabis was a chess master at thirteen and the lead designer of the 1994 game Theme Park at seventeen. He spent the late 1990s and early 2000s running game studios, then pivoted in his late twenties to a PhD in cognitive neuroscience at UCL, studying memory and imagination. The intellectual through-line was always the same: he was trying to figure out what general intelligence is, from as many angles as possible.",
+        "In 2010 he co-founded DeepMind with Shane Legg and Mustafa Suleyman in a small office in London. Their first major result was a deep Q-network that learned to play Atari games from raw pixels (Nature, 2015). Google bought the company in 2014. The acquisition gave Hassabis the compute and runway to pursue the next step: a system that could play Go.",
+        "AlphaGo's defeat of Lee Sedol in March 2016 was the moment most of the world realized something had changed. AlphaZero in 2017 generalized the approach to chess and shogi, learning entirely through self-play. By 2018 the lab had pivoted again. Hassabis wanted to attack a real scientific problem and chose protein folding, a problem that had resisted fifty years of biochemistry. AlphaFold 2 in 2020 essentially solved it, predicting the structures of 200 million proteins and releasing them as an open database that has now been cited in tens of thousands of biology papers.",
+        "In October 2024 Hassabis and his colleague John Jumper shared the Nobel Prize in Chemistry with David Baker for AlphaFold. It was the second AI-related Nobel of the same week — Hinton had taken the Physics prize two days earlier. For Hassabis, who had spent his entire career arguing that AI was a tool for solving fundamental science, it was a vindication.",
+        "He still runs Google DeepMind from London, having absorbed Google Brain into the unified lab in 2023. The current public effort — Gemini, the Astra agent, Genie world models — is shaped by the same belief he started with: that intelligence is a single phenomenon, and the right architecture should be able to play, reason, and discover.",
+      ],
+      pullQuote: {
+        text: "We see it as our mission to push the boundaries of AI, developing programs that can learn to solve any complex problem.",
+        source: "Hassabis, DeepMind founding statement, 2010",
+      },
+    },
   },
   {
     slug: "fei-fei",
@@ -104,6 +189,21 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "ImageNet: A large-scale hierarchical image database", year: 2009, url: "https://www.image-net.org/" },
     ],
+    story: {
+      headline: "ImageNet against the consensus",
+      paragraphs: [
+        "When Fei-Fei Li proposed building ImageNet at Princeton in 2007, almost nobody in computer vision wanted it. The dominant view was that algorithms mattered, datasets did not, and that scaling labeled data was a brute-force distraction from the real problem of designing better models. A senior colleague is reported to have advised her that the only thing she would achieve was tenure denial.",
+        "Li built it anyway. The team spent two years collecting and labeling 14 million images across 22,000 WordNet categories, financed in part by paying Amazon Mechanical Turk workers a few cents per label. The 2009 paper announcing ImageNet was, on its own, almost ignored. The annual ImageNet Large Scale Visual Recognition Challenge launched in 2010 attracted modest attention.",
+        "Then in 2012 Geoff Hinton's team submitted AlexNet and it won by ten percentage points. Almost overnight, every serious computer vision lab on Earth understood two things at once: deep convolutional networks worked, and the only reason they worked was that ImageNet had given them enough data. Li's contrarian bet had become the substrate of the deep-learning revolution.",
+        "She moved to Stanford, took a sabbatical at Google as Chief Scientist of AI/ML from 2017 to 2018, and on her return co-founded the Stanford Institute for Human-Centered AI (HAI) with John Etchemendy. HAI was a deliberate attempt to position AI policy and ethics inside an engineering institution, rather than as a critique from outside.",
+        "In 2024 she founded World Labs, a startup focused on what she calls spatial intelligence — building large world models that understand and generate 3D scenes the way LLMs understand and generate text. Her bet, again against partial consensus, is that 2D pixels are not enough and that the next frontier is 3D structure.",
+        "Her memoir The Worlds I See, published in 2023, is part autobiography, part field history. It is also, quietly, a story about being an immigrant Chinese-American woman in a field that did not initially want her ideas, and choosing to keep going.",
+      ],
+      pullQuote: {
+        text: "Our goal is to build a complete inventory of the visual world.",
+        source: "Li on ImageNet, CVPR 2009",
+      },
+    },
   },
   {
     slug: "dao",
@@ -117,6 +217,20 @@ export const RESEARCHERS: Researcher[] = [
       { title: "FlashAttention: Fast and memory-efficient exact attention", year: 2022, url: "https://arxiv.org/abs/2205.14135" },
       { title: "Mamba: Linear-time sequence modeling with selective state spaces", year: 2023, url: "https://arxiv.org/abs/2312.00752" },
     ],
+    story: {
+      headline: "Reading the GPU memory hierarchy and rewriting attention",
+      paragraphs: [
+        "Tri Dao was a Stanford PhD student in Chris Ré's group when he began looking at attention not as a mathematical operation but as a sequence of memory accesses. The standard attention implementation in 2021 materialized the full N-by-N attention matrix in GPU high-bandwidth memory. For long sequences this dominated the runtime, but the dominant cost was not arithmetic — it was moving the matrix between HBM and the much faster on-chip SRAM. The hardware was waiting on memory.",
+        "FlashAttention, published in May 2022 with Daniel Fu, Stefano Ermon, Atri Rudra, and Chris Ré, fused the entire attention computation into a single kernel that tiled over SRAM and never wrote the full attention matrix to HBM. Mathematically it was identical to standard attention; physically it was two to four times faster and several times more memory-efficient. Within months it was in PyTorch, in HuggingFace Transformers, and in basically every production LLM serving stack.",
+        "FlashAttention 2 in 2023 raised the throughput further. FlashAttention 3 in 2024 was co-developed with NVIDIA's Hopper team to take advantage of asynchronous warp-specialized scheduling on H100s. Each version was a careful re-derivation of how to use the memory hierarchy that was actually shipping.",
+        "In parallel, Dao co-authored Mamba with Albert Gu in late 2023. Mamba was a structured state-space model with a selective mechanism — a Transformer alternative that scaled linearly in sequence length and matched Transformer perplexity on language modeling at the scale they could afford to test. Mamba 2 followed in 2024, drawing an explicit duality between SSMs and a generalized form of attention.",
+        "Dao joined Princeton in 2023 and became chief scientist at Together AI, the inference-and-training company. His public output remains the same — small, surgically-engineered libraries that make the field's largest models tractable — and the quiet consequence is that almost every modern LLM serving stack has Dao's code somewhere in its hot path.",
+      ],
+      pullQuote: {
+        text: "Attention is IO-bound, not compute-bound. Once you see that, the algorithm rewrites itself.",
+        source: "Dao paraphrased from talks on FlashAttention, 2022",
+      },
+    },
   },
   {
     slug: "gu",
@@ -129,6 +243,16 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Efficiently modeling long sequences with structured state spaces", year: 2022, url: "https://arxiv.org/abs/2111.00396" },
     ],
+    story: {
+      headline: "HiPPO to S4 to Mamba — the steady architecture program",
+      paragraphs: [
+        "Albert Gu's PhD thesis with Chris Ré at Stanford, defended in 2022, has the unusual property of laying out a complete research program over several years that culminated in a major architectural alternative to the Transformer. He started with HiPPO (NeurIPS 2020), a paper on how to optimally compress an input sequence into a fixed-size hidden state using orthogonal polynomial projections. It was a beautiful theoretical result with no immediate practical use.",
+        "The next paper, Linear State-Space Layers in 2021, showed how a continuous linear time-invariant system parameterized by HiPPO matrices could be discretized and used as a sequence model layer. The follow-up — S4, the Structured State Space sequence model — used a structured low-rank-plus-diagonal parameterization that made the layer fast in both training and inference. S4 set state-of-the-art results on the Long Range Arena benchmark by a wide margin, especially on the Path-X task that no Transformer could solve.",
+        "S4 worked, but it was complicated. The Mamba paper in late 2023, with Tri Dao, was the simplification. Mamba added a selective mechanism — letting the SSM's parameters depend on the input — and dropped the structured matrices that had made S4 finicky. The result was a model that scaled linearly in sequence length, matched Transformers at modest scale, and ran with a single kernel on a GPU.",
+        "Gu joined CMU as faculty in 2023 and continues to push state-space architectures. Mamba 2 in 2024, again with Dao, made the duality with attention explicit and gave the SSD framework that unifies state-space duality with linear attention.",
+        "What makes the lineage interesting is how methodical it has been. Each paper builds directly on the previous one, and each one resolves a specific limitation. Most architectural alternatives to attention have come and gone — Performers, Reformers, Linformers, Hyenas, RetNets — but the SSM line has stayed alive because someone kept iterating on the same core idea for five years.",
+      ],
+    },
   },
   {
     slug: "olah",
@@ -141,6 +265,16 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Zoom in: an introduction to circuits", year: 2020, url: "https://distill.pub/2020/circuits/zoom-in/" },
     ],
+    story: {
+      headline: "From Distill essays to Anthropic's interpretability program",
+      paragraphs: [
+        "Chris Olah did not finish a bachelor's degree. He left Toronto, briefly worked at Google, and ended up at Google Brain in 2014 essentially on the strength of long, beautifully illustrated blog posts about deep learning. The posts were so unusually clear that they reframed how the field talked about its own results — particularly how to think about the geometry of representations in neural networks.",
+        "In 2017 he co-founded Distill, the interactive ML research journal, with Shan Carter. Distill explicitly funded researchers to write the kind of richly visual, interactive explanation that nobody else would publish. Most of the early canonical explanations of attention, t-SNE, momentum optimization, and feature visualization that you can find on the open web came out of Distill or its surrounding circle.",
+        "While at OpenAI, Olah built up the Clarity team and produced the Circuits thread — a series of long Distill articles that argued, against the then-prevailing view, that neural networks are at least partially understandable as compositions of small, identifiable mechanisms. The first article, Zoom In (2020), opened with the claim that there are universal, reproducible features inside vision networks and that interpretability could be a real science. It set the agenda for everything that followed.",
+        "When Dario and Daniela Amodei left OpenAI in late 2020 to found Anthropic, Olah went with them. He has led Anthropic's interpretability effort ever since. The lab's work on transformer circuits, induction heads, and ultimately the 2024 paper Scaling Monosemanticity — which used sparse autoencoders to extract millions of interpretable features from a production-scale Claude model — is the program he has been quietly building toward for a decade.",
+        "He continues to publish at transformer-circuits.pub in the same long-form, illustrated, almost handcrafted style. The bet is that you cannot make AI safe if you cannot inspect what the network is doing, and that the only way to learn how to inspect a network is to keep zooming in.",
+      ],
+    },
   },
   {
     slug: "nanda",
@@ -161,6 +295,15 @@ export const RESEARCHERS: Researcher[] = [
     bio: "Her blog is one of the highest-signal references in the field. Topics from diffusion to chain-of-thought to alignment get patient, mathematical treatment.",
     links: [{ label: "Lil'Log", href: "https://lilianweng.github.io/" }],
     keyPapers: [],
+    story: {
+      headline: "Lil'Log, OpenAI safety, and the survey-as-research-method",
+      paragraphs: [
+        "Lilian Weng started her career as an applied scientist at Dropbox and Facebook before joining OpenAI in 2018. Her job titles at OpenAI moved from applied research to robotics to applied AI to head of Safety Systems — the team responsible for the model behavior and content moderation that mediates between the raw GPT model and the user-facing product.",
+        "Her unusual public artifact is Lil'Log, a personal blog she has maintained since 2017. The posts are long, careful, mathematically rigorous surveys — on RL algorithms, attention mechanisms, generative models, prompt engineering, hallucination, agent design, RLHF, diffusion models, in-context learning, LLM-powered autonomous agents. Each post sits in a strange register between literature review and tutorial: it cites everything, derives the equations, and explains the intuitions. Generations of researchers have referenced Lil'Log as their first stop on a new topic.",
+        "The blog is a quiet demonstration that the survey is itself a research method. Writing a careful synthesis of a sub-field forces you to identify the core ideas, the failed attempts, and the open questions. Several of Weng's posts effectively defined the public taxonomy for an emerging area before the academic community had agreed on one — her LLM agent post in 2023 set the planning/memory/tool framework that subsequent agent papers reference.",
+        "She left OpenAI in late 2024 and joined Mira Murati's Thinking Machines Lab as a co-founder. The bet, again, is on a more transparent and customizable approach to building frontier models. The blog continues.",
+      ],
+    },
   },
   {
     slug: "raschka",
@@ -225,6 +368,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Universal language model fine-tuning for text classification (ULMFiT)", year: 2018, url: "https://arxiv.org/abs/1801.06146" },
     ],
+    story: {
+      headline: "fast.ai and the bet that anyone can learn deep learning",
+      paragraphs: [
+        "Jeremy Howard had already had two careers — top-ranked Kaggle competitor and CEO of the medical-imaging startup Enlitic — before he and Rachel Thomas launched fast.ai in 2016. Their starting premise was that the existing way of teaching deep learning was backwards. The MOOCs of the time taught calculus first, then linear algebra, then optimization, then maybe at the end you got to train a model. Most students dropped out before the model.",
+        "Practical Deep Learning for Coders inverted the order. In the first lesson you trained an image classifier that beat 2014 state-of-the-art on a real dataset. The theory came later, justified by something you had already made work. Tens of thousands of people who had previously bounced off academic ML completed the course. A surprising number became professional ML practitioners.",
+        "Howard's research contribution sits inside the same teaching mission. ULMFiT, presented at ACL in 2018 with Sebastian Ruder, was the first really convincing demonstration that you could pre-train a language model on a generic corpus and fine-tune it for downstream classification tasks with a small labeled set. It predated BERT by months and laid down the recipe — discriminative learning rates, slanted triangular learning rates, gradual unfreezing — that became the template for transfer learning in NLP.",
+        "In 2023 Howard co-founded Answer.AI with Eric Ries. Its operating philosophy is unusual for an AI lab: small team, no investors with control rights, focused on producing compute-efficient methods that small organizations can actually run. Their early releases — FSDP+QLoRA training of 70B models on consumer GPUs, the byaldi RAG library, swift small-LM cookbooks — sit in the same lineage as ULMFiT and fast.ai. Make the frontier reachable.",
+        "Howard's stated goal has not changed in fifteen years. He wants to put machine learning in the hands of domain experts who do not have PhDs, on the assumption that most useful applications will come from people who understand a particular problem rather than from people who understand transformers.",
+      ],
+      pullQuote: {
+        text: "Anyone can do deep learning, and you don't need a PhD to do it.",
+        source: "Howard, recurring fast.ai talks since 2016",
+      },
+    },
   },
   {
     slug: "vaswani",
@@ -237,6 +394,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Attention is all you need", year: 2017, url: "https://arxiv.org/abs/1706.03762" },
     ],
+    story: {
+      headline: "Eight authors, one paper, one architecture for everything",
+      paragraphs: [
+        "Ashish Vaswani joined Google Brain in 2016 after a USC PhD on neural machine translation. NMT at Google in 2017 ran on a Bahdanau-style attention plus LSTM stack — the system Google had deployed to replace its phrase-based translator the year before. Vaswani's small team — including Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan Gomez, Łukasz Kaiser, and Illia Polosukhin — was looking for a way to make the model both faster and better.",
+        "The insight, refined over months of failed experiments and extracted in a punishing sprint before the NeurIPS 2017 deadline, was to throw away the recurrence entirely. Replace LSTMs with stacked self-attention plus position encodings, add multi-head attention so different heads can capture different relations, and use the residual + layer-norm pattern aggressively. The resulting Transformer trained in a fraction of the time and beat the state-of-the-art WMT 2014 English-to-German number by two BLEU points.",
+        "The submission's title — Attention Is All You Need — was a joke that Llion Jones suggested. The paper has been cited over 130,000 times.",
+        "What is striking, looking back, is how quickly the eight authors scattered. Within a few years all of them had left Google. Shazeer co-founded Character.AI (and later returned to Google to lead Gemini). Parmar and Vaswani co-founded Adept and then Essential AI. Uszkoreit founded Inceptive. Gomez co-founded Cohere. Polosukhin co-founded NEAR. Kaiser went to OpenAI. Jones co-founded Sakana AI in Tokyo. The Transformer paper turned its authors into the founding cohort of a generation of AI startups.",
+        "Vaswani himself co-founded Adept in 2022 and then Essential AI in 2023, focused on enterprise foundation models. He has been characteristically quiet in public, but the architecture he led has eaten almost everything in machine learning — first NLP, then vision, then audio, protein structure, video, and robotics. There is now no major frontier model that does not trace its lineage to that 2017 deadline.",
+      ],
+      pullQuote: {
+        text: "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms.",
+        source: "Vaswani et al., Attention Is All You Need, NeurIPS 2017",
+      },
+    },
   },
   {
     slug: "shazeer",
@@ -249,6 +420,15 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Outrageously large neural networks: the sparsely-gated MoE layer", year: 2017, url: "https://arxiv.org/abs/1701.06538" },
     ],
+    story: {
+      headline: "The quiet maximalist behind MoE, the Transformer, and Character.AI",
+      paragraphs: [
+        "Noam Shazeer joined Google in 2000 as one of its first hundred employees and stayed for nearly two decades. He worked on the spell-checker, then on advertising, then in the late 2000s he moved into machine translation. The pattern across all of it was the same: take whatever the obvious next idea was and push it harder than anyone else thought reasonable.",
+        "His mark on modern deep learning is improbable. The 2017 Sparsely-Gated Mixture-of-Experts paper, with Geoffrey Hinton, Jeff Dean and others, gave us the gating recipe that has come back to dominate frontier models a decade later. Months after that, he was the second author on Attention Is All You Need — the inside story is that he rewrote the model's training code to make it fast enough to test inside the deadline window. He co-authored T5, the Switch Transformer, and the Mesh-TensorFlow paper that made the first trillion-parameter dense models trainable.",
+        "In 2021, frustrated that Google was unwilling to ship an open-ended chatbot built on the LaMDA work he had been part of, Shazeer left to co-found Character.AI with Daniel De Freitas. By 2023, Character was one of the most-used consumer AI products in the world. In a remarkable corporate maneuver in 2024, Google paid Character.AI roughly $2.7 billion to license its technology and brought Shazeer and De Freitas back, with Shazeer becoming a co-lead of Gemini.",
+        "Shazeer is famously private — he gives almost no interviews and posts almost nothing publicly. But within Google he is widely described as the person who would, repeatedly, just write the code that made an idea actually work. Several of the most consequential architectural ideas of the past decade carry his name.",
+      ],
+    },
   },
   {
     slug: "radford",
@@ -310,6 +490,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Denoising diffusion probabilistic models", year: 2020, url: "https://arxiv.org/abs/2006.11239" },
     ],
+    story: {
+      headline: "DDPM as a side project, then the entire image-generation field",
+      paragraphs: [
+        "Diffusion models existed before Jonathan Ho got hold of them. Sohl-Dickstein and colleagues had proposed the math in 2015 — a probabilistic process that gradually corrupts data to noise and learns to reverse it. The 2015 paper went largely unnoticed because the resulting samples were not competitive with GANs. For half a decade the line of work was a footnote.",
+        "Ho was a Berkeley PhD student in Pieter Abbeel's group when he started looking at it again in 2019. The intuition he and Abbeel pursued was that diffusion was secretly equivalent to denoising score matching, and that with the right parameterization — predicting the noise rather than the original data — and the right network (a U-Net with attention), the model could be made to work at scale. The result, Denoising Diffusion Probabilistic Models, dropped on arXiv in June 2020.",
+        "DDPM produced FID scores on CIFAR-10 and CelebA that were either competitive with or better than the best GANs at the time. Crucially the training was stable in a way GAN training famously was not — no mode collapse, no two-network optimization, just one denoising network trained with a simple regression loss. Within a year, every serious image-generation researcher had pivoted to diffusion.",
+        "Ho moved to Google Brain after the PhD and continued the line of work. Cascaded Diffusion Models (2021) showed how to combine multiple diffusion stages for high-resolution generation. Classifier-Free Guidance (2022) — co-authored with Tim Salimans — gave the field the conditional-generation trick that everything from DALL·E 2 to Stable Diffusion to FLUX still uses.",
+        "By 2022 Latent Diffusion (Robin Rombach et al.) had moved the diffusion process into a VAE-compressed latent space and made it cheap enough to ship as Stable Diffusion. Imagen, Midjourney, Sora — the entire visual-generative wave that shaped culture in 2022-2024 traces directly to Ho's 2020 paper, written as a graduate-student side project on a then-unfashionable approach.",
+      ],
+      pullQuote: {
+        text: "We connect the diffusion model to denoising score matching with annealed Langevin dynamics, which yields a simplified weighted variational bound.",
+        source: "Ho et al., DDPM abstract, June 2020",
+      },
+    },
   },
   {
     slug: "rombach",
@@ -334,6 +528,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Generative adversarial networks", year: 2014, url: "https://arxiv.org/abs/1406.2661" },
     ],
+    story: {
+      headline: "The bar bet that became the GAN paper",
+      paragraphs: [
+        "The story is now lab folklore. In 2014 Ian Goodfellow was a PhD student at Yoshua Bengio's MILA in Montreal. He was at a going-away party at a brewery called Les 3 Brasseurs when fellow students were arguing about how to get a neural network to generate realistic images. Someone proposed an elaborate scheme involving statistical analysis of inputs. Goodfellow, half-drunk by his own admission, said the right architecture was actually two networks playing a game: one generating, one discriminating, and you train them against each other.",
+        "He went home, sat down, and coded up the first working prototype that night. By the morning it generated MNIST digits that were not obviously broken. Within a few months he and his coauthors — including Bengio, Aaron Courville, and several others — had Generative Adversarial Nets ready for NeurIPS 2014. The paper was rejected from oral presentation but accepted as a poster.",
+        "GANs sat slightly underneath the radar for a year and then exploded. DCGAN (2015), Pix2Pix (2016), CycleGAN (2017), and StyleGAN (2018) drove image quality from blurry MNIST to photorealistic faces in four years. Every major lab spent at least one paper trying to stabilize GAN training. The terminology Goodfellow introduced — generator, discriminator, mode collapse, the two-player minimax game — entered the field's vocabulary permanently.",
+        "Goodfellow himself moved to OpenAI, then Google Brain, then Apple as Director of Machine Learning. He resigned from Apple in 2022 over the company's return-to-office policy. He joined Google DeepMind shortly afterward, where he works on adversarial robustness and security.",
+        "He also co-authored, with Bengio and Aaron Courville, the Deep Learning textbook published by MIT Press in 2016. For most of the late 2010s it was the standard graduate text in the field — readable, rigorous, and free online. Two foundational artifacts before the age of thirty-five.",
+      ],
+      pullQuote: {
+        text: "I did the experiment that night and it worked the first time. So I think I'm one of the lucky few people who has had the experience of being right about a research idea on the first try.",
+        source: "Goodfellow recounting the GAN story in interviews, 2016 onward",
+      },
+    },
   },
   {
     slug: "karras",
@@ -346,6 +554,16 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "A style-based generator architecture for GANs", year: 2019, url: "https://arxiv.org/abs/1812.04948" },
     ],
+    story: {
+      headline: "StyleGAN's photoreal arc, written one paper at a time at NVIDIA",
+      paragraphs: [
+        "Tero Karras has worked at NVIDIA's Helsinki research lab since the late 2000s, originally on real-time rendering and ray tracing. He shifted to generative models around 2017 with Progressive Growing of GANs, a paper that introduced the trick of training a GAN at low resolution and adding layers progressively as training stabilized. PGGAN was the first system to produce 1024x1024 face images that were difficult to distinguish from photos at small thumbnail size.",
+        "StyleGAN in 2019 — co-authored with Samuli Laine and Timo Aila — replaced the standard generator with a style-based architecture that injected learned style vectors at each resolution. The result was an unprecedented level of disentangled, controllable face generation. The 'thispersondoesnotexist.com' website that flooded social media in early 2019 ran on StyleGAN.",
+        "StyleGAN 2 (2020) fixed the characteristic blob artifacts and improved fidelity. StyleGAN 3 (2021) addressed the more subtle problem that features were sticky to image coordinates rather than to the generated object — that paper required a careful redesign of the network's signal-processing properties to enforce equivariance to translation and rotation. Each iteration was a craftsman-level rewrite, with new code released as open source from NVIDIA.",
+        "Karras's group also produced EDM (2022), a clean reformulation of diffusion model training that gave the cleanest single-step ODE formulation of the diffusion process and matched or beat all prior diffusion baselines on standard benchmarks. EDM2 in 2024 extended the approach.",
+        "What is unusual about Karras as a public figure is that he is barely one. He gives few interviews, posts almost nothing online, and lets the papers and the open-source code speak. The arc from PGGAN to StyleGAN 3 to EDM is essentially one researcher with a small team, working out of Helsinki, refining the same set of questions about generative modeling for nearly a decade.",
+      ],
+    },
   },
   {
     slug: "dinh",
@@ -390,6 +608,19 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Proximal policy optimization algorithms", year: 2017, url: "https://arxiv.org/abs/1707.06347" },
     ],
+    story: {
+      headline: "TRPO to PPO to InstructGPT to Anthropic",
+      paragraphs: [
+        "John Schulman did his PhD with Pieter Abbeel at Berkeley on the RL methods that became the standard playbook of the deep RL era. Trust Region Policy Optimization (TRPO, 2015) and then Proximal Policy Optimization (PPO, 2017) addressed the core practical problem of policy gradient methods: vanilla updates were unstable, hard to tune, and easy to break. PPO was Schulman's deliberately simpler take — a clipped surrogate objective that retained TRPO's monotonic-improvement spirit but ran in a few lines of code.",
+        "PPO became the workhorse algorithm of deep RL almost immediately. It was the algorithm behind OpenAI Five (Dota 2), behind much of the Universe RL work, and crucially behind the alignment fine-tuning of GPT-3 that produced InstructGPT in early 2022. Schulman led the RLHF effort that turned a base GPT-3 model — broadly capable but unreliable and rude — into something a user could productively talk to. ChatGPT launched in November 2022 running on essentially that same recipe.",
+        "He stayed at OpenAI for nearly a decade. In August 2024 he announced he was leaving for Anthropic to focus on alignment research, citing a desire to do deeper work on the safety side of the field. The move was widely read as a signal of how the industry's research talent was reorganizing around lab cultures that explicitly foregrounded safety.",
+        "His public output remains characteristic: short, equation-dense blog posts on the technical core of an idea, no posturing, no hot takes. The TRPO-PPO-RLHF lineage has shaped almost every modern post-training pipeline — DPO, IPO, GRPO, RLOO are all explicitly framed as alternatives or simplifications relative to PPO.",
+      ],
+      pullQuote: {
+        text: "Our experiments show that PPO outperforms other online policy gradient methods, and overall strikes a favorable balance between sample complexity, simplicity, and wall-time.",
+        source: "Schulman et al., PPO paper, July 2017",
+      },
+    },
   },
   {
     slug: "rafailov",
@@ -402,6 +633,20 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Direct preference optimization", year: 2023, url: "https://arxiv.org/abs/2305.18290" },
     ],
+    story: {
+      headline: "DPO and the simpler way to align a language model",
+      paragraphs: [
+        "By early 2023, RLHF had become the standard recipe for aligning LLMs but it was widely understood to be a pain. The pipeline required training a reward model on human preference data, then running PPO against that reward model with a KL penalty against the reference policy, and the whole thing was numerically delicate, expensive, and easy to break. Several groups were independently looking for something simpler.",
+        "Rafael Rafailov, a Stanford PhD student in Chelsea Finn's group, with co-authors including Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher Manning, and Finn, sat down to ask whether the reward model was strictly necessary. The Bradley-Terry model that RLHF used to translate preferences into rewards has a known closed-form relationship between the optimal policy and the reward function. If you invert that, you can write the reward as a function of the policy, substitute it into the preference loss, and the whole reward-modeling step disappears.",
+        "The resulting algorithm — Direct Preference Optimization, posted to arXiv in May 2023 — fits in roughly fifty lines of PyTorch. You take a base model, a reference copy, and a dataset of preferred-versus-rejected pairs, and you minimize a single loss. No reward model, no PPO, no rollouts. The empirical result was that DPO matched or beat PPO-RLHF on the standard alignment benchmarks at a fraction of the engineering cost.",
+        "Within a year, DPO and its many variants — IPO, KTO, ORPO, SimPO — had largely displaced PPO-RLHF in open-source post-training pipelines. Llama 2 used PPO; Llama 3 used DPO. Mistral, Zephyr, Tulu, and basically every open instruction-tuned model since shipped a DPO step.",
+        "Rafailov's paper has the rare quality of having simplified the field rather than complicated it. The DPO derivation is now a standard exercise in graduate ML courses. He has continued at Stanford, working on what comes next for preference-based learning, including extensions to multi-turn and online settings.",
+      ],
+      pullQuote: {
+        text: "Your language model is secretly a reward model.",
+        source: "Rafailov et al., DPO paper subtitle, May 2023",
+      },
+    },
   },
   {
     slug: "stiennon",
@@ -434,6 +679,16 @@ export const RESEARCHERS: Researcher[] = [
     bio: "Vapnik's VC dimension and SVM remain foundational to learning theory.",
     links: [],
     keyPapers: [],
+    story: {
+      headline: "Statistical learning theory's contrarian inheritance",
+      paragraphs: [
+        "Vladimir Vapnik did almost all of his foundational work behind the Iron Curtain. With Alexey Chervonenkis at the Institute of Control Sciences in Moscow, he developed what we now call Vapnik-Chervonenkis theory in the late 1960s and 1970s. The VC dimension provided the first rigorous framework for thinking about when a learning algorithm could be expected to generalize, and it remains the foundation of statistical learning theory.",
+        "He was also, throughout this period, deeply skeptical of neural networks. The connectionist approach offered no generalization guarantees and no theoretical justification for the heuristic choices it required. Vapnik's view was that learning algorithms should be derived from principles that minimized a known bound on generalization error, not invented and tuned by trial and error.",
+        "He emigrated to the United States in 1991, joined Bell Labs, and there with Corinna Cortes developed the Support Vector Machine. The SVM operationalized his structural-risk-minimization principle: maximize the margin between classes, use a kernel to handle nonlinearity, get a learning algorithm whose generalization error is bounded by the margin and the data size, not the dimensionality of the feature space. By the late 1990s SVMs had largely displaced neural networks as the default ML workhorse, and Vapnik's textbook, The Nature of Statistical Learning Theory (1995), became the canon.",
+        "Then deep learning came back. By the early 2010s, neural networks were beating SVMs on every problem that mattered. Vapnik, by then at Facebook AI Research and NEC Labs, was publicly unhappy. He continued to argue that the success of deep learning was an empirical accident waiting to be supplanted by something more principled.",
+        "He has been partially right and partially wrong. Wrong because the empirical results have continued; right because the theory of why neural networks generalize remains incomplete and active research areas like double descent and neural tangent kernels are still trying to catch up to what practice has produced. The contrarian heritage Vapnik represents — generalization bounds, learning theory, the demand that algorithms come with proofs — is alive in modern theoretical ML, even if the empirical wave has moved past kernels.",
+      ],
+    },
   },
   {
     slug: "scholkopf",
@@ -565,6 +820,15 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Long short-term memory", year: 1997, url: "https://www.bioinf.jku.at/publications/older/2604.pdf" },
     ],
+    story: {
+      headline: "An MSc thesis that named the vanishing gradient and built its first cure",
+      paragraphs: [
+        "Sepp Hochreiter's 1991 master's thesis at TU Munich, supervised by Jürgen Schmidhuber, did two things that would shape the next thirty years of sequence modeling. It identified the vanishing-gradient problem — the observation that backpropagating through many time steps causes the error signal to either vanish or explode exponentially, making it nearly impossible to learn long-range dependencies. And it sketched a solution: a special memory cell with a constant-error-carousel that allowed gradients to flow unmolested across time.",
+        "The thesis was in German and went largely unread outside Munich. It would take six more years of work with Schmidhuber to refine the idea into the Long Short-Term Memory paper published in Neural Computation in 1997. Even then it was a slow burn — for almost a decade, very few people built on it. Then around 2013, Alex Graves and others at Google started using LSTMs for handwriting recognition and speech, and within two years the LSTM was the standard sequence model across the field.",
+        "By 2016 LSTMs were running Google Translate, Apple's Siri, and most production NLP. The Transformer eventually displaced them after 2017, but the architectural ideas — gating, residual paths for gradient flow, an additive memory state — survived. Modern state-space models, recurrent architectures like Mamba, and even the Transformer's residual connections owe something to the LSTM's design instincts.",
+        "Hochreiter remained in academia, leading a lab at JKU Linz and producing a steady stream of work on attention, optimization, and bioinformatics. He has been characteristically blunt about the field's tendency to forget its own history, periodically reminding it that ideas attributed to recent papers were already in the 1991 thesis.",
+      ],
+    },
   },
   {
     slug: "he",
@@ -578,6 +842,19 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Deep residual learning for image recognition (ResNet)", year: 2016, url: "https://arxiv.org/abs/1512.03385" },
     ],
+    story: {
+      headline: "ResNet, MAE, and the engineer's instinct for what should be simple",
+      paragraphs: [
+        "Kaiming He joined Microsoft Research Asia after a PhD at the Chinese University of Hong Kong, into a lab that was producing more highly-cited vision papers per capita than anywhere else in the world. By 2015, the field was hitting a wall: deeper convolutional networks should have been better, but in practice training a 30-layer network was harder than training a 20-layer network, and the deeper one got worse on training loss too. The problem was not overfitting; it was optimization.",
+        "Deep Residual Learning for Image Recognition, published at CVPR 2016 with Xiangyu Zhang, Shaoqing Ren and Jian Sun, proposed an absurdly simple fix. Instead of asking each layer to learn a target mapping H(x), let it learn the residual F(x) = H(x) - x and add the input back through a skip connection. The network could now trivially represent identity, so adding layers could not make optimization worse. He's team trained a 152-layer network and won every category at the ImageNet 2015 competition, including localization and detection. ResNet would become the most-cited paper in computer vision.",
+        "He moved to Facebook AI Research in 2016 and continued producing canonical work — Mask R-CNN (2017), Group Normalization (2018), MoCo (2019). Then in late 2021 he and Xinlei Chen published Masked Autoencoders Are Scalable Vision Learners. MAE took the BERT pre-training recipe — mask 75 percent of input tokens, predict the missing patches — and applied it to images using a vision transformer. The pre-trained representations transferred to downstream vision tasks better than anything supervised training could produce.",
+        "He joined MIT EECS in 2024, his first academic position, while continuing collaborations with FAIR. The unifying thread across ResNet, MAE, MoCo, and his other work is an unusual willingness to delete complexity. Each major paper made the architecture simpler, not more elaborate. He has said in talks that he tries to find the cleanest possible expression of an idea, on the grounds that the cleanest expression is also usually the strongest.",
+      ],
+      pullQuote: {
+        text: "We hypothesize that it is easier to optimize the residual mapping than to optimize the original, unreferenced mapping.",
+        source: "He et al., ResNet paper, December 2015",
+      },
+    },
   } as Researcher,
   {
     slug: "maaten",
@@ -614,6 +891,15 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "ZeRO: Memory optimizations toward training trillion-parameter models", year: 2020, url: "https://arxiv.org/abs/1910.02054" },
     ],
+    story: {
+      headline: "Splitting the optimizer state to make trillion-parameter training possible",
+      paragraphs: [
+        "When Samyam Rajbhandari and his colleagues at Microsoft Research started work on what would become DeepSpeed in late 2018, the practical limit on model training was set not by FLOPs but by GPU memory. The Adam optimizer, with its first and second moment estimates, required twelve bytes per parameter just for optimizer state, plus the parameters themselves and the gradients. A 100-billion-parameter model needed 1.6 TB of memory in 32-bit, far beyond what any single GPU could hold.",
+        "Data parallelism replicated the model across GPUs, which solved nothing. Model parallelism split the model itself, but it required custom kernels and careful orchestration that varied per architecture. Rajbhandari's insight, written up as Zero Redundancy Optimizer in late 2019, was that none of the optimizer state actually needed to be replicated across data-parallel workers. You could partition the optimizer state across the workers (ZeRO-1), then partition the gradients (ZeRO-2), then partition the parameters themselves (ZeRO-3), all while still appearing to the user as data-parallel training.",
+        "ZeRO became the default memory optimizer for large-model training. DeepSpeed wrapped it in a library that the open-source community could use, and it became the substrate for training Megatron-Turing NLG 530B (2021), BLOOM 176B, and many of the open large models that followed. PyTorch's native FSDP is essentially an in-tree reimplementation of ZeRO-3.",
+        "Rajbhandari's group continued shipping. ZeRO-Infinity offloaded state to CPU and NVMe to make trillion-parameter training possible on modest clusters. ZeRO++ reduced communication overhead. DeepSpeed-MoE made trillion-parameter sparse training tractable. The library is one of the quiet pillars of how large models actually get trained.",
+      ],
+    },
   },
   {
     slug: "shoeybi",
@@ -674,6 +960,16 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "Efficient memory management for LLM serving with PagedAttention", year: 2023, url: "https://arxiv.org/abs/2309.06180" },
     ],
+    story: {
+      headline: "vLLM and the borrowed idea of virtual memory",
+      paragraphs: [
+        "By mid-2023, the bottleneck in LLM serving had clearly become the KV cache. Every running request stored its key-value cache in GPU memory, and because requests had different lengths and could grow unpredictably, schedulers had to either over-allocate (wasting memory) or run with low batch sizes (wasting compute). Hugging Face's Text Generation Inference and FasterTransformer both struggled with the same fragmentation problem.",
+        "Woosuk Kwon was a Berkeley PhD student in Ion Stoica's group when he proposed treating the KV cache the way an operating system treats process memory: split it into fixed-size pages, allow non-contiguous physical allocation, and use a block table to map a request's logical positions to physical pages. The proposal was published as Efficient Memory Management for LLM Serving with PagedAttention at SOSP 2023, and the open-source library that implemented it was called vLLM.",
+        "vLLM's throughput on standard serving benchmarks was two to four times higher than Hugging Face's TGI on the same hardware, with no quality loss. Because the underlying idea was an OS abstraction rather than a model trick, the same approach worked for any transformer architecture. Within months, vLLM was the most-starred LLM serving project on GitHub and had displaced more established alternatives in production deployments at Anyscale, Anthropic, and many smaller shops.",
+        "The library has continued to evolve. Continuous batching, prefix caching, speculative decoding, multi-LoRA serving, distributed execution across nodes — vLLM has absorbed most of the inference-side innovations of 2023-2025 and remained the reference implementation. Kwon, Zhuohan Li, and the rest of the original team spun out a startup, Together AI's serving tier and several other commercial products are also built on vLLM.",
+        "It is a useful reminder that some of the highest-leverage work in AI right now is at the systems-software boundary, and that an idea borrowed from 1960s operating systems can still rewrite a year of an industry's infrastructure.",
+      ],
+    },
   },
   {
     slug: "lewis-switch",
@@ -832,6 +1128,18 @@ export const RESEARCHERS: Researcher[] = [
       { label: "Twitter/X", href: "https://x.com/gdb" },
     ],
     keyPapers: [],
+    story: {
+      headline: "From Stripe CTO to OpenAI's engineering conscience",
+      paragraphs: [
+        "Greg Brockman dropped out of Harvard, then dropped out of MIT, then in 2010 became the fourth engineer at Stripe, where he stayed for five years and rose to CTO. By his account he had been thinking about AI as a hobby the entire time. In late 2015 Sam Altman pulled him together with Ilya Sutskever, Wojciech Zaremba, John Schulman, and a handful of others and announced OpenAI as a non-profit AI lab funded by a billion-dollar pledge from Silicon Valley.",
+        "Brockman has been the CTO-style engineering leader of OpenAI ever since, even as the org-chart titles have shifted around him (Chairman, President, Co-founder). He was hands-on for OpenAI Five — the Dota 2 system that famously trained on enough self-play to beat the world champions — for the GPT-3 training infrastructure, and for much of the engineering culture that turned a research lab into a company shipping ChatGPT to hundreds of millions of users.",
+        "He was briefly removed from the board in November 2023 alongside Sam Altman's firing, returned within days as the staff revolted, and has been a public figure since. His engineering mark is unusual — he is one of relatively few people running an AI lab at this scale who is still hands-on with the codebase.",
+      ],
+      pullQuote: {
+        text: "We chose OpenAI because we wanted to make sure the technology is built in a way that benefits all of humanity.",
+        source: "Brockman, OpenAI launch announcement, December 2015",
+      },
+    },
   },
   {
     slug: "murati",
@@ -844,6 +1152,15 @@ export const RESEARCHERS: Researcher[] = [
       { label: "Thinking Machines", href: "https://thinkingmachines.ai" },
     ],
     keyPapers: [],
+    story: {
+      headline: "Shipping ChatGPT, then leaving to build the next thing",
+      paragraphs: [
+        "Mira Murati joined OpenAI in 2018 from Tesla, where she had worked on Model X. She rose to VP of Applied AI in 2020 and then CTO in 2022. Her job description was broad — she ran the engineering and product organizations that turned research artifacts into shipping products. The lineage in her tenure as CTO is remarkable: GPT-3.5, ChatGPT (November 2022), GPT-4, DALL·E 2, the Whisper open-source release, the GPT Store, and GPT-4o — the multimodal model that could see, hear, and talk in real time.",
+        "She briefly served as interim CEO during the four-day November 2023 board crisis when Sam Altman was fired and rehired. The crisis exposed deep tensions between OpenAI's safety-focused board and its commercial trajectory, and Murati reportedly worked with the board to get a coherent transition plan in place before signing the letter calling for Altman's reinstatement.",
+        "She left OpenAI in September 2024 to start Thinking Machines Lab. The lab, formally launched in early 2025 with Lilian Weng, John Schulman, Barret Zoph, and several other senior OpenAI alumni, raised over a billion dollars in seed funding on the strength of the team. Its stated focus is making AI more customizable, transparent, and broadly usable — a deliberately distinct positioning from the frontier-scale labs.",
+        "Murati has been a relatively private public figure given her role. She does not write papers and gives selective interviews. Her influence is the operational kind: the way that ChatGPT actually got into users' hands at the speed it did was substantially because of how she ran the org.",
+      ],
+    },
   },
   {
     slug: "srinivas",
@@ -905,6 +1222,16 @@ export const RESEARCHERS: Researcher[] = [
     keyPapers: [
       { title: "DeepSeek-R1: incentivizing reasoning capability in LLMs via RL", year: 2025, url: "https://arxiv.org/abs/2501.12948" },
     ],
+    story: {
+      headline: "DeepSeek's open-source bet against the export controls",
+      paragraphs: [
+        "Liang Wenfeng made his fortune in quantitative finance, founding High-Flyer in 2015 and growing it into one of China's largest quant funds. The fund accumulated tens of thousands of NVIDIA A100 GPUs in 2021-2022, ostensibly for trading research, in what now looks like a remarkably prescient compute stockpile. In 2023, Liang spun out a separate AI lab called DeepSeek and began publishing.",
+        "DeepSeek's early releases — DeepSeek Coder, DeepSeek-V2, DeepSeek-Math — were technically interesting but not headline-grabbing. The lab developed expertise in efficient training, mixture-of-experts architectures, and multi-token prediction. They released model weights, training data details, and detailed technical reports — an unusually open posture from a Chinese AI lab.",
+        "DeepSeek-V3 dropped in December 2024. The technical report claimed roughly $5.6 million in training cost for a 671B-parameter MoE model that matched GPT-4-class performance on many benchmarks. The number was contested — it represented marginal compute, not full project cost — but the claim was credible enough that the U.S. tech press picked it up. Then in January 2025, DeepSeek released R1, a reasoning model trained via large-scale RL that approached OpenAI o1's performance and was released openly under a permissive license.",
+        "The market reaction was a one-day $600 billion drop in NVIDIA's market capitalization on January 27, 2025 — the largest single-day loss for any company in U.S. history at the time. The bet implicit in the U.S. compute export controls — that capability scales with FLOPs and that throttling FLOPs throttles capability — had been visibly punctured by a small Chinese lab releasing weights for free.",
+        "Liang has given few interviews. The strategic logic of DeepSeek's openness appears to be that an open ecosystem makes it harder for any one lab to capture the field, and that for a non-frontier-compute country, opening the weights and the recipes is the way to recruit researchers globally and stay relevant. Whether the bet works out in the long run is unclear; that it has reshaped the conversation around frontier AI in the meantime is not.",
+      ],
+    },
   },
   // ── Women in AI ──────────────────────────────────────────────────────────
   {

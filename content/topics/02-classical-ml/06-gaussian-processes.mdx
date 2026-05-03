@@ -1,0 +1,222 @@
+---
+slug: "02-classical-ml/06-gaussian-processes"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 6
+title: "Gaussian processes"
+hook: "Non-parametric regression with calibrated uncertainty — and the kernel that became the NTK."
+estMinutes: 16
+difficulty: 4
+prereqs: ["02-classical-ml/05-bayesian-inference", "02-classical-ml/02-svm"]
+hasHeroViz: false
+researchers: ["mackay"]
+papers:
+  - title: "Gaussian Processes for Machine Learning"
+    authors: "Rasmussen, Williams"
+    year: 2006
+    url: "https://gaussianprocess.org/gpml/"
+  - title: "Deep Neural Networks as Gaussian Processes"
+    authors: "Lee, Bahri, Novak, Schoenholz, Pennington, Sohl-Dickstein"
+    year: 2018
+    url: "https://arxiv.org/abs/1711.00165"
+  - title: "Practical Bayesian Optimization of Machine Learning Algorithms"
+    authors: "Snoek, Larochelle, Adams"
+    year: 2012
+    url: "https://arxiv.org/abs/1206.2944"
+hfResources:
+  - kind: "library"
+    title: "GPyTorch — scalable GPs on PyTorch"
+    url: "https://gpytorch.ai/"
+  - kind: "library"
+    title: "GPflow — GP library on TensorFlow"
+    url: "https://www.gpflow.org/"
+freeResources:
+  - kind: "book"
+    title: "Gaussian Processes for ML (free PDF)"
+    source: "Rasmussen & Williams"
+    url: "https://gaussianprocess.org/gpml/chapters/RW.pdf"
+  - kind: "blog"
+    title: "A Visual Exploration of Gaussian Processes"
+    source: "Görtler, Kehlbeck, Deussen — Distill"
+    url: "https://distill.pub/2019/visual-exploration-gaussian-processes/"
+  - kind: "video"
+    title: "Gaussian Processes — Nando de Freitas"
+    source: "UBC ML lectures"
+    url: "https://www.youtube.com/watch?v=4vGiHC35j9s"
+quiz:
+  - id: "gp-q1"
+    question: "A Gaussian process places a prior over what kind of object?"
+    choices:
+      - "Over weight vectors of a fixed neural network."
+      - "Over functions: any finite collection of function values has a joint Gaussian distribution determined by a mean and a covariance kernel."
+      - "Over discrete labels."
+      - "Over hyperparameters."
+    answer: 1
+    explanation: "A GP is a distribution over functions. Pick any finite set of inputs $x_1, \\ldots, x_n$; the corresponding outputs $f(x_1), \\ldots, f(x_n)$ are jointly Gaussian with mean $m(x_i)$ and covariance $k(x_i, x_j)$. The kernel $k$ encodes smoothness, length-scale, periodicity — your structural assumptions."
+  - id: "gp-q2"
+    question: "Why do vanilla GPs scale as $O(n^3)$, and what is the practical cap?"
+    choices:
+      - "Because the kernel is non-positive definite."
+      - "Exact GP regression requires inverting the $n \\times n$ kernel matrix; $O(n^3)$ time and $O(n^2)$ memory limit naive GPs to roughly $n \\le 10{,}000$ on a single GPU."
+      - "Because they require gradients."
+      - "Because Gaussians are non-conjugate."
+    answer: 1
+    explanation: "The predictive mean and variance both involve $K^{-1}$, where $K \\in \\mathbb{R}^{n \\times n}$. Cholesky factorization is $O(n^3)$. Sparse approximations (inducing points), structured kernels (Toeplitz, Kronecker), and conjugate-gradient solvers with GPyTorch push this to millions, but the $n^3$ is the headline constraint."
+  - id: "gp-q3"
+    question: "Which kernel choice corresponds to assuming the underlying function is infinitely differentiable?"
+    choices:
+      - "The Matérn-1/2 (exponential) kernel."
+      - "The squared-exponential (RBF) kernel $k(x, x') = \\exp(-\\|x-x'\\|^2 / 2\\ell^2)$."
+      - "The linear kernel."
+      - "The white-noise kernel."
+    answer: 1
+    explanation: "RBF samples are $C^\\infty$ — extremely smooth, sometimes too smooth for real data. Matérn-1/2 samples are continuous but non-differentiable; Matérn-3/2 are once differentiable; Matérn-5/2 twice. The Matérn family is usually a safer default than RBF for physical processes."
+  - id: "gp-q4"
+    question: "How are GPs related to infinitely wide neural networks?"
+    choices:
+      - "They are unrelated — different fields."
+      - "An infinitely wide MLP with iid weight initializations is equivalent to a GP with a kernel determined by the architecture; this is the NNGP, and its training dynamics are governed by the closely related Neural Tangent Kernel."
+      - "GPs are a special case of CNNs."
+      - "They share the softmax."
+    answer: 1
+    explanation: "Neal (1996) showed it for one hidden layer; Lee et al. (2018) generalized to deep nets. The NNGP kernel describes the network at initialization; the NTK describes how it changes during gradient flow. This is the cleanest theoretical connection between Bayesian non-parametrics and modern deep learning."
+---
+
+A Gaussian process is the non-parametric Bayesian's preferred object. Instead
+of picking a model class (linear, polynomial, neural net) and putting a prior
+on its parameters, you put a prior directly on functions — and let the data
+decide how complicated the function ought to be.
+
+It is one of the few corners of classical ML where you can write down the
+predictive distribution in closed form, get calibrated uncertainty for free,
+and prove things. It also turns out to be the right lens for understanding
+infinitely wide neural networks, which is the bridge to NTK and the modern
+theory of deep learning.
+
+## A distribution over functions
+
+A function $f$ is drawn from a **Gaussian process** $\mathcal{GP}(m, k)$ if for
+*every* finite collection of inputs $X = (x_1, \dots, x_n)$ the outputs are
+jointly Gaussian:
+
+$$
+\begin{pmatrix} f(x_1) \\ \vdots \\ f(x_n) \end{pmatrix} \sim \mathcal{N}\big(m(X),\, K(X, X)\big)
+$$
+
+where $m: \mathcal{X} \to \mathbb{R}$ is a mean function (often taken to be
+zero) and $k: \mathcal{X} \times \mathcal{X} \to \mathbb{R}$ is a positive
+semi-definite kernel encoding similarity.
+
+That is the entire definition. Everything else — fitting, prediction, kernel
+choice — is consequences.
+
+## The kernel is the model
+
+The kernel encodes your assumptions: what does it mean for two inputs to be
+"similar"? Smoothness, length-scale, periodicity, lineary, all live here.
+
+| Kernel | Sample functions look like |
+|---|---|
+| RBF / Squared exponential | Infinitely smooth bumps |
+| Matérn-3/2, 5/2 | Smooth-but-realistic; default for spatial data |
+| Linear | Bayesian linear regression in disguise |
+| Periodic | Repeating with a learnable period |
+| Sum / product of kernels | Compositional structure |
+
+Choosing the kernel is the equivalent of choosing the model class. There is no
+universal best kernel; reading Rasmussen & Williams chapter 4 once is the
+single highest-ROI thing you can do here.
+
+## Closed-form regression
+
+Suppose you observe noisy targets $y_i = f(x_i) + \varepsilon_i$ with
+$\varepsilon_i \sim \mathcal{N}(0, \sigma^2)$. The posterior over $f$ at any
+new point $x_*$ is Gaussian:
+
+$$
+\mu_*(x_*) = k_*^\top (K + \sigma^2 I)^{-1} y
+$$
+
+$$
+\sigma_*^2(x_*) = k(x_*, x_*) - k_*^\top (K + \sigma^2 I)^{-1} k_*
+$$
+
+where $k_* = (k(x_*, x_1), \dots, k(x_*, x_n))^\top$. Predictive mean *and*
+predictive variance, both closed-form, both calibrated under the model.
+
+```python
+import gpytorch, torch
+
+class ExactGP(gpytorch.models.ExactGP):
+    def __init__(self, x, y, likelihood):
+        super().__init__(x, y, likelihood)
+        self.mean = gpytorch.means.ConstantMean()
+        self.cov  = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5))
+    def forward(self, x):
+        return gpytorch.distributions.MultivariateNormal(self.mean(x), self.cov(x))
+
+likelihood = gpytorch.likelihoods.GaussianLikelihood()
+model = ExactGP(x_train, y_train, likelihood)
+# Optimize log-marginal-likelihood for hyperparameters (length-scale, output-scale, noise).
+```
+
+The hyperparameters of the kernel (length-scale, output-scale, noise) are
+themselves fit by maximizing the **log marginal likelihood**
+$\log p(y \mid X)$ — Type-II maximum likelihood, also called *empirical Bayes*.
+Marginal likelihood automatically penalizes models that are too flexible,
+so kernel hyperparameter selection has built-in regularization. This is one
+of the most elegant model-selection stories in classical ML.
+
+## The $O(n^3)$ wall, and how to climb it
+
+Inverting the kernel matrix is $O(n^3)$ in time and $O(n^2)$ in memory.
+Practical work-arounds, in increasing order of complexity:
+
+- **Inducing-point methods (SVGP, FITC)**: replace $X$ with $m \ll n$
+  pseudo-inputs, paying $O(nm^2)$ instead.
+- **Structured kernels**: if inputs lie on a grid, use Kronecker / Toeplitz
+  structure for $O(n \log n)$ multiplies.
+- **Conjugate gradient + Lanczos** (GPyTorch): solve linear systems iteratively
+  on GPU; scales to $n > 10^6$ with care.
+- **Deep kernel learning**: feed inputs through a neural net first, then GP
+  on the latent — useful when raw inputs are images or sequences.
+
+## Why GPs still matter in 2026
+
+Three places GPs are still the best tool:
+
+1. **Bayesian optimization**: tuning expensive black-box functions
+   (hyperparameters, materials, robot policies). Vizier, BoTorch, Optuna's
+   GP backend — all GP-based. The exploration-exploitation trade-off needs
+   calibrated uncertainty, which GPs deliver.
+2. **Geospatial and time-series modelling** with small to medium $n$,
+   where calibrated uncertainty matters more than raw accuracy.
+3. **Theory**: the NNGP / NTK correspondence (Neal 1996, Lee et al. 2018,
+   Jacot 2018) shows that infinitely wide neural nets converge to GPs at
+   initialization and to a kernel-regression solution under gradient flow.
+   This is the cleanest analytical handle anyone has on deep learning.
+
+<Callout variant="insight" title="GPs and Gemini">
+DeepMind's AlphaProof and AlphaGeometry pipelines, AlphaZero's evaluation
+search, and modern automated-experiment systems still use GPs (or close
+cousins) as their inner-loop surrogate for "what should I try next?"
+Anywhere experiments are expensive and uncertainty matters, the answer
+is still a GP.
+</Callout>
+
+<PaperCard
+  title="Gaussian Processes for Machine Learning"
+  authors="Carl Rasmussen, Christopher Williams"
+  year={2006}
+  url="https://gaussianprocess.org/gpml/"
+  takeaway="The book. Free PDF, dense, complete. Read chapters 2 and 4 first; chapter 5 (model selection) is one of the best treatments of marginal likelihood anywhere."
+/>
+
+## What to do next
+
+- Open the Distill GP visual exploration article — drag the data points and
+  watch the posterior re-shape in real time.
+- Re-implement a 1D GP regression in numpy, then in GPyTorch.
+- Read the NNGP paper after you've covered NTK in part 11; the connection
+  is the most beautiful thing in classical-modern ML bridge work.

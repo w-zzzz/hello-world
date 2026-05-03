@@ -1,0 +1,214 @@
+---
+slug: "02-classical-ml/08-information-bottleneck"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 8
+title: "Information bottleneck"
+hook: "Tishby's lens on representation learning — controversy, revival, and what it really tells us."
+estMinutes: 14
+difficulty: 4
+prereqs: ["01-math/02-probability-information"]
+hasHeroViz: false
+researchers: ["mackay"]
+papers:
+  - title: "The Information Bottleneck Method"
+    authors: "Tishby, Pereira, Bialek"
+    year: 1999
+    url: "https://arxiv.org/abs/physics/0004057"
+  - title: "Opening the Black Box of Deep Neural Networks via Information"
+    authors: "Schwartz-Ziv, Tishby"
+    year: 2017
+    url: "https://arxiv.org/abs/1703.00810"
+  - title: "Deep Variational Information Bottleneck"
+    authors: "Alemi, Fischer, Dillon, Murphy"
+    year: 2017
+    url: "https://arxiv.org/abs/1612.00410"
+  - title: "On the Information Bottleneck Theory of Deep Learning"
+    authors: "Saxe, Bansal, Dapello, Advani, Kolchinsky, Tracey, Cox"
+    year: 2018
+    url: "https://openreview.net/forum?id=ry_WPG-A-"
+hfResources:
+  - kind: "library"
+    title: "VIB-Pytorch — variational IB implementation"
+    url: "https://github.com/1Konny/VIB-pytorch"
+freeResources:
+  - kind: "video"
+    title: "The Information Bottleneck — Naftali Tishby (Stanford lecture)"
+    source: "Tishby"
+    url: "https://www.youtube.com/watch?v=bLqJHjXihK8"
+  - kind: "blog"
+    title: "Information Theory of Deep Learning — explainer"
+    source: "Adrian Colyer, the morning paper"
+    url: "https://blog.acolyer.org/2017/11/15/information-theory-of-deep-learning/"
+quiz:
+  - id: "ib-q1"
+    question: "What does the information bottleneck (IB) Lagrangian $\\mathcal{L} = I(X; T) - \\beta\\, I(T; Y)$ formalize?"
+    choices:
+      - "A reconstruction loss."
+      - "A trade-off: minimize information the representation $T$ keeps about input $X$, while maximizing information $T$ keeps about target $Y$ — find the *minimal sufficient* statistic."
+      - "An adversarial game."
+      - "An RL reward."
+    answer: 1
+    explanation: "The IB principle says a good representation should compress $X$ as much as possible without losing information about $Y$. $\\beta$ controls the trade-off; the optimum $T^*(\\beta)$ traces out an *information plane curve* of achievable compression-prediction trade-offs."
+  - id: "ib-q2"
+    question: "Why is computing the IB objective for a deep network with continuous activations difficult in practice?"
+    choices:
+      - "Mutual information requires a separate optimizer."
+      - "Mutual information between continuous variables is hard to estimate from samples; for invertible layers $I(X; T)$ is even infinite without explicit binning, noise, or a variational bound."
+      - "It is intractable in low dimensions."
+      - "Backprop cannot estimate it."
+    answer: 1
+    explanation: "Saxe et al. (2018) argued that the famous 'compression phase' Schwartz-Ziv & Tishby reported was an artifact of binning saturating activations like tanh. Variational lower bounds (DeepVIB) and density-ratio estimators (MINE) are honest substitutes — but they are bounds, not the real MI."
+  - id: "ib-q3"
+    question: "What does the *deep variational information bottleneck* (DeepVIB) actually optimize?"
+    choices:
+      - "The exact IB objective."
+      - "A variational upper bound on $I(X; T)$ implemented as a KL to a marginal prior, plus a variational lower bound on $I(T; Y)$ implemented as cross-entropy — looks structurally identical to a $\\beta$-VAE classifier."
+      - "Cross-entropy alone."
+      - "Reconstruction error."
+    answer: 1
+    explanation: "Alemi et al. realized the IB objective can be tractably optimized with the same machinery as a VAE: reparameterized stochastic encoder, KL term to a fixed prior, classification loss as the prediction term. Plug $\\beta$ in, train normally, get IB-style behavior with measurable robustness gains."
+  - id: "ib-q4"
+    question: "What is the most defensible *practical* takeaway from the IB program in 2026?"
+    choices:
+      - "IB explains all of deep learning."
+      - "Stochastic / noisy / KL-regularized representations (VIB, $\\beta$-VAE, denoising bottlenecks) tend to be more robust, transferable, and disentangled — even if the strong claims about a 'compression phase' during SGD remain disputed."
+      - "Only deterministic encoders work."
+      - "IB has been mathematically refuted."
+    answer: 1
+    explanation: "The strong empirical claims (e.g. that all DNNs go through a separate compression phase) did not replicate cleanly. The weaker, robust claim — that explicitly limiting mutual information between input and representation improves robustness and transfer — is well-supported and underpins a lot of modern self-supervised and disentanglement work."
+---
+
+The information bottleneck (IB) is the most influential information-theoretic
+lens on representation learning of the last twenty-five years. It promised a
+principled answer to "what makes a representation good?" and provoked one of
+the most public methodological disputes in modern deep learning.
+
+It is worth knowing both for what it gets right — IB-flavoured objectives
+genuinely improve robustness — and for what it does not — strong claims
+about how SGD itself performs IB compression have not held up. Either way,
+you will see the equations again in $\beta$-VAEs, in disentanglement, in
+RLHF's KL-to-reference penalty, and in modern self-supervised losses.
+
+## The principle
+
+Suppose $Y$ is the variable you ultimately care about and $X$ is your input.
+A representation $T$ is a stochastic function of $X$. The IB objective says
+the optimal $T$ minimizes:
+
+$$
+\mathcal{L}_{\text{IB}} = I(X; T) - \beta\, I(T; Y)
+$$
+
+In words: keep as little information about $X$ as you can while still keeping
+as much about $Y$ as possible. The Lagrangian parameter $\beta \ge 0$ slides
+between trivial constant representations ($\beta = 0$) and copying $X$
+faithfully ($\beta \to \infty$).
+
+The achievable points in the plane of $(I(X; T), I(T; Y))$ form the
+**information plane**, and the IB curve is its Pareto frontier. Tishby's
+elegant claim: a good representation lives near this frontier; a bad one is
+strictly dominated.
+
+## A clean self-sufficiency claim
+
+For the special case where $X, Y$ are jointly discrete and you can solve the
+self-consistent equations, the IB optimum is a *minimal sufficient statistic*
+of $X$ for $Y$ — sufficient (no information about $Y$ thrown away), minimal
+(nothing extra about $X$ kept). This is a satisfying generalization of the
+classical sufficiency idea from statistics.
+
+For continuous high-dimensional variables, things get hard. Mutual information
+is notoriously difficult to estimate from samples; for invertible
+deterministic networks $I(X; T)$ is technically infinite. This is where the
+field split.
+
+## The deep-learning controversy
+
+In 2017 Schwartz-Ziv & Tishby reported empirically that during SGD training,
+hidden representations of an MLP first **fit** ($I(T; Y)$ rises) and then
+**compress** ($I(X; T)$ falls), tracing the IB curve. This was electric: SGD
+itself, they argued, was implementing IB compression as a generalization
+mechanism.
+
+In 2018 Saxe et al. presented careful counter-experiments. Switch the
+activation from tanh to ReLU and the compression phase disappears. The
+"compression" Schwartz-Ziv & Tishby measured was largely an artifact of
+binning saturating activations. Whether deep networks naturally compress
+during training is *not* a settled empirical fact.
+
+The strong theoretical claim — IB explains generalization in deep nets — has
+not survived. The weaker engineering claim — IB-style stochastic
+representations behave better — absolutely has.
+
+## Deep VIB: the practical version
+
+Alemi, Fischer, Dillon, Murphy (2017) showed how to *optimize* an IB-flavoured
+objective with standard deep-learning machinery. Replace $T$ with a Gaussian
+encoder $T \sim \mathcal{N}(\mu_\phi(X), \Sigma_\phi(X))$, bound the two MI
+terms variationally:
+
+$$
+I(X; T) \le \mathbb{E}_{p(x)}\big[\mathrm{KL}(p(t \mid x) \,\|\, r(t))\big]
+$$
+
+$$
+I(T; Y) \ge \mathbb{E}_{p(x, y)}\big[\log q(y \mid t)\big] + H(Y)
+$$
+
+with $r(t)$ a fixed marginal prior and $q(y \mid t)$ a variational decoder.
+Plug into a stochastic neural net classifier with the reparameterization
+trick — the result is structurally identical to a $\beta$-VAE with a
+classification head:
+
+```python
+mu, logvar = encoder(x)
+t = mu + torch.randn_like(mu) * (0.5 * logvar).exp()
+loss = F.cross_entropy(classifier(t), y) + beta * 0.5 * (mu**2 + logvar.exp() - 1 - logvar).sum(-1).mean()
+```
+
+What you get is: cleaner uncertainty, better adversarial robustness,
+disentangled latents (small $\beta$ makes representations more
+input-faithful, large $\beta$ encourages compression).
+
+## The same equations everywhere
+
+Once you have the IB Lagrangian in your head, you start spotting it
+everywhere:
+
+- **$\beta$-VAE** (Higgins et al. 2017) is exactly the IB objective with
+  reconstruction as the prediction term.
+- **RLHF KL penalty** $\mathbb{E}[\log \pi_\theta - \log \pi_{\text{ref}}]$
+  is a constraint on how much information the new policy can carry beyond
+  the reference — a kind of policy bottleneck.
+- **Self-supervised contrastive losses** (SimCLR, CLIP) maximize
+  $I(T_1; T_2)$ between two views — the prediction half of an IB.
+- **Diffusion** can be cast as a chain of bottlenecks, each step compressing
+  while preserving denoising-relevant information.
+
+<Callout variant="insight" title="The honest summary">
+The IB principle gave us an enormously productive *language* for talking
+about representations. The strongest claims — that SGD does IB compression,
+that IB explains generalization — are unproven or refuted. The medium-strength
+claims — that information-theoretically motivated stochastic bottlenecks
+(VIB, $\beta$-VAE) yield more robust and transferable representations —
+are well-supported and absolutely worth using.
+</Callout>
+
+<PaperCard
+  title="The Information Bottleneck Method"
+  authors="Naftali Tishby, Fernando Pereira, William Bialek"
+  year={1999}
+  url="https://arxiv.org/abs/physics/0004057"
+  takeaway="The original. Short, dense, beautiful — and it sat in physics arXiv largely unread by ML for fifteen years before deep learning gave it a second life."
+/>
+
+## What to do next
+
+- Read both the Schwartz-Ziv & Tishby paper *and* Saxe et al.'s rebuttal.
+  This is a healthy example of how empirical claims in deep learning need
+  to be stress-tested.
+- Implement DeepVIB on MNIST. Compare adversarial robustness with and
+  without the KL term. The effect is real and visible.
+- Read the original $\beta$-VAE paper for the disentanglement perspective.

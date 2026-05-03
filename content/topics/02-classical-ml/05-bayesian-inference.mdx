@@ -1,0 +1,215 @@
+---
+slug: "02-classical-ml/05-bayesian-inference"
+part: "02-classical-ml"
+partTitle: "Classical machine learning"
+partIndex: 2
+topicIndex: 5
+title: "Bayesian inference & priors"
+hook: "Likelihood × prior, conjugacy, MCMC — and the bridge to modern Bayesian deep learning."
+estMinutes: 18
+difficulty: 3
+prereqs: ["01-math/02-probability-information"]
+hasHeroViz: false
+researchers: ["mackay", "koller"]
+papers:
+  - title: "Information Theory, Inference, and Learning Algorithms"
+    authors: "David MacKay"
+    year: 2003
+    url: "https://www.inference.org.uk/itprnn/book.pdf"
+  - title: "Weight Uncertainty in Neural Networks (Bayes by Backprop)"
+    authors: "Blundell, Cornebise, Kavukcuoglu, Wierstra"
+    year: 2015
+    url: "https://arxiv.org/abs/1505.05424"
+  - title: "What Uncertainties Do We Need in Bayesian Deep Learning for Computer Vision?"
+    authors: "Kendall, Gal"
+    year: 2017
+    url: "https://arxiv.org/abs/1703.04977"
+hfResources:
+  - kind: "library"
+    title: "PyMC — probabilistic programming in Python"
+    url: "https://www.pymc.io/"
+  - kind: "library"
+    title: "NumPyro — JAX-backed PPL"
+    url: "https://num.pyro.ai/"
+freeResources:
+  - kind: "book"
+    title: "Bayesian Methods for Hackers"
+    source: "Cam Davidson-Pilon"
+    url: "https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers"
+  - kind: "video"
+    title: "Statistical Rethinking 2024"
+    source: "Richard McElreath"
+    url: "https://github.com/rmcelreath/stat_rethinking_2024"
+  - kind: "blog"
+    title: "A Visual Tour of Bayesian Inference"
+    source: "Chi Feng"
+    url: "https://chi-feng.github.io/mcmc-demo/"
+quiz:
+  - id: "bayes-q1"
+    question: "Bayes' rule says $p(\\theta \\mid D) \\propto p(D \\mid \\theta) p(\\theta)$. If you observe a single coin flip and it lands heads, what does choosing a $\\mathrm{Beta}(50, 50)$ prior on the bias $\\theta$ tell you about your beliefs?"
+    choices:
+      - "You believe the coin is loaded."
+      - "You have a strong prior that the coin is fair, equivalent to ~100 prior pseudo-observations of equal heads and tails — one new flip barely moves you."
+      - "You have no prior beliefs."
+      - "You have chosen the maximum-likelihood estimator."
+    answer: 1
+    explanation: "$\\mathrm{Beta}(\\alpha, \\beta)$ acts like $\\alpha+\\beta-2$ prior pseudo-counts; large equal $\\alpha,\\beta$ encodes 'fair coin, very confident'. The posterior after one heads is $\\mathrm{Beta}(51, 50)$ — barely any movement. A weak $\\mathrm{Beta}(1,1)$ prior would have moved to $\\mathrm{Beta}(2,1)$, a much stronger update."
+  - id: "bayes-q2"
+    question: "Why is conjugacy convenient when picking priors?"
+    choices:
+      - "It guarantees the posterior is Gaussian."
+      - "When the prior and likelihood are conjugate, the posterior is in the same parametric family as the prior, so updates are closed-form arithmetic on hyperparameters instead of integration."
+      - "It removes the need for data."
+      - "It is the only way to do Bayesian inference."
+    answer: 1
+    explanation: "Beta–Binomial, Gamma–Poisson, and Normal–Normal pairs let you update analytically. In modern PPLs you usually don't need conjugacy because samplers handle non-conjugate posteriors — but conjugacy is still pedagogically essential and powers many efficient subroutines."
+  - id: "bayes-q3"
+    question: "Hamiltonian Monte Carlo (HMC) outperforms random-walk Metropolis on high-dimensional posteriors mostly because:"
+    choices:
+      - "It uses fewer samples by trusting the prior more."
+      - "It uses gradient information to make long, informed proposals along level sets of the log-posterior, whereas random-walk proposals scale as $1/\\sqrt{d}$ and stall in high dimensions."
+      - "It is deterministic."
+      - "It avoids computing the likelihood."
+    answer: 1
+    explanation: "HMC simulates a particle on the negative log-posterior surface using leapfrog integration; gradients let it traverse correlated dimensions efficiently. NUTS (Stan, PyMC, NumPyro) auto-tunes the trajectory length. This is *the* reason modern PPLs scale to thousands of parameters."
+  - id: "bayes-q4"
+    question: "In Bayesian deep learning, what is the practical attraction of MC Dropout as an approximate posterior?"
+    choices:
+      - "It is exact."
+      - "Keeping dropout active at *inference* and averaging stochastic forward passes approximates a variational posterior over weights — uncertainty estimates with zero retraining cost."
+      - "It removes overfitting completely."
+      - "It is required for training."
+    answer: 1
+    explanation: "Gal & Ghahramani (2016) showed dropout is mathematically equivalent to variational inference under a Bernoulli posterior. Run $K$ stochastic forward passes; the variance across them is a calibrated epistemic-uncertainty estimate. It's the cheapest serious way to get uncertainty out of a deep net."
+---
+
+Bayesian inference is the most general framework we have for learning from
+data. Every other inference rule — maximum likelihood, regularized regression,
+even most regularizers in deep learning — can be derived as a special case of
+the Bayesian update or of an approximation to it.
+
+The reason it is worth your time even in 2026, with deep learning everywhere:
+calibration, uncertainty, small-data regimes, and most of the modern
+post-training stack (preference modeling, online RL with KL constraints) are
+fundamentally Bayesian in character. You cannot read a modern alignment paper
+and follow what the KL terms are doing without knowing where they come from.
+
+## The single rule
+
+Given a parameter $\theta$, data $D$, and a prior $p(\theta)$:
+
+$$
+p(\theta \mid D) = \frac{p(D \mid \theta)\, p(\theta)}{p(D)}
+$$
+
+The posterior is proportional to likelihood times prior. The denominator
+$p(D) = \int p(D \mid \theta) p(\theta)\, d\theta$ is the *evidence* — a
+normalizing constant in $\theta$, but a model-comparison signal in itself.
+
+That single equation contains:
+
+- **Maximum likelihood** ($\hat\theta_{\text{MLE}} = \arg\max p(D \mid \theta)$) is the posterior mode under a uniform prior.
+- **MAP estimation** ($\hat\theta_{\text{MAP}} = \arg\max p(\theta \mid D)$) is the posterior mode under any prior.
+- **Ridge / Lasso** are MAP under Gaussian / Laplace priors on weights.
+- **Marginal likelihood** $p(D) = \int p(D, \theta)\, d\theta$ is a built-in
+  Occam's razor — it down-weights parameter values that fit *too* flexibly.
+
+## Conjugacy: the closed-form sweet spot
+
+A prior is **conjugate** to a likelihood when the posterior stays in the same
+family. The Beta–Binomial pair is the canonical example:
+
+$$
+\theta \sim \mathrm{Beta}(\alpha, \beta), \quad k \mid \theta \sim \mathrm{Bin}(n, \theta) \;\Rightarrow\; \theta \mid k \sim \mathrm{Beta}(\alpha + k, \beta + n - k)
+$$
+
+Updating is just adding successes and failures to the hyperparameters. No
+integration, no sampler, no tears. The Gamma–Poisson, Normal–Normal,
+Dirichlet–Multinomial, and Inverse-Wishart–Gaussian pairs are the other big
+ones you will encounter — together they cover an embarrassing fraction of
+applied Bayesian work.
+
+## When conjugacy fails: MCMC
+
+Most interesting posteriors are not conjugate. The standard answer is **Markov
+chain Monte Carlo**: build a chain whose stationary distribution is
+$p(\theta \mid D)$, run it long enough, and treat the samples as draws from
+the posterior.
+
+Random-walk Metropolis is the simplest variant — propose, accept-or-reject by
+the ratio $\pi(\theta')/\pi(\theta)$ — but it scales poorly: in $d$
+dimensions, the optimal step size shrinks as $d^{-1/2}$ and chains mix slowly.
+**Hamiltonian Monte Carlo** (HMC) and its self-tuning cousin **NUTS** treat
+$-\log p(\theta \mid D)$ as a potential energy and use gradient-driven
+leapfrog integration to make long, informed proposals. PyMC, NumPyro, and
+Stan all default to NUTS for this reason.
+
+```python
+import numpyro, numpyro.distributions as dist
+from numpyro.infer import MCMC, NUTS
+import jax.numpy as jnp, jax.random as random
+
+def model(y):
+    mu = numpyro.sample("mu", dist.Normal(0, 10))
+    sigma = numpyro.sample("sigma", dist.HalfNormal(5))
+    numpyro.sample("obs", dist.Normal(mu, sigma), obs=y)
+
+mcmc = MCMC(NUTS(model), num_warmup=500, num_samples=2000)
+mcmc.run(random.PRNGKey(0), y=jnp.array([1.2, 0.8, 1.0, 1.4]))
+mcmc.print_summary()  # posterior of mu, sigma with effective sample sizes
+```
+
+## Variational inference: trade exactness for speed
+
+When MCMC is too slow — large datasets, high dimensions, deep nets —
+**variational inference** (VI) replaces the posterior by a tractable family
+$q_\phi(\theta)$ and minimizes $\mathrm{KL}(q \,\|\, p)$ by maximizing the
+ELBO:
+
+$$
+\mathcal{L}(\phi) = \mathbb{E}_{q_\phi(\theta)}[\log p(D \mid \theta)] - \mathrm{KL}(q_\phi(\theta) \,\|\, p(\theta))
+$$
+
+Recognize this objective? You should — it is the same ELBO that VAEs
+optimize, and the KL-to-prior term has the same shape as the KL-to-reference
+penalty in RLHF. Bayesian inference shows up *everywhere* in modern ML; it
+just usually wears a costume.
+
+## Bayesian deep learning, briefly
+
+The fully Bayesian dream — a posterior over every weight in a 70B model — is
+not practical. Instead the field uses cheap approximations:
+
+- **Deep ensembles**: train $K$ networks with different seeds. Their
+  disagreement on a test input is a workable epistemic-uncertainty estimate
+  and almost always beats more elaborate Bayesian methods on benchmarks.
+- **MC Dropout**: keep dropout active at inference and average forward passes.
+  Equivalent to a variational Bernoulli posterior at zero retraining cost.
+- **Last-layer Laplace**: linearize around a trained model and put a Gaussian
+  posterior on the final layer only. Cheap, well-calibrated, becoming
+  standard in safety-critical applications.
+
+<Callout variant="insight" title="Why this matters in 2026">
+Frontier models are increasingly deployed where calibration matters: medical
+diagnosis, autonomous systems, agentic web tasks where mistakes are costly.
+The "should I ask the user?" decision is a Bayesian decision-theoretic one
+under model uncertainty. Knowing the underlying machinery — even if you only
+end up using deep ensembles in practice — lets you reason about it.
+</Callout>
+
+<PaperCard
+  title="Information Theory, Inference, and Learning Algorithms"
+  authors="David MacKay"
+  year={2003}
+  url="https://www.inference.org.uk/itprnn/book.pdf"
+  takeaway="The free book that taught a generation of researchers Bayesian inference, information theory, and inference algorithms in a single coherent voice. Still the best place to start."
+/>
+
+## What to do next
+
+- Work through the first few chapters of MacKay end to end. The exercises
+  are not optional — they are the book.
+- Open NumPyro and re-implement linear regression with HMC, then with VI.
+  Notice where each is the right answer.
+- Read Kendall & Gal on aleatoric vs epistemic uncertainty; this distinction
+  is the single most important practical concept Bayesian DL has bequeathed us.

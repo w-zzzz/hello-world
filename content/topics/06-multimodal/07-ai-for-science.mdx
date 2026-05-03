@@ -1,0 +1,242 @@
+---
+slug: "06-multimodal/07-ai-for-science"
+part: "06-multimodal"
+partTitle: "Multimodal & generation"
+partIndex: 6
+topicIndex: 7
+title: "AI for science"
+hook: "AlphaFold, Boltz-1, GraphCast, AlphaProof — when models do new science."
+estMinutes: 16
+difficulty: 3
+prereqs: ["03-deep-learning/04-attention"]
+hasHeroViz: false
+researchers: ["hassabis", "anandkumar", "koller"]
+papers:
+  - title: "Highly accurate protein structure prediction with AlphaFold"
+    authors: "Jumper, Evans, Pritzel, Green, Figurnov, Ronneberger, et al."
+    year: 2021
+    url: "https://www.nature.com/articles/s41586-021-03819-2"
+  - title: "Accurate structure prediction of biomolecular interactions with AlphaFold 3"
+    authors: "Abramson, Adler, Dunger, Evans, Green, Pritzel, et al."
+    year: 2024
+    url: "https://www.nature.com/articles/s41586-024-07487-w"
+  - title: "Boltz-1: Democratizing Biomolecular Interaction Modeling"
+    authors: "Wohlwend, Corso, Passaro, Reveiz, Leidal, Swiderski, Portnoi, Chinn, Silterra, Jaakkola, Barzilay"
+    year: 2024
+    url: "https://www.biorxiv.org/content/10.1101/2024.11.19.624167v1"
+  - title: "Learning skillful medium-range global weather forecasting (GraphCast)"
+    authors: "Lam, Sanchez-Gonzalez, Willson, Wirnsberger, Fortunato, Alet, Ravuri, et al."
+    year: 2023
+    url: "https://www.science.org/doi/10.1126/science.adi2336"
+  - title: "AlphaProof and AlphaGeometry 2: Solving olympiad geometry without human demonstrations"
+    authors: "Google DeepMind"
+    year: 2024
+    url: "https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/"
+hfResources:
+  - kind: "model"
+    title: "ESM-3 — Evolutionary scale protein language model"
+    url: "https://huggingface.co/EvolutionaryScale/esm3"
+  - kind: "model"
+    title: "Boltz-1 — open biomolecular structure model"
+    url: "https://huggingface.co/jwohlwend/boltz1"
+  - kind: "dataset"
+    title: "AlphaFold Protein Structure Database (200M structures)"
+    url: "https://alphafold.ebi.ac.uk/"
+freeResources:
+  - kind: "blog"
+    title: "AlphaFold 3 — Nature paper announcement"
+    source: "Google DeepMind"
+    url: "https://deepmind.google/discover/blog/alphafold-3-predicts-the-structure-and-interactions-of-all-of-lifes-molecules/"
+  - kind: "blog"
+    title: "GraphCast: faster, more accurate weather forecasting"
+    source: "Google DeepMind"
+    url: "https://deepmind.google/discover/blog/graphcast-ai-model-for-faster-and-more-accurate-global-weather-forecasting/"
+  - kind: "video"
+    title: "Demis Hassabis on AlphaFold"
+    source: "DeepMind"
+    url: "https://www.youtube.com/watch?v=gg7WjuFs8F4"
+quiz:
+  - id: "ai4sci-q1"
+    question: "What did AlphaFold 2 fundamentally do differently from prior protein structure prediction methods?"
+    choices:
+      - "It used a bigger ensemble."
+      - "It treated structure prediction as end-to-end differentiable: an Evoformer block jointly reasons about MSA (evolutionary) features and pairwise residue features, ending in a structure module that emits 3D coordinates with a frame-aligned point error loss."
+      - "It memorized the PDB."
+      - "It removed deep learning."
+    answer: 1
+    explanation: "Pre-AlphaFold methods stitched together domain modules (contact prediction, fragment assembly, energy minimization). AlphaFold 2 made the whole pipeline a single architecture trained end-to-end with a structure-aware loss. The MSA + pair representation co-evolution is the key inductive bias; the structure module is what produces atom coordinates directly."
+  - id: "ai4sci-q2"
+    question: "What does AlphaFold 3 add over AlphaFold 2?"
+    choices:
+      - "Only speed."
+      - "Joint structure prediction for proteins together with ligands, nucleic acids, and ions, using a diffusion-based structure module instead of the AF2 frame-based module — a unified biomolecular interaction model."
+      - "Pure language modeling."
+      - "Removes evolutionary information."
+    answer: 1
+    explanation: "AF3 generalizes from 'one protein' to 'arbitrary biomolecular complex' and replaces the deterministic structure module with a denoising diffusion module that samples coordinates. This makes drug-target interaction prediction a single forward pass — a major step for computational drug discovery."
+  - id: "ai4sci-q3"
+    question: "GraphCast forecasts global weather 10 days ahead at 0.25° resolution. What replaces the traditional numerical PDE solver?"
+    choices:
+      - "Nothing — it still uses ECMWF's IFS."
+      - "A graph neural network operating on a multi-mesh icosahedral graph that autoregressively rolls out 6-hour forecasts; it learns the dynamics from 39 years of ERA5 reanalysis data."
+      - "A diffusion model."
+      - "A transformer alone."
+    answer: 1
+    explanation: "GraphCast was the first ML weather model to beat ECMWF's HRES on most forecast variables at 10-day lead. The icosahedral GNN is rotation-equivariant on the sphere, the autoregressive rollout is trained with multi-step loss, and inference is ~minutes on one TPU vs hours on a supercomputer. The follow-up GenCast adds ensemble forecasts via diffusion."
+  - id: "ai4sci-q4"
+    question: "AlphaProof and AlphaGeometry 2 won silver at the 2024 International Math Olympiad. What was the key technical recipe?"
+    choices:
+      - "A single LLM solving everything."
+      - "A neuro-symbolic loop: LLM proposes candidate proof steps in a formal language (Lean for AlphaProof), a symbolic solver verifies and prunes, with self-play RL on hundreds of millions of synthetic problems used to train the policy."
+      - "Memorization of past IMO problems."
+      - "Random search."
+    answer: 1
+    explanation: "DeepMind paired LLM proof-step proposers with formal verifiers (Lean theorem prover for AlphaProof, a symbolic geometry engine for AlphaGeometry). The verifier provides perfect ground-truth rewards, enabling RL on synthetic problem distributions. This is the cleanest existing template for 'verifiable reasoning RL' beyond simple math."
+---
+
+The most consequential AI deployments of the last five years were not chat
+products. They were AlphaFold 2, AlphaFold 3, GraphCast, AlphaProof, and
+their open-source successors. These systems solved long-standing scientific
+problems and changed how working scientists do their day-to-day jobs. They
+deserve a place in any modern ML curriculum, both because they are
+intellectually beautiful and because they are templates for the next wave.
+
+This module is a tour. Five projects, what each got right, and what to read
+next.
+
+## AlphaFold 2: the protein-folding decade ends
+
+The protein folding problem is fifty years old: given an amino-acid sequence,
+predict the 3D structure the protein folds into. Until 2020 it was an
+unsolved problem; the best methods scored ~50 GDT_TS on the CASP critical
+assessment. AlphaFold 2 (DeepMind, 2020-2021) scored 92 — competitive with
+experimental crystallography for many targets — and the field declared the
+problem effectively solved.
+
+The technical recipe:
+
+1. **Multiple sequence alignment (MSA)** as input. Co-evolution of residues
+   across organisms is the strongest signal for which residues touch in 3D.
+2. **Evoformer blocks** that jointly update the MSA representation
+   (rows = sequences, columns = residues) and a pair representation (one
+   embedding per residue pair). Attention runs along rows, columns, and
+   pairs.
+3. **Structure module** that emits 3D coordinates as a sequence of
+   rigid-body frames per residue, trained with a frame-aligned point error
+   that respects equivariance.
+4. **Recycling** through the network 3-4 times so the structure prediction
+   can refine the MSA representation iteratively.
+
+The DeepMind/EBI AlphaFold Database now hosts predicted structures for
+~200M proteins — essentially every known sequence on Earth.
+
+## AlphaFold 3: from proteins to all of life's molecules
+
+AF3 (2024) generalizes from "predict structure of a single protein" to
+"predict structure of an arbitrary biomolecular complex" — proteins +
+ligands + nucleic acids + ions, all together. The architectural change is
+significant: the AF2 frame-based structure module is replaced by a
+**diffusion** module that denoises atom coordinates. Inputs are now any
+combination of biomolecule types, encoded into a unified representation.
+
+The practical impact: drug-target interaction prediction (where you give
+the model a candidate small molecule plus a target protein and get back
+the predicted binding pose) is a single forward pass. This is one of
+the most expensive operations in computational drug discovery, and AF3
+brought it within reach of any lab with a few GPUs.
+
+The catch: AF3 was released as a hosted server with restricted commercial
+use. **Boltz-1** (MIT, late 2024) is a clean-room open-source competitor
+released under MIT license. It is roughly comparable in accuracy and is
+already the default for academic use.
+
+## GraphCast: weather without a supercomputer
+
+Numerical weather prediction (NWP) — solving the equations of atmospheric
+fluid dynamics on a 3D grid — is one of the largest scientific computations
+in the world. ECMWF's HRES model runs on tens of thousands of CPUs to
+produce a 10-day global forecast.
+
+GraphCast (DeepMind, 2023) replaces the PDE solver with a graph neural
+network on an icosahedral mesh. Trained on 39 years of ERA5 reanalysis
+data, it autoregressively predicts 6-hour increments. On most surface and
+upper-air variables it beats ECMWF's HRES at 10-day lead, and it runs in
+about a minute on one TPU.
+
+GenCast (2024) adds ensemble forecasting via diffusion sampling.
+Microsoft's Aurora and NVIDIA's FourCastNet (Anandkumar's group) are
+parallel efforts using Fourier neural operators. The field has effectively
+re-implemented numerical weather prediction in pure ML, several orders of
+magnitude faster.
+
+## AlphaProof / AlphaGeometry 2: silver at the IMO
+
+In July 2024 DeepMind announced that AlphaProof and AlphaGeometry 2,
+working together, scored 28/42 on the 2024 IMO problems — silver-medal
+level, one point below the gold cutoff. The recipe was *not* "scale up an
+LLM." It was a neuro-symbolic loop:
+
+- **AlphaProof** uses an LLM to propose proof steps in **Lean**, the formal
+  theorem prover. Lean verifies each step. The valid-proof reward is then
+  used in self-play RL across millions of synthetic problems.
+- **AlphaGeometry 2** combines an LLM with a symbolic geometry engine that
+  performs auxiliary-construction search and verification.
+
+This is the cleanest existing template for *verifier-grounded reasoning RL*.
+The LLM proposes; the verifier scores; RL closes the loop. Apply the same
+pattern to code (with tests as the verifier), to physics simulations, to
+formal protocols — and you have the next generation of reasoning systems.
+
+```python
+# Conceptual loop. The verifier is the magic — it provides perfect rewards.
+while not solved(problem):
+    candidate = llm.propose_step(state, history)  # natural-ish language
+    formal    = translate_to_lean(candidate)      # parser
+    ok, msg   = lean.check(formal)                # verifier
+    state     = state + (formal if ok else None)
+    reward    = +1 if proof_complete(state) else 0
+    rl.update(llm, candidate, reward)
+```
+
+## Why this matters
+
+The pattern across all four:
+
+- **Strong inductive biases** (MSA + pair attention, icosahedral graph,
+  Lean type system) instead of pure scale.
+- **Domain-specific evaluation** with ground truth (CASP, ERA5, IMO
+  problems) — verifiable rewards.
+- **Self-play / synthetic data** at enormous scale once the verifier is
+  in place.
+
+This recipe — domain inductive bias + verifiable reward + scale — is
+arguably more important to the future of ML than chat-product
+benchmarks. It is what produces *new science* rather than recapitulating
+what is already on the web.
+
+<Callout variant="insight" title="The Nobel year">
+The 2024 Nobel Prize in Chemistry went to Hassabis, Jumper, and Baker for
+AlphaFold and de novo protein design. The 2024 Nobel Prize in Physics went
+to Hopfield and Hinton for the foundational neural-network work. The
+field's most important contributions are now being recognized as *science*,
+not just engineering — and the line between them is dissolving.
+</Callout>
+
+<PaperCard
+  title="Highly accurate protein structure prediction with AlphaFold"
+  authors="John Jumper et al."
+  year={2021}
+  url="https://www.nature.com/articles/s41586-021-03819-2"
+  takeaway="The paper that solved a 50-year-old problem. The Evoformer architecture is worth studying as a masterclass in domain-aware deep learning design."
+/>
+
+## What to do next
+
+- Run AlphaFold 3 (or Boltz-1, if you want open-source) on a sequence you
+  care about. It will take five minutes and reshape your sense of what
+  ML can do.
+- Read GraphCast carefully — it is one of the cleanest examples of GNN +
+  scientific simulation in the literature.
+- Read the AlphaProof blog post and skim the Lean proof traces. The
+  combination of LLM proposal and formal verification is the most
+  important emerging RL recipe of 2025-26.
