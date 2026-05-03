@@ -1,0 +1,263 @@
+---
+slug: "08-rl/06-mcts-game-playing"
+part: "08-rl"
+partTitle: "Reinforcement learning"
+partIndex: 8
+topicIndex: 6
+title: "Monte Carlo Tree Search"
+hook: "UCT, neural priors, and MCTS reborn inside LLMs."
+estMinutes: 16
+difficulty: 4
+prereqs: ["08-rl/05-alphago-zero"]
+hasHeroViz: false
+researchers: ["silver", "hassabis"]
+papers:
+  - title: "Bandit based Monte-Carlo Planning (UCT)"
+    authors: "Kocsis, Szepesvári"
+    year: 2006
+    url: "https://link.springer.com/chapter/10.1007/11871842_29"
+  - title: "Mastering the Game of Go with Deep Neural Networks and Tree Search (AlphaGo)"
+    authors: "Silver et al."
+    year: 2016
+    url: "https://www.nature.com/articles/nature16961"
+  - title: "Mastering Chess and Shogi by Self-Play with a General RL Algorithm (AlphaZero)"
+    authors: "Silver et al."
+    year: 2017
+    url: "https://arxiv.org/abs/1712.01815"
+  - title: "Solving Olympiad Geometry without Human Demonstrations (AlphaGeometry)"
+    authors: "Trinh, Wu, Le, He, Luong"
+    year: 2024
+    url: "https://www.nature.com/articles/s41586-023-06747-5"
+  - title: "rStar-Math: Small LLMs Can Master Math Reasoning with Self-Evolved Deep Thinking"
+    authors: "Guan et al."
+    year: 2025
+    url: "https://arxiv.org/abs/2501.04519"
+freeResources:
+  - kind: "blog"
+    title: "A Survey of Monte Carlo Tree Search Methods"
+    source: "Browne et al."
+    url: "https://www.cameronius.com/cv/mcts-survey-master.pdf"
+  - kind: "blog"
+    title: "AlphaGo Zero — How and Why it Works"
+    source: "Tim Wheeler"
+    url: "https://tim.hibal.org/blog/alpha-zero-how-and-why-it-works/"
+  - kind: "video"
+    title: "DeepMind: AlphaGo, AlphaZero, MuZero"
+    source: "DeepMind"
+    url: "https://deepmind.google/discover/blog/alphazero-shedding-new-light-on-chess-shogi-and-go/"
+quiz:
+  - id: "mcts-q1"
+    question: "MCTS interleaves four operations per simulation. What are they, in order?"
+    choices:
+      - "Sample, optimize, validate, deploy"
+      - "Selection, expansion, simulation (rollout), backpropagation of the value up the tree"
+      - "Forward, backward, update, evaluate"
+      - "Encode, attend, decode, sample"
+    answer: 1
+    explanation: "Selection: walk from root using a UCB-like rule down to a frontier node. Expansion: add a child of that node. Simulation: from the new node, estimate value (rollout or neural eval). Backpropagation: update visit counts and value sums along the visited path. Repeat for many simulations, then act."
+  - id: "mcts-q2"
+    question: "UCT's selection rule trades exploitation against exploration via $a^* = \\arg\\max_a Q(s,a) + c \\sqrt{\\ln N(s) / N(s,a)}$. What does the second term encode?"
+    choices:
+      - "A learning rate."
+      - "An upper-confidence bonus that grows with how often we've visited the parent and shrinks with how often we've visited this child — favoring under-explored actions while it's still cheap to try them."
+      - "A discount factor."
+      - "A KL penalty."
+    answer: 1
+    explanation: "Kocsis & Szepesvári's UCB1 derivation: with high probability the true mean reward is bounded by the empirical mean plus that bonus. Picking the argmax of empirical-plus-bonus gives a logarithmic regret bound. In MCTS, this means we gradually concentrate visits on promising actions but never permanently rule out under-tried ones."
+  - id: "mcts-q3"
+    question: "AlphaZero replaces the random rollout in classical MCTS with what?"
+    choices:
+      - "A larger search budget."
+      - "A neural network that outputs both a policy prior $p(a|s)$ used in the PUCT selection rule and a value $v(s)$ used in place of the rollout — eliminating the variance of random simulations."
+      - "Q-learning."
+      - "Self-supervised learning."
+    answer: 1
+    explanation: "Random rollouts in chess and Go are extremely high-variance. AlphaZero swaps them for a learned value head $v(s)$ and uses the policy head $p(a|s)$ as a prior in PUCT, focusing search where the network thinks promising moves lie. The result is dramatically more sample-efficient search."
+  - id: "mcts-q4"
+    question: "Why has MCTS reappeared in LLM reasoning research (rStar-Math, AlphaGeometry, ToT-with-MCTS)?"
+    choices:
+      - "It is faster than transformers."
+      - "Reasoning has search structure: many candidate next steps, value can be estimated by a verifier or process-reward model, and backtracking pays off — MCTS with the LLM as policy/value is a natural fit."
+      - "It avoids RLHF."
+      - "It is the only test-time scaling method."
+    answer: 1
+    explanation: "The pattern in rStar-Math and AlphaGeometry is the same as AlphaZero's: use the network to suggest candidate next steps and estimate intermediate value; use MCTS to search the space; collect successful trajectories; SFT on them. MCTS gives a principled exploration mechanism that pure best-of-N or self-consistency lack."
+---
+
+Monte Carlo Tree Search is the planning algorithm at the heart of
+AlphaGo, AlphaZero, AlphaGeometry, and a growing list of LLM reasoning
+systems. Once a niche game-playing algorithm, it has become a general
+recipe for *combining a learned policy/value with explicit search* —
+exactly the combination that recurs whenever the problem has a tree
+structure and a verifier.
+
+The 2025 surprise is that MCTS isn't just for board games anymore. rStar-
+Math used MCTS to push 7B models to frontier-class math performance.
+AlphaGeometry combined it with a symbolic engine to solve IMO problems.
+The MCTS recipe — once specialized — is now part of the modern LLM
+reasoning toolbox.
+
+## What MCTS does
+
+Given a current state $s$, choose an action $a$ that maximizes some
+notion of long-term reward. Rather than evaluating every action
+exhaustively (intractable for chess, Go, or open-ended reasoning), MCTS
+*samples* simulations through the action tree, biasing toward promising
+branches.
+
+The four-step inner loop:
+
+1. **Selection.** Walk from the root using a UCB-like rule until you
+   reach a leaf node.
+2. **Expansion.** Add a new child to that leaf (one of the legal actions).
+3. **Simulation.** Estimate the value of the new node — by random
+   playout in classical MCTS, by a learned value network in AlphaZero.
+4. **Backpropagation.** Update visit counts $N(s, a)$ and value sums
+   along the path from root to leaf.
+
+After many simulations (hundreds to millions, depending on budget), pick
+the action with the most visits — *not* the highest mean value, because
+visits incorporate confidence.
+
+## UCT: the bandit insight
+
+The selection rule that made MCTS practical is **UCT** (Upper Confidence
+bound applied to Trees, Kocsis & Szepesvári 2006). At each non-leaf
+node, pick the child that maximizes:
+
+$$
+a^* = \arg\max_a \left[ Q(s, a) + c \sqrt{\frac{\ln N(s)}{N(s, a)}} \right]
+$$
+
+where $Q(s, a)$ is the empirical mean value of action $a$ from state $s$,
+$N(s)$ is the parent visit count, and $N(s, a)$ is the action's visit
+count. The first term exploits; the second explores. The square-root
+shape comes from Hoeffding-style confidence bounds on the bandit.
+
+Two consequences:
+
+- Promising actions get exponentially more visits, refining their value
+  estimate.
+- Under-tried actions still get occasional visits — never permanently
+  ruled out.
+
+```python
+import math
+from dataclasses import dataclass, field
+
+@dataclass
+class Node:
+    parent: "Node | None" = None
+    children: dict = field(default_factory=dict)  # action -> Node
+    visits: int = 0
+    value_sum: float = 0.0
+
+def uct_score(child: Node, c: float = 1.4) -> float:
+    if child.visits == 0:
+        return float("inf")
+    q = child.value_sum / child.visits
+    u = c * math.sqrt(math.log(child.parent.visits) / child.visits)
+    return q + u
+
+def select(node: Node) -> Node:
+    while node.children:
+        node = max(node.children.values(), key=uct_score)
+    return node
+
+def backpropagate(node: Node, value: float):
+    while node is not None:
+        node.visits += 1
+        node.value_sum += value
+        node = node.parent
+```
+
+This skeleton plus an environment model and a rollout function is a
+working MCTS. The hard parts are the rollout/value estimate and the
+action enumeration.
+
+## AlphaZero: MCTS + neural priors
+
+Pure MCTS works in Go but struggles in chess (random rollouts are
+catastrophic — capturing your own queen looks fine to a random player).
+AlphaZero solves both problems with a single neural network $f_\theta$
+that outputs:
+
+- A **policy prior** $p(a | s)$ — a probability distribution over actions.
+- A **value estimate** $v(s)$ — the expected outcome from $s$.
+
+The selection rule becomes **PUCT**:
+
+$$
+a^* = \arg\max_a \left[ Q(s, a) + c \cdot p(a | s) \cdot \frac{\sqrt{N(s)}}{1 + N(s, a)} \right]
+$$
+
+The prior focuses search where the network thinks the action is good; the
+value head replaces the random playout. Training uses self-play: the
+final game outcome supervises the value head; the visit counts at each
+move supervise the policy head. The network and the search co-evolve.
+
+This is the recipe that mastered chess, shogi, and Go from scratch in 24
+hours of self-play.
+
+<PaperCard
+  title="Mastering Chess and Shogi by Self-Play with a General RL Algorithm (AlphaZero)"
+  authors="Silver et al."
+  year={2017}
+  url="https://arxiv.org/abs/1712.01815"
+/>
+
+## Why MCTS reappeared in LLM reasoning
+
+Reasoning has tree structure. Each problem has many candidate next steps;
+some lead to correct answers, many do not. If you have:
+
+- A *policy* (the LLM proposing next steps),
+- A *value* (a process-reward model scoring partial reasoning),
+- A *verifier* (math correctness, code passing tests, formal proof
+  checker),
+
+then PUCT-style MCTS is a natural fit. **rStar-Math** uses MCTS to
+discover correct, well-reasoned traces with a 7B base model, then
+fine-tunes the policy on those traces — a closed self-improvement loop.
+**AlphaGeometry** (DeepMind) combines a language model that proposes
+auxiliary constructions with a symbolic deduction engine, searching the
+space with a tree-structured procedure. Both reach Olympiad-level
+performance.
+
+<Callout variant="insight" title="MCTS as a synthetic-data engine">
+The most surprising 2024–2026 use of MCTS isn't to *act better at
+inference* — it's to *generate higher-quality training data*. Search
+finds correct trajectories the base policy can't reliably produce alone;
+SFT on those trajectories then teaches the policy to find them
+zero-shot. AlphaZero, rStar-Math, and AlphaGeometry all rely on this
+loop.
+</Callout>
+
+## Practical considerations
+
+- **Branching factor.** MCTS scales poorly when there are too many
+  candidate actions. LLM reasoning often uses a *coarse-grained*
+  action — e.g., one reasoning step ≈ one action — to keep the
+  branching manageable.
+- **Value model quality.** Garbage in, garbage out. A noisy PRM makes
+  MCTS chase phantom branches. Investing in PRM training is usually
+  worth more than search depth.
+- **Compute cost.** Each simulation is an LLM call (or several).
+  Budgets of 32–256 simulations per query are typical in published
+  work. This is real money at scale.
+
+<Callout variant="warning" title="MCTS is not always the answer">
+For tasks without good intermediate value estimates, MCTS degrades to
+expensive random search. Best-of-N with a good verifier or
+self-consistency are simpler and often comparable. Reach for MCTS when
+you have a tree-structured action space *and* a value signal — not
+because it sounds sophisticated.
+</Callout>
+
+## What to study next
+
+- Read the AlphaGo Zero and AlphaZero papers — concise, foundational,
+  and far more readable than their reputation suggests.
+- Skim rStar-Math for the modern LLM-on-MCTS instantiation.
+- Move on to test-time compute scaling for the broader landscape of
+  inference-time techniques MCTS sits within.
