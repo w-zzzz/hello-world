@@ -16,8 +16,8 @@ function Fallback() {
   );
 }
 
-/** Each hero viz lazy-loads on first paint. Bonus viz are stubbed until built. */
-const registry: Partial<Record<VizKey, React.ComponentType>> = {
+/** Each hero viz lazy-loads on first paint. */
+const registry: Record<VizKey, React.ComponentType> = {
   "gradient-descent": dynamic(() => import("@/components/viz/GradientDescent").then((m) => m.GradientDescent), { ssr: false, loading: Fallback }),
   "nn-playground": dynamic(() => import("@/components/viz/NNPlayground").then((m) => m.NNPlayground), { ssr: false, loading: Fallback }),
   "attention-heatmap": dynamic(() => import("@/components/viz/AttentionHeatmap").then((m) => m.AttentionHeatmap), { ssr: false, loading: Fallback }),
@@ -26,6 +26,10 @@ const registry: Partial<Record<VizKey, React.ComponentType>> = {
   "tokenizer": dynamic(() => import("@/components/viz/TokenizerViz").then((m) => m.TokenizerViz), { ssr: false, loading: Fallback }),
   "backprop-stepper": dynamic(() => import("@/components/viz/BackpropStepper").then((m) => m.BackpropStepper), { ssr: false, loading: Fallback }),
   "transformer-3d": dynamic(() => import("@/components/viz/TransformerWalkthrough3D").then((m) => m.TransformerWalkthrough3D), { ssr: false, loading: Fallback }),
+  "pca-projector": dynamic(() => import("@/components/viz/PCAProjector").then((m) => m.PCAProjector), { ssr: false, loading: Fallback }),
+  "kernel-trick": dynamic(() => import("@/components/viz/KernelTrickViz").then((m) => m.KernelTrickViz), { ssr: false, loading: Fallback }),
+  "moe-router": dynamic(() => import("@/components/viz/MoERouterViz").then((m) => m.MoERouterViz), { ssr: false, loading: Fallback }),
+  "rl-gridworld": dynamic(() => import("@/components/viz/RLGridworld").then((m) => m.RLGridworld), { ssr: false, loading: Fallback }),
 };
 
 export function Embed({ viz }: { viz: VizKey }) {

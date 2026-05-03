@@ -14,16 +14,43 @@ import { cn } from "@/lib/utils";
 const SIZE = 192;
 const T = 60;
 
-type ImageKey = "donut" | "stripes" | "moon";
+type ImageKey = "donut" | "stripes" | "moon" | "mlmap";
+
+function rasterText(text: string, w = SIZE, h = SIZE): Uint8Array {
+  if (typeof document === "undefined") return new Uint8Array(w * h);
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  const out = new Uint8Array(w * h);
+  if (!ctx) return out;
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "white";
+  ctx.font = `bold ${Math.round(h * 0.34)}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, w / 2, h / 2);
+  const px = ctx.getImageData(0, 0, w, h).data;
+  for (let i = 0; i < w * h; i++) out[i] = px[i * 4] > 128 ? 1 : 0;
+  return out;
+}
 
 function targetImage(kind: ImageKey, w = SIZE, h = SIZE): Float32Array {
   const data = new Float32Array(w * h * 3);
+  const textMask = kind === "mlmap" ? rasterText("MLMap", w, h) : null;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const u = x / w - 0.5;
       const v = y / h - 0.5;
       let r = 0, g = 0, b = 0;
-      if (kind === "donut") {
+      if (kind === "mlmap") {
+        const m = textMask ? textMask[y * w + x] : 0;
+        // gradient inside text glyphs
+        r = m ? 0.95 : 0.05;
+        g = m ? 0.65 + u * 0.6 : 0.05;
+        b = m ? 0.95 - v * 0.5 : 0.1;
+      } else if (kind === "donut") {
         const dist = Math.sqrt(u * u + v * v);
         const inRing = dist > 0.18 && dist < 0.36;
         r = inRing ? 1 : 0.06;
@@ -80,9 +107,11 @@ export function DiffusionDenoise() {
   const [kind, setKind] = React.useState<ImageKey>("donut");
   const [t, setT] = React.useState(T);
   const [playing, setPlaying] = React.useState(true);
+  const [showSchedule, setShowSchedule] = React.useState(false);
   const noiseRef = React.useRef<Float32Array | null>(null);
   const targetRef = React.useRef<Float32Array | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const noiseInsetRef = React.useRef<HTMLCanvasElement>(null);
 
   React.useEffect(() => {
     targetRef.current = targetImage(kind);
@@ -129,6 +158,31 @@ export function DiffusionDenoise() {
       img.data[k + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
+    // noise-prediction inset: target − current ≈ predicted ε direction
+    const inset = noiseInsetRef.current;
+    if (inset) {
+      inset.width = SIZE;
+      inset.height = SIZE;
+      const ictx = inset.getContext("2d");
+      if (ictx) {
+        const iimg = ictx.createImageData(SIZE, SIZE);
+        for (let i = 0; i < SIZE * SIZE; i++) {
+          const cr = Math.max(0, Math.min(1, sa * target[i * 3] + sb * (noise[i * 3] * 0.4 + 0.5)));
+          const cg = Math.max(0, Math.min(1, sa * target[i * 3 + 1] + sb * (noise[i * 3 + 1] * 0.4 + 0.5)));
+          const cb = Math.max(0, Math.min(1, sa * target[i * 3 + 2] + sb * (noise[i * 3 + 2] * 0.4 + 0.5)));
+          // visualize |target − current| amplified
+          const dr = Math.min(1, Math.abs(target[i * 3] - cr) * 2);
+          const dg = Math.min(1, Math.abs(target[i * 3 + 1] - cg) * 2);
+          const db = Math.min(1, Math.abs(target[i * 3 + 2] - cb) * 2);
+          const k = i * 4;
+          iimg.data[k] = Math.round(dr * 255);
+          iimg.data[k + 1] = Math.round(dg * 255);
+          iimg.data[k + 2] = Math.round(db * 255);
+          iimg.data[k + 3] = 255;
+        }
+        ictx.putImageData(iimg, 0, 0);
+      }
+    }
   }, [t, kind]);
 
   function reset() {
@@ -144,15 +198,23 @@ export function DiffusionDenoise() {
       fullScreenHref="/playground/diffusion-denoise"
     >
       <div className="grid lg:grid-cols-[1fr_240px]">
-        <div className="grid place-items-center bg-[var(--color-muted)]/40 p-8">
+        <div className="grid place-items-center bg-[var(--color-muted)]/40 p-6 relative">
           <div className="rounded-2xl border border-soft overflow-hidden shadow-2xl shadow-black/10" style={{ width: SIZE * 1.6, maxWidth: "100%" }}>
             <canvas ref={canvasRef} className="block w-full h-auto" style={{ aspectRatio: "1/1", imageRendering: "pixelated" }} />
           </div>
+          {/* noise-prediction inset */}
+          <div className="absolute bottom-3 right-3 rounded-lg border border-soft overflow-hidden shadow-lg" style={{ width: 88 }}>
+            <div className="bg-[var(--color-card)] px-1.5 py-0.5 text-[8px] uppercase tracking-[0.14em] text-[var(--color-muted-fg)]">
+              ε̂ (target − current)
+            </div>
+            <canvas ref={noiseInsetRef} className="block w-full h-auto" style={{ aspectRatio: "1/1", imageRendering: "pixelated" }} />
+          </div>
+          {showSchedule && <BetaScheduleOverlay t={t} T={T} />}
         </div>
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-4">
           <Field label="Target image">
-            <div className="grid grid-cols-3 gap-1">
-              {(["donut", "stripes", "moon"] as ImageKey[]).map((k) => (
+            <div className="grid grid-cols-2 gap-1">
+              {(["donut", "stripes", "moon", "mlmap"] as ImageKey[]).map((k) => (
                 <button
                   key={k}
                   onClick={() => setKind(k)}
@@ -168,6 +230,15 @@ export function DiffusionDenoise() {
               ))}
             </div>
           </Field>
+          <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showSchedule}
+              onChange={(e) => setShowSchedule(e.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            <span className="text-[var(--color-fg)]">Show β schedule overlay</span>
+          </label>
           <Field label={`Timestep · ${t}/${T}`}>
             <input
               type="range"
@@ -205,6 +276,34 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted-fg)] font-medium mb-1.5">{label}</div>
       {children}
+    </div>
+  );
+}
+
+function BetaScheduleOverlay({ t, T: tot }: { t: number; T: number }) {
+  const w = 200, h = 80;
+  const samples = 80;
+  // ᾱ vs t (cosine schedule)
+  const ptsA = Array.from({ length: samples + 1 }, (_, i) => {
+    const tt = (i / samples) * tot;
+    const ab = alphaBar(tt, tot);
+    return [(i / samples) * w, h - ab * (h - 6) - 3] as const;
+  })
+    .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+    .join(" ");
+  // current marker
+  const cx = ((tot - t) / tot) * w;
+  const cy = h - alphaBar(t, tot) * (h - 6) - 3;
+  return (
+    <div className="absolute top-3 left-3 rounded-lg border border-soft bg-[var(--color-card)]/95 backdrop-blur p-2 shadow-lg" style={{ width: w + 16 }}>
+      <div className="text-[8px] uppercase tracking-[0.14em] text-[var(--color-muted-fg)] mb-1">
+        ᾱ schedule (cosine)
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="block w-full h-auto">
+        <polyline points={ptsA} fill="none" stroke="var(--color-accent)" strokeWidth={1.5} />
+        <line x1={cx} y1={0} x2={cx} y2={h} stroke="var(--color-fg)" strokeWidth={0.7} strokeOpacity={0.5} strokeDasharray="2 2" />
+        <circle cx={cx} cy={cy} r={3} fill="var(--color-fg)" />
+      </svg>
     </div>
   );
 }

@@ -162,6 +162,11 @@ export function GradientDescent() {
             onPointerMove={dropAt}
             style={{ cursor: "crosshair" }}
           >
+            <defs>
+              <marker id="gd-arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#fbbf24" />
+              </marker>
+            </defs>
             {trail.length > 1 && (
               <polyline
                 points={trail.map((p) => `${svgX(p.x)},${svgY(p.y)}`).join(" ")}
@@ -171,6 +176,31 @@ export function GradientDescent() {
                 strokeWidth={1.5}
               />
             )}
+            {point && (() => {
+              const [gx, gy] = landscape.grad(point[0], point[1]);
+              const mag = Math.hypot(gx, gy) || 1e-9;
+              // arrow points along negative gradient (descent direction)
+              const dx = -gx / mag;
+              const dy = -gy / mag;
+              const length = 60;
+              const x0 = svgX(point[0]);
+              const y0 = svgY(point[1]);
+              // svg y is flipped relative to math y; descent on math y = up in pixel
+              const x1 = x0 + dx * length;
+              const y1 = y0 - dy * length;
+              return (
+                <line
+                  x1={x0}
+                  y1={y0}
+                  x2={x1}
+                  y2={y1}
+                  stroke="#fbbf24"
+                  strokeWidth={2.5}
+                  strokeOpacity={0.9}
+                  markerEnd="url(#gd-arrow-head)"
+                />
+              );
+            })()}
             {point && (
               <motion.circle
                 cx={svgX(point[0])}
@@ -253,6 +283,11 @@ export function GradientDescent() {
             <Stat label="Step" value={stepCount.toString()} />
             <Stat label="Loss" value={currentLoss < 1e3 ? currentLoss.toFixed(3) : currentLoss.toExponential(2)} />
           </div>
+          <LossSparkline trail={trail} />
+          <GradientReadout
+            point={point}
+            grad={point ? landscape.grad(point[0], point[1]) : null}
+          />
           <p className="text-[11px] text-[var(--color-muted-fg)] leading-relaxed">
             Click on the surface to drop the particle. Each landscape has different traps —
             Rosenbrock&apos;s curved valley, Beale&apos;s flat plateaus, Himmelblau&apos;s four minima, the saddle.
@@ -279,6 +314,69 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-soft px-2 py-1.5">
       <div className="opacity-60 text-[9px] uppercase tracking-[0.14em]">{label}</div>
       <div className="font-mono tabular-nums text-[var(--color-fg)] text-xs">{value}</div>
+    </div>
+  );
+}
+
+function LossSparkline({ trail }: { trail: Trail }) {
+  if (trail.length < 2) return null;
+  const w = 200, h = 48;
+  const losses = trail.map((p) => p.loss);
+  // Apply log1p so big and small losses are both visible
+  const ts = losses.map((v) => Math.log1p(Math.max(0, v)));
+  const min = Math.min(...ts);
+  const max = Math.max(...ts);
+  const span = Math.max(1e-6, max - min);
+  const pts = ts
+    .map((v, i) => {
+      const x = (i / (ts.length - 1)) * w;
+      const y = h - ((v - min) / span) * (h - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted-fg)] font-medium mb-1.5">
+        Loss vs step (log)
+      </div>
+      <div className="rounded-md border border-soft bg-[var(--color-bg)] p-1.5">
+        <svg viewBox={`0 0 ${w} ${h}`} className="block w-full h-auto">
+          <polyline
+            points={pts}
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth={1.5}
+          />
+          <circle
+            cx={w}
+            cy={(() => {
+              const v = ts[ts.length - 1];
+              return h - ((v - min) / span) * (h - 4) - 2;
+            })()}
+            r={2.5}
+            fill="var(--color-accent)"
+          />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function GradientReadout({
+  point,
+  grad,
+}: {
+  point: [number, number] | null;
+  grad: [number, number] | null;
+}) {
+  if (!point || !grad) return null;
+  const mag = Math.hypot(grad[0], grad[1]);
+  return (
+    <div className="rounded-md border border-soft bg-[var(--color-bg)] px-2 py-1.5 text-[10px] font-mono leading-relaxed">
+      <div className="text-[var(--color-muted-fg)]">∇L</div>
+      <div className="text-[var(--color-fg)]">
+        ({grad[0].toFixed(2)}, {grad[1].toFixed(2)}) · ‖∇‖={mag.toFixed(2)}
+      </div>
     </div>
   );
 }

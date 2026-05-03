@@ -14,6 +14,10 @@ const VALID_KEYS: VizKey[] = [
   "tokenizer",
   "backprop-stepper",
   "transformer-3d",
+  "pca-projector",
+  "kernel-trick",
+  "moe-router",
+  "rl-gridworld",
 ];
 
 const TITLES: Record<VizKey, string> = {

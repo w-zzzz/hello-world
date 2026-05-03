@@ -62,6 +62,44 @@ export const LANDSCAPES: LossFn[] = [
     init: [3.2, -3.5],
     vmax: 250000,
   },
+  {
+    key: "booth",
+    label: "Booth",
+    f: (x, y) => Math.pow(x + 2 * y - 7, 2) + Math.pow(2 * x + y - 5, 2),
+    grad: (x, y) => {
+      const a = x + 2 * y - 7;
+      const b = 2 * x + y - 5;
+      return [2 * a + 4 * b, 4 * a + 2 * b];
+    },
+    domain: [-10, 10, -10, 10],
+    init: [-7, 7],
+    vmax: 2400,
+  },
+  {
+    key: "ackley",
+    label: "Ackley",
+    f: (x, y) => {
+      const a = 20, b = 0.2, c = 2 * Math.PI;
+      return (
+        -a * Math.exp(-b * Math.sqrt(0.5 * (x * x + y * y))) -
+        Math.exp(0.5 * (Math.cos(c * x) + Math.cos(c * y))) +
+        a +
+        Math.E
+      );
+    },
+    grad: (x, y) => {
+      const a = 20, b = 0.2, c = 2 * Math.PI;
+      const r = Math.sqrt(0.5 * (x * x + y * y)) || 1e-9;
+      const e1 = Math.exp(-b * r);
+      const e2 = Math.exp(0.5 * (Math.cos(c * x) + Math.cos(c * y)));
+      const dx = a * b * (x / (2 * r)) * e1 + 0.5 * c * Math.sin(c * x) * e2;
+      const dy = a * b * (y / (2 * r)) * e1 + 0.5 * c * Math.sin(c * y) * e2;
+      return [dx, dy];
+    },
+    domain: [-5, 5, -5, 5],
+    init: [3.5, -3.2],
+    vmax: 14,
+  },
 ];
 
 export const LANDSCAPE_BY_KEY = Object.fromEntries(LANDSCAPES.map((l) => [l.key, l]));

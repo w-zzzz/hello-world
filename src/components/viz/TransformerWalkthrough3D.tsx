@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
-import { motion } from "motion/react";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { VizFrame } from "@/components/viz/shared/VizFrame";
 
@@ -128,17 +127,83 @@ function GentleSpin() {
   return <group ref={ref} />;
 }
 
+function StageLabel({ stage }: { stage: number }) {
+  // a floating label above the formation
+  const target = STAGES[stage];
+  return (
+    <Html position={[0, 3.4, 0]} center distanceFactor={6} zIndexRange={[20, 0]}>
+      <div className="rounded-lg bg-black/80 backdrop-blur px-3 py-1.5 text-center pointer-events-none whitespace-nowrap shadow-lg">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-white/60 font-mono">
+          stage {stage + 1}
+        </div>
+        <div className="text-sm font-semibold text-white">{target.name}</div>
+      </div>
+    </Html>
+  );
+}
+
+function CinematicCamera({ stage }: { stage: number }) {
+  const { camera } = useThree();
+  // smooth dolly + slow rotation around the formation
+  const target = React.useMemo(() => {
+    // cycle camera positions to make it cinematic
+    const presets: [number, number, number][] = [
+      [0, 1.5, 6.5],
+      [3.5, 1.8, 5.8],
+      [3.0, 2.2, 5.2],
+      [-2.5, 2.6, 5.5],
+      [-1.0, 3.4, 6.2],
+      [2.5, 2.4, 6.0],
+      [0, 2.0, 7.2],
+    ];
+    return presets[stage % presets.length];
+  }, [stage]);
+
+  useFrame((_, delta) => {
+    const k = Math.min(1, delta * 1.8);
+    camera.position.x += (target[0] - camera.position.x) * k;
+    camera.position.y += (target[1] - camera.position.y) * k;
+    camera.position.z += (target[2] - camera.position.z) * k;
+    camera.lookAt(0, 1.2, 0);
+  });
+  return null;
+}
+
+function approxFlops(seq: number, dModel = 768, layers = 6): number {
+  // attention: 4 * seq * d² + 2 * seq² * d per layer
+  // ffn: 16 * seq * d² per layer (d_ff = 4d, two matmuls)
+  const attn = 4 * seq * dModel * dModel + 2 * seq * seq * dModel;
+  const ffn = 16 * seq * dModel * dModel;
+  return layers * (attn + ffn);
+}
+
+function fmtFlops(n: number): string {
+  if (n >= 1e12) return (n / 1e12).toFixed(1) + " TFLOPs";
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + " GFLOPs";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + " MFLOPs";
+  return n.toFixed(0) + " FLOPs";
+}
+
 export function TransformerWalkthrough3D() {
   const [stage, setStage] = React.useState(0);
   const [playing, setPlaying] = React.useState(true);
+  const [seqLen, setSeqLen] = React.useState(TOKENS.length);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPlaying(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     if (!playing) return;
     const id = setInterval(() => {
       setStage((s) => (s + 1) % STAGES.length);
-    }, 2400);
+    }, 2800);
     return () => clearInterval(id);
   }, [playing]);
+
+  const flops = approxFlops(seqLen);
 
   return (
     <VizFrame
@@ -154,6 +219,8 @@ export function TransformerWalkthrough3D() {
             <directionalLight position={[3, 5, 2]} intensity={1.4} color="#fff" />
             <directionalLight position={[-3, 2, -3]} intensity={0.5} color="#a8f" />
             <GentleSpin />
+            <CinematicCamera stage={stage} />
+            <StageLabel stage={stage} />
             {TOKENS.map((tok, i) => (
               <TokenCube
                 key={i}
@@ -166,7 +233,7 @@ export function TransformerWalkthrough3D() {
               />
             ))}
             <AttentionArrows count={TOKENS.length} active={stage === 3} />
-            <OrbitControls enableDamping enablePan={false} autoRotate autoRotateSpeed={0.3} />
+            <OrbitControls enableDamping enablePan={false} autoRotate autoRotateSpeed={0.18} />
           </Canvas>
         </div>
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-3">
@@ -184,6 +251,24 @@ export function TransformerWalkthrough3D() {
                 <div className="text-[10px] text-[var(--color-muted-fg)] mt-0.5 leading-snug">{s.desc}</div>
               </button>
             ))}
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted-fg)] font-medium mb-1.5">
+              Sequence length · {seqLen}
+            </div>
+            <input
+              type="range"
+              min={4}
+              max={2048}
+              step={4}
+              value={seqLen}
+              onChange={(e) => setSeqLen(+e.target.value)}
+              className="w-full accent-[var(--color-accent)]"
+            />
+            <div className="mt-1 rounded-md border border-soft bg-[var(--color-bg)] px-2 py-1.5 text-[10px] font-mono">
+              <div className="text-[var(--color-muted-fg)]">FLOPs / token (d=768, L=6)</div>
+              <div className="text-[var(--color-fg)] tabular-nums">{fmtFlops(flops)}</div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -206,6 +291,3 @@ export function TransformerWalkthrough3D() {
     </VizFrame>
   );
 }
-
-// avoid unused imports
-void motion;

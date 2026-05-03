@@ -158,11 +158,13 @@ function trainStep(layers: Layer[], xs: [number, number][], ys: number[], lr: nu
 export function NNPlayground() {
   const [dataset, setDataset] = React.useState<DatasetKey>("xor");
   const [hidden, setHidden] = React.useState(2);
+  const [neurons, setNeurons] = React.useState(6);
   const [act, setAct] = React.useState<Activation>("relu");
   const [lr, setLr] = React.useState(0.1);
   const [playing, setPlaying] = React.useState(true);
   const [step, setStep] = React.useState(0);
   const [loss, setLoss] = React.useState<number>(1);
+  const [hiddenAct, setHiddenAct] = React.useState<number[]>([]);
   const dataRef = React.useRef(genData(dataset));
   const layersRef = React.useRef<Layer[]>(makeMLP([2, 6, 1], act));
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -170,10 +172,10 @@ export function NNPlayground() {
   // Re-init on dataset/architecture/activation change
   React.useEffect(() => {
     dataRef.current = genData(dataset);
-    const sizes = [2, ...Array(hidden).fill(6), 1];
+    const sizes = [2, ...Array(hidden).fill(neurons), 1];
     layersRef.current = makeMLP(sizes, act);
     setStep(0);
-  }, [dataset, hidden, act]);
+  }, [dataset, hidden, neurons, act]);
 
   // train loop
   React.useEffect(() => {
@@ -186,12 +188,17 @@ export function NNPlayground() {
         const l = trainStep(layersRef.current, dataRef.current.x, dataRef.current.y, lr);
         setLoss(l);
         setStep((s) => s + 1);
+        // sample hidden-layer activations on the centroid of the dataset
+        const centroid: [number, number] = [0, 0];
+        const { acts } = forward(layersRef.current, centroid);
+        // use first hidden layer
+        if (acts.length > 1) setHiddenAct(acts[1].slice(0, neurons));
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, lr, dataset, hidden, act]);
+  }, [playing, lr, dataset, hidden, neurons, act]);
 
   // render decision surface
   React.useEffect(() => {
@@ -248,10 +255,29 @@ export function NNPlayground() {
 
   function reset() {
     dataRef.current = genData(dataset);
-    const sizes = [2, ...Array(hidden).fill(6), 1];
+    const sizes = [2, ...Array(hidden).fill(neurons), 1];
     layersRef.current = makeMLP(sizes, act);
     setStep(0);
     setLoss(1);
+    setHiddenAct([]);
+  }
+
+  function onCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 4 - 2;
+    const y = ((e.clientY - rect.top) / rect.height) * 3 - 1.5;
+    // Shift+click adds class-1 (cyan), Alt+click adds class-0 (pink), plain click is ignored
+    if (e.shiftKey) {
+      dataRef.current.x.push([x, y]);
+      dataRef.current.y.push(1);
+      setStep((s) => s); // trigger re-render of points layer
+    } else if (e.altKey) {
+      dataRef.current.x.push([x, y]);
+      dataRef.current.y.push(0);
+      setStep((s) => s);
+    }
   }
 
   return (
@@ -263,7 +289,12 @@ export function NNPlayground() {
     >
       <div className="grid lg:grid-cols-[1fr_240px]">
         <div className="bg-[var(--color-muted)]/40">
-          <canvas ref={canvasRef} className="block w-full h-auto" style={{ aspectRatio: `${W}/${H}` }} />
+          <canvas
+            ref={canvasRef}
+            onClick={onCanvasClick}
+            className="block w-full h-auto cursor-crosshair"
+            style={{ aspectRatio: `${W}/${H}` }}
+          />
         </div>
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-4">
           <Field label="Dataset">
@@ -305,6 +336,9 @@ export function NNPlayground() {
           <Field label={`Hidden layers · ${hidden}`}>
             <input type="range" min={1} max={4} step={1} value={hidden} onChange={(e) => setHidden(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
           </Field>
+          <Field label={`Neurons / layer · ${neurons}`}>
+            <input type="range" min={2} max={16} step={1} value={neurons} onChange={(e) => setNeurons(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
+          </Field>
           <Field label={`Learning rate · ${lr.toFixed(2)}`}>
             <input type="range" min={0.01} max={1} step={0.01} value={lr} onChange={(e) => setLr(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
           </Field>
@@ -328,6 +362,34 @@ export function NNPlayground() {
               <div className="font-mono tabular-nums text-xs">{loss.toFixed(3)}</div>
             </div>
           </div>
+          {hiddenAct.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted-fg)] font-medium mb-1.5">
+                Hidden L1 (at origin)
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {hiddenAct.map((a, i) => {
+                  const v = Math.tanh(a);
+                  const pos = Math.max(0, v);
+                  const neg = Math.max(0, -v);
+                  const bg = `rgba(${Math.round(244 * neg + 56 * pos)}, ${Math.round(63 * neg + 189 * pos)}, ${Math.round(94 * neg + 248 * pos)}, ${0.18 + Math.abs(v) * 0.7})`;
+                  return (
+                    <div
+                      key={i}
+                      className="grid place-items-center rounded-md border border-soft text-[9px] font-mono tabular-nums"
+                      style={{ backgroundColor: bg, width: 30, height: 24 }}
+                      title={`neuron ${i}: ${a.toFixed(2)}`}
+                    >
+                      {a.toFixed(1)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <p className="text-[10px] text-[var(--color-muted-fg)] leading-relaxed">
+            Shift-click to add a class-1 (cyan) point. Alt-click for class-0 (pink).
+          </p>
         </div>
       </div>
     </VizFrame>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
-import { Play, Pause, RotateCcw, StepForward } from "lucide-react";
+import { Play, Pause, RotateCcw, StepForward, ArrowDownToLine } from "lucide-react";
 import { VizFrame } from "@/components/viz/shared/VizFrame";
 
 /** A 2-input MLP with one ReLU hidden unit and squared loss against a target.
@@ -100,6 +100,34 @@ export function BackpropStepper() {
       : phase === "backward"
         ? BACKWARD_ORDER[step - FORWARD_ORDER.length]
         : null;
+
+  function chainExpr(id: NodeId | null): string | null {
+    if (!id) return null;
+    const c = computed;
+    switch (id) {
+      case "L":
+        return "∂L/∂L = 1";
+      case "y":
+        return `∂L/∂ŷ = 2(ŷ − t) = ${fmt(c.y.g)}`;
+      case "h":
+        return `∂L/∂h = ∂L/∂ŷ · ∂ŷ/∂h = ${fmt(c.y.g)} · 1 = ${fmt(c.h.g)}`;
+      case "z":
+        return `∂L/∂z = ∂L/∂h · ReLU′(z) = ${fmt(c.h.g)} · ${c.z.v > 0 ? 1 : 0} = ${fmt(c.z.g)}`;
+      case "w1":
+        return `∂L/∂w₁ = ∂L/∂z · x₁ = ${fmt(c.z.g)} · ${fmt(c.x1.v)} = ${fmt(c.w1.g)}`;
+      case "w2":
+        return `∂L/∂w₂ = ∂L/∂z · x₂ = ${fmt(c.z.g)} · ${fmt(c.x2.v)} = ${fmt(c.w2.g)}`;
+      case "x1":
+        return `∂L/∂x₁ = ∂L/∂z · w₁ = ${fmt(c.z.g)} · ${fmt(c.w1.v)} = ${fmt(c.x1.g)}`;
+      case "x2":
+        return `∂L/∂x₂ = ∂L/∂z · w₂ = ${fmt(c.z.g)} · ${fmt(c.w2.v)} = ${fmt(c.x2.g)}`;
+    }
+  }
+
+  function takeSGDStep() {
+    setW1((w) => w - 0.1 * computed.w1.g);
+    setW2((w) => w - 0.1 * computed.w2.g);
+  }
 
   return (
     <VizFrame
@@ -236,9 +264,21 @@ export function BackpropStepper() {
           <Slider label={`x₂ = ${x2.toFixed(2)}`} min={-2} max={2} value={x2} onChange={setX2} />
           <Slider label={`w₁ = ${w1.toFixed(2)}`} min={-2} max={2} value={w1} onChange={setW1} />
           <Slider label={`w₂ = ${w2.toFixed(2)}`} min={-2} max={2} value={w2} onChange={setW2} />
+          {phase === "backward" && activeId && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-[10px] font-mono leading-relaxed text-[var(--color-fg)]">
+              {chainExpr(activeId)}
+            </div>
+          )}
+          <button
+            onClick={takeSGDStep}
+            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-soft bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/20 px-3 py-2 text-xs font-medium text-[var(--color-fg)]"
+          >
+            <ArrowDownToLine className="h-3.5 w-3.5" />
+            Take SGD step (lr=0.1)
+          </button>
           <div className="rounded-lg border border-soft p-3 text-[11px] text-[var(--color-muted-fg)] leading-relaxed">
             Forward (blue) pulses values toward the loss. Backward (rose) pulses ∂L/∂· back through the graph.
-            Target t = {TARGET.toFixed(1)}.
+            Target t = {TARGET.toFixed(1)}. Loss = {fmt(computed.L.v)}.
           </div>
         </div>
       </div>

@@ -24,8 +24,9 @@ export function AttentionHeatmap() {
   const n = tokens.length;
   const grid = React.useMemo(() => getAttention(sentenceId, layer, head), [sentenceId, layer, head]);
 
-  const W = (n + 1) * CELL + 60;
+  const W = (n + 1) * CELL + 60 + 60;
   const H = (n + 1) * CELL + 60;
+  const rowSums = React.useMemo(() => grid.map((row) => row.reduce((s, v) => s + v, 0)), [grid]);
 
   return (
     <VizFrame
@@ -91,6 +92,42 @@ export function AttentionHeatmap() {
                 );
               })
             )}
+            {/* row-sum verifier bar (right side) */}
+            <text x={60 + n * CELL + 10} y={50} fontSize={9} fill="var(--color-muted-fg)" fontFamily="ui-monospace, monospace">
+              Σ row
+            </text>
+            {rowSums.map((s, i) => {
+              const barW = Math.min(50, s * 50);
+              return (
+                <g key={i}>
+                  <rect
+                    x={60 + n * CELL + 10}
+                    y={60 + i * CELL + 4}
+                    width={50}
+                    height={CELL - 10}
+                    fill="var(--color-muted)"
+                    rx={2}
+                  />
+                  <rect
+                    x={60 + n * CELL + 10}
+                    y={60 + i * CELL + 4}
+                    width={barW}
+                    height={CELL - 10}
+                    fill="var(--color-accent)"
+                    rx={2}
+                  />
+                  <text
+                    x={60 + n * CELL + 14}
+                    y={60 + i * CELL + CELL / 2 + 3}
+                    fontSize={8}
+                    fill="white"
+                    fontFamily="ui-monospace, monospace"
+                  >
+                    {s.toFixed(2)}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         </div>
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-5">
@@ -132,9 +169,35 @@ export function AttentionHeatmap() {
           </div>
           {hover && (
             <div className="rounded-lg bg-[var(--color-muted)] border border-soft p-3 text-xs">
-              <div className="text-[var(--color-muted-fg)]">{tokens[hover.i]} → {tokens[hover.j]}</div>
+              <div className="text-[var(--color-muted-fg)]">
+                <span className="font-mono">{tokens[hover.i]}</span> → <span className="font-mono">{tokens[hover.j]}</span>
+              </div>
               <div className="font-mono mt-1 text-[var(--color-fg)]">
                 {grid[hover.i][hover.j].toFixed(3)}
+              </div>
+            </div>
+          )}
+          {hover && (
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted-fg)] font-medium mb-1.5">
+                Query <span className="font-mono">{tokens[hover.i]}</span> · key dist.
+              </div>
+              <div className="space-y-1">
+                {grid[hover.i].map((v, j) => (
+                  <div key={j} className="flex items-center gap-2 text-[10px] font-mono">
+                    <div className="w-12 truncate text-[var(--color-muted-fg)] text-right">{tokens[j]}</div>
+                    <div className="flex-1 h-2 rounded bg-[var(--color-muted)] overflow-hidden">
+                      <div
+                        className="h-full rounded"
+                        style={{
+                          width: `${Math.min(100, v * 100)}%`,
+                          background: cellColor(v),
+                        }}
+                      />
+                    </div>
+                    <div className="w-8 tabular-nums text-[var(--color-fg)] text-right">{v.toFixed(2)}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

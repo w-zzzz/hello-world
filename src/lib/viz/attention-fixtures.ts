@@ -8,6 +8,8 @@ const SENTENCES = [
   "Attention is all you need .".split(" "),
   "The trophy did n't fit in the suitcase because it was too big .".split(" "),
   "Born in Paris , she later moved to London .".split(" "),
+  "When Alice met Bob , she gave him the key .".split(" "),
+  "for i in range ( n ) :".split(" "),
 ];
 
 export const SAMPLES = SENTENCES.map((toks, i) => ({
@@ -51,14 +53,19 @@ const PATTERNS: { name: string; fn: AttnPattern }[] = [
     name: "coreference",
     fn: (i, j, _, tokens) => {
       // a (very rough) coreference head: "it" attends to first noun;
-      // "she" attends to "Paris" or earliest capitalized noun.
+      // "she" attends to "Paris" or earliest capitalized noun;
+      // "him" attends to "Bob".
       const t = tokens[i];
       if (t === "it") {
         const target = tokens.findIndex((x) => x === "trophy");
         return j === target ? 0.95 : 0.03;
       }
       if (t === "she") {
-        const target = tokens.findIndex((x) => x === "Paris");
+        const target = tokens.findIndex((x) => x === "Alice" || x === "Paris");
+        return j === target ? 0.95 : 0.03;
+      }
+      if (t === "him") {
+        const target = tokens.findIndex((x) => x === "Bob");
         return j === target ? 0.95 : 0.03;
       }
       // diagonal fallback
