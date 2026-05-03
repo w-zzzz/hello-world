@@ -92,7 +92,7 @@ export function ResourcesExplorer({
                   "rounded-lg px-3 py-1.5 text-sm transition-colors " +
                   (visible
                     ? "text-[var(--color-fg)] hover:bg-[var(--color-muted)]/60"
-                    : "text-[var(--color-muted-fg)]/50 hover:bg-[var(--color-muted)]/30")
+                    : "text-[var(--color-muted-fg)] hover:bg-[var(--color-muted)]/30")
                 }
               >
                 <span className="truncate">{cat}</span>

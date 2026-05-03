@@ -158,7 +158,10 @@ export function QuizBlock({
                 type="button"
                 onClick={() => submit(i)}
                 disabled={revealed}
-                aria-label={`Choice ${String.fromCharCode(65 + i)}: ${c.replace(/\$([^$]+)\$/g, "$1")}`}
+                /* No aria-label here — the button's text content (the
+                   "A"/"B"/"C"/"D" badge + the choice text) is already a
+                   complete accessible name. Adding a custom label would
+                   trigger WCAG label-content-name-mismatch. */
                 className={cn(
                   "group w-full text-left rounded-2xl border border-soft bg-[var(--color-bg)] px-5 py-3.5",
                   "transition-all duration-200 disabled:cursor-default",
@@ -188,7 +191,7 @@ export function QuizBlock({
 
       {!revealed && (
         <div
-          className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-muted-fg)]/80 font-medium"
+          className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-muted-fg)] font-medium"
           aria-hidden
         >
           Press 1–{q.choices.length} or A–{String.fromCharCode(64 + q.choices.length)}

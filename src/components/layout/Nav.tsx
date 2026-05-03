@@ -124,9 +124,12 @@ export function Nav() {
               "text-xs text-[var(--color-muted-fg)] hover:text-[var(--color-fg)] hover:bg-[var(--color-muted)] transition-colors"
             )}
           >
-            <Command className="h-3.5 w-3.5" />
+            <Command className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden md:inline">Search</span>
-            <kbd className="ml-0.5 inline-flex items-center gap-0.5 rounded border border-soft px-1 py-0.5 text-[10px] font-mono">
+            <kbd
+              aria-hidden="true"
+              className="ml-0.5 inline-flex items-center gap-0.5 rounded border border-soft px-1 py-0.5 text-[10px] font-mono"
+            >
               {isMac ? "⌘" : "Ctrl"}K
             </kbd>
           </button>

@@ -97,7 +97,7 @@ export function ReferencesPanel({
                 >
                   <span className="truncate">
                     {r.title}
-                    {r.source && <span className="opacity-70"> · {r.source}</span>}
+                    {r.source && <span> · {r.source}</span>}
                   </span>
                   <ArrowUpRight className="h-3 w-3 shrink-0" />
                 </a>

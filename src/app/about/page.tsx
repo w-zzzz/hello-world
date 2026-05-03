@@ -210,7 +210,7 @@ export default function AboutPage() {
                 {Object.keys(RESOURCES).map((cat) => (
                   <li key={cat} className="text-[var(--color-muted-fg)]">
                     {cat}{" "}
-                    <span className="text-[var(--color-muted-fg)]/70">
+                    <span className="text-[var(--color-muted-fg)]">
                       ({RESOURCES[cat].length})
                     </span>
                   </li>

@@ -48,40 +48,38 @@ export function TimelineScrubber({ activeEra }: { activeEra: string | null }) {
           })}
         </div>
 
-        {/* Era labels */}
-        <ul className="ml-3 flex flex-col text-xs">
-          {ERAS.map((era) => {
-            const midFrac =
-              (((era.yearRange[0] + era.yearRange[1]) / 2) - span.start) / total;
-            return (
-              <li
-                key={era.slug}
-                style={{ position: "absolute", top: `${midFrac * 100}%`, transform: "translateY(-50%)", left: "1rem" }}
+        {/* Era labels — evenly spaced down the rail (the colored bar above
+            still maps real time). Even spacing prevents tightly-packed late
+            eras from overlapping and meets WCAG target-size + safe-spacing. */}
+        <ul className="ml-3 flex-1 flex flex-col justify-between text-xs py-1">
+          {ERAS.map((era) => (
+            <li key={era.slug}>
+              <a
+                href={`#era-${era.slug}`}
+                className={cn(
+                  "group flex items-center gap-2 whitespace-nowrap transition-colors",
+                  "min-h-8 py-1.5 px-1 -mx-1 rounded",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2",
+                  activeEra === era.slug
+                    ? "text-[var(--color-fg)] font-semibold"
+                    : "text-[var(--color-muted-fg)] hover:text-[var(--color-fg)]"
+                )}
               >
-                <a
-                  href={`#era-${era.slug}`}
-                  className={cn(
-                    "group flex items-center gap-2 whitespace-nowrap transition-colors",
-                    activeEra === era.slug
-                      ? "text-[var(--color-fg)] font-semibold"
-                      : "text-[var(--color-muted-fg)] hover:text-[var(--color-fg)]"
-                  )}
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full transition-transform"
-                    style={{
-                      backgroundColor: era.hue,
-                      transform: activeEra === era.slug ? "scale(1.4)" : "scale(1)",
-                    }}
-                  />
-                  <span className="tabular-nums">{era.yearRange[0]}</span>
-                  <span className="text-[10px] opacity-70 hidden xl:inline">
-                    {era.title.split(" ").slice(0, 3).join(" ")}
-                  </span>
-                </a>
-              </li>
-            );
-          })}
+                <span
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 rounded-full transition-transform"
+                  style={{
+                    backgroundColor: era.hue,
+                    transform: activeEra === era.slug ? "scale(1.4)" : "scale(1)",
+                  }}
+                />
+                <span className="tabular-nums">{era.yearRange[0]}</span>
+                <span className="text-[10px] hidden xl:inline">
+                  {era.title.split(" ").slice(0, 3).join(" ")}
+                </span>
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
     </aside>

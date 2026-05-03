@@ -24,37 +24,33 @@
   --color-part-4: oklch(0.7 0.18 145);   /* transformers - emerald */
   --color-part-5: oklch(0.7 0.16 195);   /* reasoning - cyan */
   --color-part-6: oklch(0.65 0.18 240);  /* multimodal - blue */
-  --color-part-7: oklch(0.6 0.22 280);   /* generative - violet */
+  --color-part-7: oklch(0.52 0.22 280);  /* generative - violet (darkened so white badge text clears AA 4.5:1) */
   --color-part-8: oklch(0.65 0.22 320);  /* rl - magenta */
-  --color-part-9: oklch(0.6 0.05 250);   /* infra - slate */
+  --color-part-9: oklch(0.7 0.05 250);   /* infra - slate (lifted slightly so black text clears AA) */
   --color-part-10: oklch(0.62 0.2 350);  /* cutting edge - rose */
-  --color-part-11: oklch(0.55 0.08 200); /* niche - teal */
-
-  /* Paired readable foreground for each part hue. Tokens chosen so that
-   * white text on bright (high-lightness) hues — yellow-green, orange,
-   * cyan, emerald — is replaced with deep ink, satisfying WCAG AA
-   * (≥4.5:1 normal, ≥3:1 large/badge) on every chip. Darker hues keep
-   * white text. Pure black/white near-extremes are used so the contrast
-   * ratio is robust as the underlying hue is tuned. */
-  --color-part-1-fg: oklch(0.99 0 0);    /* white on red */
-  --color-part-2-fg: oklch(0.16 0 0);    /* black on orange */
-  --color-part-3-fg: oklch(0.16 0 0);    /* black on yellow-green */
-  --color-part-4-fg: oklch(0.16 0 0);    /* black on emerald */
-  --color-part-5-fg: oklch(0.16 0 0);    /* black on cyan */
-  --color-part-6-fg: oklch(0.99 0 0);    /* white on blue */
-  --color-part-7-fg: oklch(0.99 0 0);    /* white on violet */
-  --color-part-8-fg: oklch(0.99 0 0);    /* white on magenta */
-  --color-part-9-fg: oklch(0.99 0 0);    /* white on slate */
-  --color-part-10-fg: oklch(0.99 0 0);   /* white on rose */
-  --color-part-11-fg: oklch(0.99 0 0);   /* white on teal */
-
-  /* Body-prose link color — brighter than --color-accent so anchors
-   * inside MDX clear WCAG AA against neighbouring --color-fg text. Only
-   * referenced from MDXComponents.tsx; nav/footer keep accent. */
-  --color-link-fg: oklch(0.62 0.18 264);
+  --color-part-11: oklch(0.66 0.08 200); /* niche - teal (lifted slightly so black text clears AA) */
 
   --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Tokens used only via inline `style="color:var(--color-part-N-fg)"` — declared
+ * outside `@theme` so Tailwind v4 doesn't tree-shake them as unused theme tokens.
+ * All hues use deep ink so badge text clears WCAG AA (≥4.5:1) on every chip,
+ * regardless of the surrounding theme. */
+:root {
+  --color-part-1-fg: oklch(0.16 0 0);
+  --color-part-2-fg: oklch(0.16 0 0);
+  --color-part-3-fg: oklch(0.16 0 0);
+  --color-part-4-fg: oklch(0.16 0 0);
+  --color-part-5-fg: oklch(0.16 0 0);
+  --color-part-6-fg: oklch(0.16 0 0);
+  --color-part-7-fg: oklch(0.99 0 0);   /* violet still needs white */
+  --color-part-8-fg: oklch(0.16 0 0);
+  --color-part-9-fg: oklch(0.16 0 0);
+  --color-part-10-fg: oklch(0.16 0 0);
+  --color-part-11-fg: oklch(0.16 0 0);
+  --color-link-fg: oklch(0.62 0.18 264);
 }
 
 .dark {

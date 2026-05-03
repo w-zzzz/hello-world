@@ -314,7 +314,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-soft px-2 py-1.5">
-      <div className="opacity-60 text-[9px] uppercase tracking-[0.14em]">{label}</div>
+      <div className="text-[9px] uppercase tracking-[0.14em] text-[var(--color-muted-fg)]">{label}</div>
       <div className="font-mono tabular-nums text-[var(--color-fg)] text-xs">{value}</div>
     </div>
   );

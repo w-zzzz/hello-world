@@ -354,11 +354,11 @@ export function NNPlayground() {
           </div>
           <div className="grid grid-cols-2 gap-2 text-[11px]">
             <div className="rounded-md border border-soft px-2 py-1.5">
-              <div className="opacity-60 text-[9px] uppercase tracking-[0.14em]">Step</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-[var(--color-muted-fg)]">Step</div>
               <div className="font-mono tabular-nums text-xs">{step}</div>
             </div>
             <div className="rounded-md border border-soft px-2 py-1.5">
-              <div className="opacity-60 text-[9px] uppercase tracking-[0.14em]">Loss</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-[var(--color-muted-fg)]">Loss</div>
               <div className="font-mono tabular-nums text-xs">{loss.toFixed(3)}</div>
             </div>
           </div>

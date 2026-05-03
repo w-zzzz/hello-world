@@ -120,11 +120,11 @@ export function ActivityHeatmap() {
               gridTemplateColumns: `repeat(${grid.length}, minmax(0, 1fr))`,
               gridAutoRows: "1fr",
             }}
-            role="grid"
+            role="img"
             aria-label={`${totals.count} quiz attempts across the last ${WEEKS} weeks`}
           >
             {grid.map((col, ci) => (
-              <div key={ci} className="grid gap-1" style={{ gridTemplateRows: `repeat(${DAYS}, minmax(0, 1fr))` }}>
+              <div key={ci} className="grid gap-1" style={{ gridTemplateRows: `repeat(${DAYS}, minmax(0, 1fr))` }} aria-hidden="true">
                 {col.map((d, ri) => {
                   if (!d) {
                     return <div key={ri} className="aspect-square rounded-[3px]" />;
@@ -134,7 +134,6 @@ export function ActivityHeatmap() {
                   return (
                     <div
                       key={ri}
-                      role="gridcell"
                       title={`${d.date}: ${d.count} attempt${d.count === 1 ? "" : "s"}${
                         d.count ? ` · ${acc}% correct` : ""
                       }`}

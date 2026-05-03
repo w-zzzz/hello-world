@@ -40,7 +40,10 @@ export function EraChips({ activeEra, counts }: Props) {
                   aria-hidden
                 />
                 <span>{era.title}</span>
-                <span className="tabular-nums opacity-60">
+                <span
+                  className="tabular-nums text-[var(--color-muted-fg)]"
+                  aria-label={`${counts[era.slug] ?? 0} events`}
+                >
                   {counts[era.slug] ?? 0}
                 </span>
               </a>
