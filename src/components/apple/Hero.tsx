@@ -1,10 +1,18 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { MagneticButton } from "@/components/apple/MagneticButton";
 import { cn } from "@/lib/utils";
+
+// Heavy WebGL canvas — load only on the client and only after first paint so
+// it never blocks LCP. The CSS gradient below is the always-on fallback.
+const HeroBackground = dynamic(() => import("./HeroBackground"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export function Hero() {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -17,14 +25,32 @@ export function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 0.6, 1], [1, 0.6, 0]);
   const scale = useTransform(scrollYProgress, [0, 1], [1, 0.96]);
 
+  // Defer the WebGL mount one frame past hydration so it never competes with LCP.
+  const [enableWebGL, setEnableWebGL] = React.useState(false);
+  React.useEffect(() => {
+    const id = window.requestIdleCallback?.(() => setEnableWebGL(true), { timeout: 1500 })
+      ?? window.setTimeout(() => setEnableWebGL(true), 250);
+    return () => {
+      if (typeof id === "number") {
+        window.clearTimeout(id);
+      } else {
+        window.cancelIdleCallback?.(id);
+      }
+    };
+  }, []);
+
   return (
     <section
       ref={ref}
       className="relative isolate overflow-hidden min-h-[100svh] flex items-center justify-center pt-20"
     >
-      {/* gradient mesh bg */}
+      {/* CSS gradient fallback — always present */}
       <div className="pointer-events-none absolute inset-0 -z-10 gradient-mesh opacity-90" />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_50%_0%,_color-mix(in_oklch,_var(--color-accent),_transparent_88%)_0%,_transparent_70%)]" />
+
+      {/* WebGL mesh-gradient overlay (lazy) */}
+      {enableWebGL && !reduce && <HeroBackground />}
+
       {/* grid overlay */}
       <div
         aria-hidden
@@ -83,27 +109,29 @@ export function Hero() {
           transition={{ duration: 0.9, delay: 0.5, ease: [0.32, 0.72, 0, 1] }}
           className="mt-10 flex flex-wrap items-center justify-center gap-3"
         >
-          <Link
-            href="/map"
-            className={cn(
-              "group inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)]",
-              "px-7 py-3.5 text-base font-medium",
-              "transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl active:scale-100"
-            )}
-          >
-            Open the learning map
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-          <Link
-            href="/learn/03-deep-learning/04-attention"
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full border border-soft",
-              "px-7 py-3.5 text-base font-medium text-[var(--color-fg)]",
-              "transition-all duration-300 hover:bg-[var(--color-muted)]"
-            )}
-          >
-            Start with attention
-          </Link>
+          <MagneticButton href="/map" strength={7}>
+            <span
+              className={cn(
+                "group inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)]",
+                "px-7 py-3.5 text-base font-medium",
+                "transition-shadow duration-300 hover:shadow-2xl"
+              )}
+            >
+              Open the learning map
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </MagneticButton>
+          <MagneticButton href="/learn/03-deep-learning/04-attention" strength={5}>
+            <span
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border border-soft",
+                "px-7 py-3.5 text-base font-medium text-[var(--color-fg)]",
+                "transition-colors duration-300 hover:bg-[var(--color-muted)]"
+              )}
+            >
+              Start with attention
+            </span>
+          </MagneticButton>
         </motion.div>
 
         <motion.div

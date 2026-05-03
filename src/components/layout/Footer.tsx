@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { Brain } from "lucide-react";
+import { Brain, Flame, Sparkles } from "lucide-react";
+import { useSession } from "@/hooks/useSession";
 
 export function Footer() {
   return (
@@ -47,10 +50,59 @@ export function Footer() {
       <div className="border-t border-soft">
         <div className="mx-auto max-w-7xl px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-[var(--color-muted-fg)]">
           <span>© {new Date().getFullYear()} MLMap. Built for the curious.</span>
-          <span>From first principles to the frontier.</span>
+          <div className="flex items-center gap-3">
+            <StreakBadge />
+            <span className="hidden sm:inline">From first principles to the frontier.</span>
+          </div>
         </div>
       </div>
     </footer>
+  );
+}
+
+function StreakBadge() {
+  const { user } = useSession();
+  if (!user) return null;
+  const streak = user.streakCount ?? 0;
+  const xp = user.xp ?? 0;
+  if (streak === 0 && xp === 0) {
+    return (
+      <Link
+        href="/dashboard"
+        className="inline-flex items-center gap-1.5 rounded-full border border-soft px-2.5 py-1 text-[11px] hover:text-[var(--color-fg)] transition-colors"
+        title="Open dashboard"
+      >
+        <Sparkles className="h-3 w-3 text-[var(--color-accent)]" />
+        Start your streak
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/dashboard"
+      className="inline-flex items-center gap-2 rounded-full border border-soft px-2.5 py-1 text-[11px] hover:text-[var(--color-fg)] transition-colors"
+      title="Open dashboard"
+    >
+      {streak > 0 && (
+        <span className="inline-flex items-center gap-1">
+          <Flame className="h-3 w-3 text-[var(--color-part-1)]" />
+          <span className="tabular-nums font-medium text-[var(--color-fg)]">
+            {streak}
+          </span>
+          <span>day{streak === 1 ? "" : "s"}</span>
+        </span>
+      )}
+      {streak > 0 && xp > 0 && <span className="opacity-40">·</span>}
+      {xp > 0 && (
+        <span className="inline-flex items-center gap-1">
+          <Sparkles className="h-3 w-3 text-[var(--color-accent)]" />
+          <span className="tabular-nums font-medium text-[var(--color-fg)]">
+            {xp}
+          </span>
+          <span>XP</span>
+        </span>
+      )}
+    </Link>
   );
 }
 

@@ -5,6 +5,7 @@ import { ScrollReveal } from "@/components/apple/ScrollReveal";
 import { ParallaxLayer } from "@/components/apple/ParallaxLayer";
 import { TickerStat } from "@/components/apple/TickerStat";
 import { MarqueeRow } from "@/components/apple/MarqueeRow";
+import { MagneticButton } from "@/components/apple/MagneticButton";
 
 const parts = [
   { i: 1, slug: "01-math", title: "Math foundations", blurb: "Linear algebra, probability, optimization." },
@@ -314,19 +315,17 @@ export default function Home() {
                   Open the map, pick a topic, take a quiz. The map remembers.
                 </p>
                 <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                  <Link
-                    href="/map"
-                    className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] px-7 py-3.5 text-base font-medium hover:scale-[1.02] transition-transform"
-                  >
-                    Open the map
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 rounded-full border border-soft px-7 py-3.5 text-base font-medium hover:bg-[var(--color-muted)] transition-colors"
-                  >
-                    Your dashboard
-                  </Link>
+                  <MagneticButton href="/map" strength={7}>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] px-7 py-3.5 text-base font-medium transition-shadow duration-300 hover:shadow-2xl">
+                      Open the map
+                      <ArrowUpRight className="h-4 w-4" />
+                    </span>
+                  </MagneticButton>
+                  <MagneticButton href="/dashboard" strength={5}>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-soft px-7 py-3.5 text-base font-medium hover:bg-[var(--color-muted)] transition-colors">
+                      Your dashboard
+                    </span>
+                  </MagneticButton>
                 </div>
               </div>
             </div>

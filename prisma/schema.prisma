@@ -18,6 +18,7 @@ model User {
   progress    Progress[]
   attempts    QuizAttempt[]
   reviews     ReviewItem[]
+  favorites   Favorite[]
 }
 
 model Topic {
@@ -70,6 +71,18 @@ model QuizAttempt {
   topic Topic @relation(fields: [topicSlug], references: [slug])
 
   @@index([userId, topicSlug])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  topicSlug String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicSlug])
+  @@index([userId])
 }
 
 model ReviewItem {

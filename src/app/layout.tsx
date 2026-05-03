@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
+import { GlobalShortcuts } from "@/components/layout/GlobalShortcuts";
 import { Providers } from "@/components/providers";
+import { SkipLink } from "@/components/layout/SkipLink";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,10 +27,28 @@ export const metadata: Metadata = {
   },
   description:
     "Interactive ML/DL/AI curriculum from linear algebra to reasoning models, mixture-of-experts, state-space models, mechanistic interpretability, and JEPA.",
+  applicationName: "MLMap",
+  authors: [{ name: "MLMap" }],
+  keywords: [
+    "machine learning",
+    "deep learning",
+    "AI curriculum",
+    "transformers",
+    "diffusion",
+    "interpretability",
+    "JEPA",
+    "interactive learning",
+  ],
   openGraph: {
-    title: "MLMap",
+    title: "MLMap — A PhD-grade learning map for modern AI",
     description: "Master modern AI from first principles.",
     type: "website",
+    siteName: "MLMap",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MLMap — A PhD-grade learning map for modern AI",
+    description: "Master modern AI from first principles.",
   },
 };
 
@@ -45,9 +65,13 @@ export default function RootLayout({
     >
       <body className="min-h-screen flex flex-col">
         <Providers>
+          <SkipLink />
           <Nav />
-          <main className="flex-1">{children}</main>
+          <main id="main" className="flex-1" tabIndex={-1}>
+            {children}
+          </main>
           <Footer />
+          <GlobalShortcuts />
         </Providers>
       </body>
     </html>
