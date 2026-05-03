@@ -1,0 +1,247 @@
+---
+slug: "10-cutting-edge/08-test-time-compute"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 8
+title: "Test-time compute scaling"
+hook: "Best-of-N, self-consistency, tree of thoughts, MCTS-on-LLMs."
+estMinutes: 16
+difficulty: 4
+prereqs: ["05-reasoning-agents/01-o1-o3-r1", "08-rl/06-mcts-game-playing"]
+hasHeroViz: false
+researchers: ["wei", "karpathy"]
+papers:
+  - title: "Self-Consistency Improves Chain of Thought Reasoning in Language Models"
+    authors: "Wang, Wei, Schuurmans, Le, Chi, Narang, Chowdhery, Zhou"
+    year: 2022
+    url: "https://arxiv.org/abs/2203.11171"
+  - title: "Tree of Thoughts: Deliberate Problem Solving with Large Language Models"
+    authors: "Yao, Yu, Zhao, Shafran, Griffiths, Cao, Narasimhan"
+    year: 2023
+    url: "https://arxiv.org/abs/2305.10601"
+  - title: "Scaling LLM Test-Time Compute Optimally Can Be More Effective Than Scaling Model Parameters"
+    authors: "Snell, Lee, Xu, Kumar"
+    year: 2024
+    url: "https://arxiv.org/abs/2408.03314"
+  - title: "rStar-Math: Small LLMs Can Master Math Reasoning with Self-Evolved Deep Thinking"
+    authors: "Guan, Zhang, Liu, Mao, Lin, Zhao, Zhang, Wang, Yang"
+    year: 2025
+    url: "https://arxiv.org/abs/2501.04519"
+  - title: "Quiet-STaR: Language Models Can Teach Themselves to Think Before Speaking"
+    authors: "Zelikman, Harik, Shao, Jayasiri, Haber, Goodman"
+    year: 2024
+    url: "https://arxiv.org/abs/2403.09629"
+freeResources:
+  - kind: "blog"
+    title: "Why test-time compute matters"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2024-11-28-reasoning-planning/"
+  - kind: "blog"
+    title: "Inference-time compute scaling: a primer"
+    source: "Sebastian Raschka"
+    url: "https://magazine.sebastianraschka.com/p/inference-time-compute-scaling-methods"
+  - kind: "video"
+    title: "How test-time compute scales — overview"
+    source: "Andrej Karpathy"
+    url: "https://www.youtube.com/@AndrejKarpathy"
+quiz:
+  - id: "ttc-q1"
+    question: "Self-consistency improves chain-of-thought accuracy how?"
+    choices:
+      - "By training the model with more data."
+      - "Sample N independent CoT traces with temperature > 0, then pick the most common final answer (majority vote). Multiple independent paths to the same answer raise confidence; idiosyncratic errors get outvoted."
+      - "By beam search over tokens."
+      - "By compressing the prompt."
+    answer: 1
+    explanation: "Wang et al. (2022) showed that on math/reasoning datasets, sampling 40 traces and majority-voting beats greedy CoT by large margins. The implicit assumption: correct reasoning paths converge on the same answer; incorrect ones diverge. It's the cheapest test-time-compute boost available."
+  - id: "ttc-q2"
+    question: "Best-of-N with a learned verifier vs self-consistency: when is the verifier approach preferred?"
+    choices:
+      - "Always."
+      - "When you have a reliable verifier or process-reward model — best-of-N can rank candidates by quality even when the correct answer isn't a strict majority, which matters for open-ended or partially correct tasks."
+      - "Never — majority vote is always better."
+      - "Only on classification."
+    answer: 1
+    explanation: "Self-consistency only works when there's a clean discrete answer to vote on. For long-form reasoning or step-quality scoring, a process-reward model (PRM) ranks candidates and picks the best. Snell et al. show PRM-guided best-of-N often dominates majority vote on hard problems, especially as N grows."
+  - id: "ttc-q3"
+    question: "What does Tree of Thoughts add over linear chain-of-thought?"
+    choices:
+      - "More attention heads."
+      - "An explicit search tree over partial reasoning states with backtracking and pruning, using the LLM both to expand nodes and to evaluate them."
+      - "Faster sampling."
+      - "Token-level RL."
+    answer: 1
+    explanation: "ToT treats reasoning as tree search: at each step, expand multiple candidate continuations, score them with the LLM, and explore the most promising. This buys backtracking — a CoT can't recover from a wrong early step, but ToT can. Cost is much higher than CoT; gains are largest on planning/puzzle tasks."
+  - id: "ttc-q4"
+    question: "rStar-Math used MCTS-on-LLMs to push a 7B model to frontier math performance. What was the key trick?"
+    choices:
+      - "Pure scaling."
+      - "Use MCTS with a learned process-reward model to generate high-quality reasoning traces, then *self-train* the policy and reward model on those traces — a closed loop that improves both."
+      - "Just self-consistency."
+      - "Quantize the model."
+    answer: 1
+    explanation: "rStar-Math iterates: MCTS uses the current policy + PRM to find correct, well-reasoned traces. The model is then SFT'd on those traces; the PRM is retrained on the new data. After a few rounds, a 7B model matched o1-mini-class performance on AIME — a vivid demonstration that test-time search can bootstrap training data when you have a verifier."
+---
+
+Throughout the GPT era, the dominant lever was *more parameters trained
+on more tokens*. The 2024–2026 surprise is that you can buy comparable
+gains by spending more compute *at inference time*. o1 and R1 (the
+previous topic) are RL-trained for it. This module is about the
+inference-side techniques — best-of-N, self-consistency, ToT, MCTS — that
+work on *any* model, including ones never trained to reason.
+
+These methods compose. A self-consistency wrapper around a CoT prompt is
+two lines of code and a free quality boost. A full MCTS pipeline costs
+much more but pushes small models into territory that used to require
+frontier scale.
+
+## The compute-quality curve
+
+A central result of Snell et al. (2024) is that for a fixed total FLOPs
+budget, splitting between *parameters* and *test-time compute* has a
+non-trivial optimum. On hard reasoning tasks, a small model with generous
+test-time compute often beats a much larger model with greedy decoding.
+
+$$
+\text{quality} \approx f(N,\ D,\ T_{\text{infer}})
+$$
+
+The reason: many reasoning errors come from sampling, not from the
+underlying model knowing the wrong answer. Sampling diverse traces and
+picking the best one converts *capability* the model already has into
+*observed accuracy*.
+
+## Self-consistency: the cheapest win
+
+Self-consistency (Wang et al. 2022) is the canonical example. Given a
+math problem:
+
+1. Prompt the model with chain-of-thought instructions.
+2. Sample $N$ independent traces with temperature > 0.
+3. Extract the final answer from each.
+4. Return the **majority answer**.
+
+```python
+from collections import Counter
+
+def self_consistency(model, prompt, n=20, temperature=0.7):
+    answers = []
+    for _ in range(n):
+        trace = model.generate(prompt, temperature=temperature)
+        answer = extract_final_answer(trace)
+        answers.append(answer)
+    return Counter(answers).most_common(1)[0][0]
+```
+
+On GSM8K, this lifts CoT accuracy by 10+ percentage points with no
+training and no architecture changes. The recipe is essentially free if
+you have spare inference budget.
+
+The catch: it only works when there's a discrete correct answer to vote
+on. For free-form generation, you need something smarter.
+
+## Best-of-N with a verifier
+
+For tasks where the answer isn't a single number, replace the majority
+vote with a **verifier** — either a learned reward model or a programmatic
+checker (compiles? passes tests? matches schema?).
+
+- Sample $N$ candidates.
+- Score each with the verifier.
+- Return the highest-scoring one.
+
+This is the inference-time analog of RLHF. The verifier doesn't have to
+be trained for this purpose specifically: a separately fine-tuned
+process-reward model (PRM), or even the same LLM prompted as a judge,
+both work. Best-of-N with a good PRM is one of the most effective
+inference-time techniques on hard math.
+
+<PaperCard
+  title="Scaling LLM Test-Time Compute Optimally Can Be More Effective Than Scaling Model Parameters"
+  authors="Snell, Lee, Xu, Kumar"
+  year={2024}
+  url="https://arxiv.org/abs/2408.03314"
+/>
+
+## Tree of Thoughts: search instead of sampling
+
+Linear CoT can't recover from a wrong early step — every later token
+depends on it. Tree of Thoughts (Yao et al. 2023) treats reasoning as
+explicit *search*:
+
+- Each node is a partial reasoning state.
+- The LLM expands a node by proposing $k$ candidate next steps.
+- The LLM also *evaluates* each candidate (good/bad/promising).
+- BFS or DFS through the tree, pruning low-value branches.
+
+ToT shines on planning and puzzle tasks (Game of 24, crosswords) where
+backtracking matters. The cost is large — many LLM calls per query — but
+on tasks where greedy CoT scores 4% and ToT scores 74% (the original
+paper's Game of 24 numbers), the trade is obvious.
+
+## MCTS-on-LLMs and rStar
+
+The natural extension of ToT is to use **Monte Carlo Tree Search** (the
+algorithm that powered AlphaGo) to direct the exploration. The LLM
+provides node priors (which child to expand) and value estimates (how
+promising a partial trace is). UCT balances exploration and exploitation;
+the tree grows until the search budget is spent.
+
+**rStar-Math** (2025) takes this further into a *self-improvement* loop:
+
+1. Run MCTS with the current policy and process-reward model on a math
+   problem set.
+2. Keep the high-quality traces MCTS surfaced.
+3. Fine-tune the policy on those traces (SFT).
+4. Retrain the PRM on the new data.
+5. Repeat.
+
+After several rounds, a 7B base model reached frontier-class performance
+on AIME and MATH — a vivid demonstration that test-time search can
+*generate the training signal* you need to improve the underlying model.
+This blurs the once-clean line between "training" and "inference."
+
+<Callout variant="insight" title="The compute-quality fungibility">
+Test-time compute and parameter count are partially interchangeable. A
+70B model with greedy decoding may match a 7B model with 64-sample
+self-consistency at the same total FLOPs. Reasoning models (o1, R1)
+collapse the trade by *training* the model to spend test-time compute
+well. Pure inference-time scaffolding (self-consistency, BoN, ToT) gets
+much of the same value with no training.
+</Callout>
+
+## Quiet-STaR: training models to think between tokens
+
+Quiet-STaR (Zelikman et al. 2024) is a different point on the spectrum.
+At training time, the model generates *internal* "thought" tokens before
+each output token, and those thoughts are rewarded based on whether they
+help predict the next text. The trained model "thinks" inline at
+inference, no external scaffolding required. This is one of the
+intellectual ancestors of o1-style reasoning training.
+
+## The 2026 landscape, in one paragraph
+
+If you have a reasoning-trained model (o3, R1), you usually want
+*adaptive* test-time compute via the model's own thinking budget. If you
+have a non-reasoning model and a verifier, **best-of-N with a PRM**
+dominates. Without a verifier, **self-consistency** is the easy default.
+For tasks with structured search spaces, **ToT or MCTS** is worth the
+complexity. And if you can close the loop — generate traces with search,
+distill into the model — you have **rStar-style self-improvement**, the
+sharpest tool in this box.
+
+<Callout variant="warning" title="Test-time compute is not free reasoning">
+Sampling 64 traces costs 64x the inference. On a chat product serving
+millions, this is the difference between a viable and non-viable
+deployment. Pair test-time scaling with cheap routing: only escalate to
+expensive inference when the easy path's confidence is low.
+</Callout>
+
+## What to study next
+
+- Implement self-consistency in your own evals — it's a 10-line change
+  with often double-digit accuracy gains.
+- Read the rStar-Math paper for a complete worked self-improvement loop.
+- Move on to mechanistic interpretability — understanding *why* test-time
+  compute helps is an open research thread there.

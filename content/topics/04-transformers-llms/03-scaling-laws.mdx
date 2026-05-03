@@ -81,6 +81,15 @@ quiz:
       - "Most tokens trained."
     answer: 1
     explanation: "For a fixed FLOPs budget $C \\approx 6ND$, you choose $(N^*, D^*)$ that minimizes loss. Chinchilla did this sweep and found the optimum has $N^* \\propto C^{0.5}$, $D^* \\propto C^{0.5}$ — both scale at the same rate. Inference cost is a separate, equally important consideration."
+  - id: "scaling-q5"
+    question: "You serve 10 trillion tokens of inference per year. Your training budget is fixed. Should you train Chinchilla-optimal or over-train a smaller model?"
+    choices:
+      - "Always Chinchilla-optimal — it minimizes loss per training FLOP."
+      - "Over-train a smaller model: the inference cost (proportional to $N$ × tokens served) dominates the lifetime cost calculation, and a smaller-but-smarter model wins by a wide margin."
+      - "Inference and training are separate concerns."
+      - "Use a much larger MoE."
+    answer: 1
+    explanation: "At 10T tokens served per year, inference FLOPs vastly exceed training FLOPs. Training a 7B model on 15T tokens (overshooting Chinchilla by ~10x) reaches similar quality to a 70B Chinchilla-optimal model and is 10x cheaper to serve. This is exactly the calculation behind Llama 3's recipe and why open-weights models keep getting smaller per quality unit."
 ---
 
 Scaling laws are the closest thing deep learning has to a *physical theory*.
@@ -181,6 +190,42 @@ This trade-off is one of the most important practical decisions in modern
 LLM design and depends on your serving volume.
 
 <PaperCard title="Training Compute-Optimal Large Language Models (Chinchilla)" authors="Hoffmann et al." year={2022} url="https://arxiv.org/abs/2203.15556" />
+
+## Where the $6ND$ comes from
+
+The "$C \approx 6ND$" identity is the load-bearing constant in every
+scaling-law calculation, so it pays to know its provenance. For a dense
+Transformer with $N$ non-embedding parameters, processing one token costs
+roughly $2N$ FLOPs in the forward pass (each parameter participates in one
+multiply and one add). The backward pass costs about $4N$ — twice the
+forward, because you compute gradients with respect to both inputs and
+weights. Total: $\sim 6N$ FLOPs per token of training. Multiply by $D$
+training tokens and you have the budget. The constant ignores attention's
+$T^2 d$ contribution, which is small for sub-context-length-bound runs but
+non-negligible at very long context.
+
+## Emergent capabilities and the smoothness debate
+
+The original "emergent abilities" papers (Wei et al. 2022) showed that
+specific *capabilities* — multi-digit arithmetic, multi-step reasoning,
+instruction following — appeared with sharp phase-transition shapes as
+models grew, in contrast to the smooth power law in raw loss. Schaeffer et
+al. (2023) pushed back: many "emergent" curves are artifacts of using a
+discrete metric (exact-match accuracy) instead of a smooth one (token
+probability). Switch to log-likelihood and the jumps soften.
+
+Both observations matter. Loss is smooth and predictable. Whether the loss
+threshold to perform a *specific task* lands above your compute budget is
+not. Frontier-lab planning has to handle both: scaling laws to budget
+training, and capability evals to discover what the resulting model can
+actually do.
+
+<Callout variant="warning" title="Don't extrapolate too far">
+A power law fit on $10^{20}$–$10^{23}$ FLOPs has been remarkably accurate
+out to $10^{25}$. It will eventually break — saturation, data quality
+ceilings, or qualitatively new bottlenecks (multimodal mixing, agentic
+self-play). Treat scaling laws as a budgeting tool, not a prophecy.
+</Callout>
 
 ## What scaling laws do *not* tell you
 

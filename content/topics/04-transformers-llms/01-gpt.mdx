@@ -89,6 +89,15 @@ quiz:
       - "KL divergence between the model and a frozen reference."
     answer: 1
     explanation: "The loss is $-\\sum_t \\log p_\\theta(x_t \\mid x_{<t})$ — token-level cross-entropy. Despite its simplicity, this objective is enough to elicit grammar, world knowledge, arithmetic, code, and (with enough scale) the precursors of reasoning."
+  - id: "gpt-q5"
+    question: "You're sampling from a trained GPT and notice repetitive, low-entropy completions ('the the the…'). Which sampling change *most directly* fixes this without retraining?"
+    choices:
+      - "Increase temperature, or use top-p / repetition penalty to broaden the distribution."
+      - "Add more layers."
+      - "Re-tokenize the input."
+      - "Switch to greedy decoding."
+    answer: 0
+    explanation: "Greedy decoding from a model with a peaky distribution loops because the highest-prob next token at $t$ remains highest at $t+1$. Temperature $>1$ flattens the softmax; top-p/nucleus sampling cuts the tail; a small repetition penalty discounts already-emitted tokens. These three knobs handle 90% of degenerate-generation issues at inference time."
 ---
 
 GPT is the architecture that broke the dam. Decoder-only Transformer plus
@@ -232,6 +241,26 @@ into a useful chatbot you need supervised instruction tuning and RLHF on top
 — covered in the next two topics. Confusing these is the source of half the
 public confusion about LLMs.
 </Callout>
+
+## Tokenization: the often-overlooked first step
+
+A GPT does not consume characters or words; it consumes integers from a
+vocabulary built by **byte-pair encoding** (BPE) or its variants
+(SentencePiece, Tiktoken). The vocabulary contains short common substrings:
+" the", "ing", "tion", and so on, plus single bytes as a fallback. This is
+why "5+5" tokenizes well but "57362+19483" tokenizes character-by-character
+and the model often gets the arithmetic wrong — different inputs receive
+*different amounts of compute per character*.
+
+Tokenization quietly shapes downstream capabilities. Code models prefer
+tokenizers with code-friendly merges; multilingual models need vocabularies
+that don't shred non-Latin scripts into bytes. Llama 3 grew its vocabulary
+from 32K to 128K tokens to compress non-English better — a multiplicative
+inference-cost win for non-English users.
+
+The lesson: when a model behaves strangely on a specific prompt, *look at
+the tokens*, not the characters. `tiktoken` and the Hugging Face tokenizer
+explorer make this a 30-second check.
 
 ## What to study next
 

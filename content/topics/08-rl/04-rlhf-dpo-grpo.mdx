@@ -92,6 +92,15 @@ quiz:
       - "It eliminates the need for preference data."
     answer: 1
     explanation: "The reward model is a *proxy* for human preference. Optimized too hard, the policy will exploit its blind spots — emitting reward-model-friendly nonsense. The KL anchor keeps $\\pi_\\theta$ near $\\pi_{\\mathrm{ref}}$, where the reward model was trained and is reliable. $\\beta$ is the most important hyperparameter in RLHF after the reward model itself."
+  - id: "rlhf-q5"
+    question: "Your DPO-trained model has higher win rate vs the SFT baseline on preference evals but degraded performance on a held-out math benchmark. What's likely happening, and what's the typical fix?"
+    choices:
+      - "DPO is broken; switch to RLHF."
+      - "The preference dataset over-represents stylistic preferences (length, formatting) at the expense of correctness. Mitigate with length-normalized DPO variants (e.g., SimPO), filter the preference data, or mix in verifiable-reward GRPO on the affected domain."
+      - "Lower the learning rate."
+      - "Add more layers."
+    answer: 1
+    explanation: "Empirically, DPO is exquisitely sensitive to which preferences are in its dataset. Crowdworkers reliably prefer longer, more confidently-worded answers — even when wrong. The model learns the bias. Real-world post-training pipelines mix DPO (helpfulness) with verifier-based RL (correctness) to prevent stylistic gains from cannibalizing factual quality. This is why modern stacks chain DPO → GRPO."
 ---
 
 This is the topic that connects everything you've learned about RL to the

@@ -84,6 +84,15 @@ quiz:
       - "There is no connection."
     answer: 1
     explanation: "Dao & Gu 2024 show that 1-semiseparable attention masks and selective SSMs are dual: matmul-based and recurrence-based formulations of the same operation. This unifies the design space and unlocks fast matmul kernels for SSMs."
+  - id: "mamba-q5"
+    question: "Your application processes 1M-token genomic sequences. A pure-Transformer baseline OOMs even with FlashAttention. What architectural choice gives you the best shot at training at this scale?"
+    choices:
+      - "Use a deeper Transformer with more checkpointing."
+      - "Use a Mamba (or hybrid Mamba/attention) backbone: $O(n)$ training with an $O(1)$-per-step inference state lets you fit 1M-context training on hardware that all-pairs attention cannot, while a few attention layers preserve retrieval ability."
+      - "Quantize attention to int4."
+      - "Drop the residual connections."
+    answer: 1
+    explanation: "1M-token attention is $\\sim 10^{12}$ scores per layer per head — infeasible even with FlashAttention's IO savings. The asymptotic complexity of Mamba ($O(n)$ training, $O(1)$ inference state) is precisely what enables genomic / very-long-document training. Hybrids (Jamba, Caduceus) interleave a few attention layers to preserve specific retrieval capabilities the SSM struggles with."
 ---
 
 For seven years, attention has been *the* sequence-modeling primitive.

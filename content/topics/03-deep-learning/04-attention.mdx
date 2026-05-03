@@ -78,6 +78,15 @@ quiz:
       - "It would require RNNs."
     answer: 1
     explanation: "Self-attention is permutation-equivariant: the function of a set of tokens is the same regardless of their order. Positional encodings (sinusoidal, learned, or rotary) inject ordering so that 'the cat sat' and 'sat the cat' produce different representations."
+  - id: "attn-q5"
+    question: "You're serving a 70B model and notice the KV cache for a single 32K-context request is ~8 GB. Which architectural change *most directly* attacks this cost without changing model quality much?"
+    choices:
+      - "Switch to a deeper, narrower model."
+      - "Use grouped-query attention (GQA) or multi-query attention (MQA): share keys/values across heads, shrinking KV cache by ~$h/g$ where $g$ is the number of groups."
+      - "Increase the learning rate."
+      - "Drop the residual stream."
+    answer: 1
+    explanation: "KV-cache memory is proportional to (heads × sequence × head-dim). MQA collapses all heads to one shared K and V; GQA collapses to a few groups. Llama 2 70B uses GQA with 8 groups, shrinking KV cache 8x at near-identical quality. This is the 'why is GQA everywhere' answer."
 ---
 
 In 2017, eight Google researchers published a paper with one of the more
@@ -205,6 +214,49 @@ weights are necessary but not sufficient evidence of causal influence —
 information also flows through residual streams and MLPs. Mech-interp work
 (circuits, SAEs) gives a more honest picture.
 </Callout>
+
+## The complexity bill, and why it shapes everything downstream
+
+Self-attention has time and memory complexity $O(n^2 d)$ in the sequence
+length $n$. For $n = 1024$ this is fine. For $n = 128{,}000$ — modern
+long-context models — the score matrix alone is 16 GB in fp16 per layer per
+head. Three responses to this scaling have shaped the field:
+
+1. **IO-aware exact attention.** FlashAttention rewrites the kernel so the
+   $n \times n$ matrix never materializes in HBM. Same math, dramatically
+   different schedule. This is what made 100K-token contexts practical
+   without changing the model.
+2. **Approximate attention.** Linear / kernel / sparse / Performer
+   variants approximate the softmax to drop to $O(n)$, at some quality
+   cost. Mostly displaced by FlashAttention for short-to-medium sequences,
+   still relevant in long-document and biological-sequence settings.
+3. **Replace attention.** Mamba and other state-space models give up the
+   all-pairs primitive and rebuild on $O(n)$ recurrences. Whether they
+   replace, complement, or hybridize with attention is genuinely undecided.
+
+Knowing this lineage matters because nearly every infrastructure paper you
+will read for the rest of the curriculum is solving some version of "the
+$n^2$ is too big."
+
+## Inference: KV cache and the GQA fix
+
+At inference time, you don't recompute attention from scratch each step —
+you cache the keys and values of all previous tokens (the "KV cache") and
+only compute new keys/values for the latest token. This makes
+autoregressive decoding $O(n)$ per token instead of $O(n^2)$, but it puts
+all the pressure on memory: the KV cache is proportional to
+$2 \cdot L \cdot h \cdot d_h \cdot n$ where $L$ is layers, $h$ is heads,
+$d_h$ is head dim, $n$ is context. For a 70B model at 32K context this is
+multiple gigabytes per request — enough that batched serving lives or dies
+by how compactly you can store it.
+
+**Multi-query attention** (MQA) and the more conservative
+**grouped-query attention** (GQA) collapse the per-head $K$ and $V$
+projections into one (or a few) shared sets, slashing KV-cache size with
+minimal quality loss. Llama 2 70B and most modern open models default to
+GQA with 8 groups for exactly this reason. The original "$h$ independent
+heads" idea turned out to be unnecessary on the K/V side; queries still
+benefit from many heads, but values can share.
 
 ## What to do next
 

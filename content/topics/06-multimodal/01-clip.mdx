@@ -81,6 +81,15 @@ quiz:
       - "Uses pixels directly."
     answer: 1
     explanation: "Sigmoid loss treats each (image, text) pair independently as a binary classification (matched or not). This decouples the loss across batch elements, so you can shard across many GPUs without all-gather, and it scales more cleanly. SigLIP is now the default image encoder for many open VLMs."
+  - id: "clip-q5"
+    question: "You want to build an image search engine over 100M product photos using a text query. Describe the right CLIP-based architecture at inference."
+    choices:
+      - "Run CLIP on every image at query time."
+      - "Pre-compute and store image embeddings in a vector index (FAISS, ScaNN). At query time, embed the text once with the text tower and do an approximate nearest-neighbor search."
+      - "Use a captioning model."
+      - "Train a separate classifier per product."
+    answer: 1
+    explanation: "Image embeddings are static — compute them once. The text tower is small enough to embed user queries in milliseconds. Storing 512-d float embeddings for 100M images is ~200 GB — fits cheaply on a single ANN index. This dual-tower retrievable structure is precisely what makes CLIP-style training the right substrate for retrieval; cross-attention models would force you to re-score every candidate."
 ---
 
 CLIP is the architecture that taught computers to *understand* images by
@@ -204,6 +213,39 @@ dependency in the loss, which lets you shard much larger batches across
 GPUs without all-gather communication. SigLIP and SigLIP 2 are now the
 default image encoders for most open VLMs (PaliGemma, Idefics, recent
 LLaVA variants).
+
+## Why batch size matters so much
+
+Contrastive training has an unusual property: the *gradient quality*
+depends on the batch size. With $N=256$ you have only 255 negatives per
+example; with $N=32{,}768$ (the original CLIP setting) you have 32,767. A
+bigger batch produces *harder* negatives — the model has to distinguish
+each true caption from many more confounders, which is what forces useful
+representations to form. The OpenCLIP project's reproducible-scaling-laws
+paper showed cleanly that quality scales with effective batch size.
+
+This is why SigLIP's decoupled loss matters: under softmax the all-to-all
+similarity computation forces a single huge GPU all-gather. SigLIP can
+shard the loss locally per device and approach equivalent quality at
+batches in the hundreds of thousands — territory that pure-CLIP setups
+could not reach without exotic systems work.
+
+## Practical pitfalls when using CLIP
+
+A few realities you only learn by doing:
+
+- **Prompt sensitivity.** "a photo of a \{class\}" works better than just
+  "\{class\}", and prompt ensembling ("a photo of a \{class\}", "a picture of
+  a \{class\}", "an image of a \{class\}") still gives small but free gains.
+- **Distribution shift.** CLIP was trained on internet photos with
+  alt-text. It is much weaker on satellite imagery, medical scans, or
+  abstract diagrams — domains where the alt-text distribution is unlike
+  what the model has seen. Fine-tuning on small in-domain pairs or using a
+  domain-specific CLIP variant (BiomedCLIP, RemoteCLIP) restores quality.
+- **Cosine similarity is not calibrated.** A score of 0.27 for one
+  (image, query) pair and 0.31 for another tells you ordering, not
+  absolute "match probability." Always rank, then threshold on a held-out
+  validation set if you need a hard yes/no.
 
 The contrastive paradigm is settling into a stable engineering recipe.
 The action has moved on — to generative multimodal models (next topics) —

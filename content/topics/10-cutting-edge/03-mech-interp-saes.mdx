@@ -88,6 +88,15 @@ quiz:
       - "Pruning weights."
     answer: 1
     explanation: "Anthropic's Golden Gate Claude demonstration clamped a 'Golden Gate' feature high. The model's outputs reflected the clamp, providing causal evidence that the feature is a real internal variable rather than a correlational artifact."
+  - id: "mi-q5"
+    question: "You discover an SAE feature that activates whenever the model generates a refusal ('I cannot help with that...'). You want to test whether it *causes* refusal or merely *correlates* with it. What's the right experiment?"
+    choices:
+      - "Check if its activation rises before refusals."
+      - "Causally intervene: clamp the feature high on benign prompts and low on prompts that should be refused, then measure refusal rate. If refusal tracks the clamp, the feature is causally involved."
+      - "Train a probe on it."
+      - "Measure cosine similarity to the refusal token."
+    answer: 1
+    explanation: "Correlation alone (a probe, a similarity score, an activation visualization) is not enough — confounders are everywhere. The discipline of mech interp is *intervention*: alter the candidate cause and check whether the effect follows. This is the method behind feature steering studies and is precisely what distinguishes mech-interp claims from older representation-analysis claims."
 ---
 
 For most of deep learning's history we have known *what* networks do —

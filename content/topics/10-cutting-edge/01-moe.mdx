@@ -84,6 +84,15 @@ quiz:
       - "Random number generation."
     answer: 1
     explanation: "MoE shines on big batches where expert matmuls are well-saturated. At batch=1, you pay full memory cost for all experts but compute only a tiny fraction — exactly the wrong arithmetic intensity for most accelerators."
+  - id: "moe-q5"
+    question: "You have a budget of 8 H100s and want to serve a Mixtral-class MoE (47B total, 13B active). What deployment pattern is most efficient?"
+    choices:
+      - "Replicate the dense model 8 times."
+      - "Use expert parallelism: shard the experts across GPUs so each holds a fraction of the experts plus a full copy of the non-expert (attention, embeddings) layers; cross-GPU all-to-all dispatches tokens to their assigned experts."
+      - "Run on CPU."
+      - "Quantize to int1."
+    answer: 1
+    explanation: "The 47B parameters won't fit in one H100's 80GB at fp16. Expert parallelism distributes the expert weights so each GPU stores ~6B expert params. Tokens are routed across the all-to-all collective to the GPU holding their expert. This is exactly the topology that frameworks like DeepEP and SGLang assume; tensor parallelism still sometimes wins for the attention layers stacked on top."
 ---
 
 The single most important architecture change in frontier LLMs since the

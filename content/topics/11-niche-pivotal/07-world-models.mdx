@@ -1,0 +1,253 @@
+---
+slug: "11-niche-pivotal/07-world-models"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 7
+title: "World models: Dreamer, V-JEPA, Genie"
+hook: "Latent prediction in service of planning."
+estMinutes: 16
+difficulty: 4
+prereqs: ["11-niche-pivotal/06-jepa", "08-rl/01-mdps"]
+hasHeroViz: false
+researchers: ["lecun", "assran", "hassabis"]
+papers:
+  - title: "Mastering Diverse Domains through World Models (DreamerV3)"
+    authors: "Hafner, Pasukonis, Ba, Lillicrap"
+    year: 2023
+    url: "https://arxiv.org/abs/2301.04104"
+  - title: "Revisiting Feature Prediction for Learning Visual Representations from Video (V-JEPA)"
+    authors: "Bardes, Garrido, Ponce, Chen, Rabbat, LeCun, Assran, Ballas"
+    year: 2024
+    url: "https://arxiv.org/abs/2404.08471"
+  - title: "Genie: Generative Interactive Environments"
+    authors: "Bruce et al. (Google DeepMind)"
+    year: 2024
+    url: "https://arxiv.org/abs/2402.15391"
+  - title: "GAIA-1: A Generative World Model for Autonomous Driving"
+    authors: "Hu, Russell, Yeo, Murez, Fedoseev, Kendall, Shotton, Corrado"
+    year: 2023
+    url: "https://arxiv.org/abs/2309.17080"
+freeResources:
+  - kind: "blog"
+    title: "DreamerV3 — World Models for Planning"
+    source: "Danijar Hafner"
+    url: "https://danijar.com/project/dreamerv3/"
+  - kind: "blog"
+    title: "V-JEPA: Joint Embedding Predictive Architectures for Video"
+    source: "Meta AI"
+    url: "https://ai.meta.com/blog/v-jepa-yann-lecun-ai-model-video-joint-embedding-predictive-architecture/"
+  - kind: "blog"
+    title: "Genie 2 — A foundation world model"
+    source: "Google DeepMind"
+    url: "https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model/"
+  - kind: "blog"
+    title: "A path towards autonomous machine intelligence"
+    source: "Yann LeCun"
+    url: "https://openreview.net/forum?id=BZ5a1r-kVsf"
+quiz:
+  - id: "wm-q1"
+    question: "What problem does a 'world model' solve in agent training?"
+    choices:
+      - "Faster matrix multiplies."
+      - "Sample efficiency: with a learned predictor of environment dynamics, the agent can plan and learn from imagined rollouts in latent space rather than expensive real-environment interactions."
+      - "Improved tokenization."
+      - "Better prompting."
+    answer: 1
+    explanation: "Real environment interaction is the bottleneck for many RL problems (robotics, driving). A world model that predicts next-state-given-state-and-action lets the agent train on imagined trajectories — orders of magnitude more cheaply. DreamerV3 reaches expert performance on 150+ tasks with one fixed hyperparameter set this way."
+  - id: "wm-q2"
+    question: "Why does V-JEPA predict in *representation* space rather than pixel space?"
+    choices:
+      - "It is faster."
+      - "Pixel prediction wastes capacity on perceptually irrelevant detail (texture, exact lighting); predicting representations forces the model to capture the *abstract dynamics* that matter for downstream tasks."
+      - "It avoids copyright."
+      - "It is required for video."
+    answer: 1
+    explanation: "LeCun's argument for JEPA: most of the bits in a video are unpredictable noise (specific pixel values). A predictor in pixel space optimizes for the wrong loss — minimizing pixel MSE doesn't reward understanding. A latent predictor learns to capture the structure that matters for prediction, which transfers to downstream tasks."
+  - id: "wm-q3"
+    question: "Genie generates *interactive* environments from a single prompt image. What is the architectural primitive that makes this work?"
+    choices:
+      - "Diffusion."
+      - "A learned latent action space + a video-prediction model conditioned on those actions: at inference, user inputs map into the latent action and the model predicts the next frame."
+      - "RLHF."
+      - "A retrieval index."
+    answer: 1
+    explanation: "Genie infers a discrete latent action vocabulary from unlabeled video. At inference, user controls (arrow keys) map to latent actions; the world model rolls forward conditioned on the action. This is what makes it *interactive* — not just video generation, but a controllable simulator learned from passive video."
+  - id: "wm-q4"
+    question: "GAIA-1 (Wayve) is a world model for autonomous driving. Why is this an interesting application?"
+    choices:
+      - "Driving has lots of training data."
+      - "A world model gives a self-driving stack a counterfactual simulator: 'what if I turn left now?' can be answered without a real car driving the path; safety evaluation, planning, and synthetic data all benefit."
+      - "Cars run LLMs."
+      - "It avoids LIDAR."
+    answer: 1
+    explanation: "Driving stacks need to reason about hypotheticals (other agents' reactions, edge cases). GAIA-1 conditions a video predictor on actions and produces plausible future scenes — a generative simulator the planner can roll out. This is part of why every major autonomy team now has a world-model effort."
+---
+
+A world model is a learned predictor of environment dynamics. Given the
+current state and an action, it forecasts the next state. In its simplest
+form it's just a self-supervised next-state model — but the consequences
+are large: anything you can predict, you can also *plan* over, *imagine*
+counterfactuals about, and *train policies* against without touching
+the real world.
+
+Three flavors are visibly defining the 2024–2026 frontier: **DreamerV3**
+(latent dynamics for RL), **V-JEPA / V-JEPA 2** (representation prediction
+from passive video, LeCun's program), and **Genie 2/3** (foundation
+world models that produce playable environments from a prompt). All
+three share a thesis: you don't need to predict pixels to capture the
+world's structure.
+
+## The agent-side picture: Dreamer
+
+Hafner's Dreamer line (2019, V2 in 2020, V3 in 2023) is the canonical
+RL world model. Architecture:
+
+- An **encoder** $z_t = e(x_t)$ maps observations to a compact latent.
+- A **recurrent dynamics** model $z_{t+1} = f(z_t, a_t)$ predicts the
+  next latent given an action.
+- A **decoder** reconstructs observations (only used during training).
+- A **reward predictor** $\hat r_t = g(z_t)$.
+- An actor-critic operates *entirely in latent space* — it never
+  touches pixels at training time.
+
+Training is two-phase. First, learn the dynamics from real environment
+data (a few million frames). Then *imagine* trajectories by rolling
+$f$ forward and train the actor-critic on those imagined rollouts. Real
+environment data is the expensive resource; imagination is cheap.
+
+DreamerV3's headline result: a single fixed hyperparameter setting reaches
+expert-level performance on 150+ tasks across Atari, Crafter, Minecraft,
+and continuous control. World-model RL had finally crossed the threshold
+where one recipe handles everything — like the GPT moment for RL.
+
+$$
+\hat z_{1:H} \sim f(z_0, \pi_\theta), \qquad J(\theta) = \mathbb{E}\!\left[\sum_{t=0}^{H} \gamma^t \hat r_t\right]
+$$
+
+The actor maximizes expected reward in *imagined* trajectories, where the
+horizon $H$ can be set to 15–20 latent steps for cheap planning.
+
+## V-JEPA: predict representations, not pixels
+
+LeCun's long-running argument is that pixel prediction is the wrong
+objective for self-supervised learning. Most pixel variation is
+unpredictable noise — exact texture, lighting, motion blur — and
+optimizing MSE on it wastes capacity. Better: predict the *features* of a
+masked region from the *features* of the visible region.
+
+That's what V-JEPA does for video. Given a video clip, mask out a
+spatiotemporal region. Encode visible and masked regions separately. Train
+a predictor to map the visible features to the masked-region features
+under an L2 loss in latent space:
+
+$$
+\mathcal{L}_{\text{V-JEPA}} = \big\| s_\psi(z_{\text{masked}}) - z_{\text{target}} \big\|_2^2
+$$
+
+with a stop-gradient on the target (otherwise the trivial collapse to
+constant features wins). The result: a video encoder that learns
+high-quality features for downstream tasks (action recognition, motion
+classification) without ever generating pixels.
+
+V-JEPA 2 (Meta, late 2024) scales this up and demonstrates planning over
+the learned latent dynamics — bridging the gap between "good
+representations" and "useful for control."
+
+<PaperCard
+  title="Revisiting Feature Prediction for Learning Visual Representations from Video (V-JEPA)"
+  authors="Bardes, Garrido, Ponce, Chen, Rabbat, LeCun, Assran, Ballas"
+  year={2024}
+  url="https://arxiv.org/abs/2404.08471"
+/>
+
+## Genie: foundation world models
+
+DeepMind's Genie (2024) and Genie 2/3 (2024–2025) take a different cut:
+train a single model on enormous amounts of *unlabeled* video (gameplay,
+robotic manipulation, driving) and learn a controllable simulator. From
+a single prompt image, Genie produces a playable environment — the user's
+keystrokes map to a learned discrete *latent action vocabulary*, and the
+model rolls the video forward conditioned on those actions.
+
+Three components:
+
+- A **video tokenizer** that compresses frames to discrete tokens.
+- A **latent action model** that infers per-step actions from
+  consecutive frames in unlabeled video.
+- A **dynamics model** that predicts next-frame tokens conditioned on
+  prior frames and the latent action.
+
+At inference, replace the inferred action with a user-controlled one.
+Genie 2 produces minute-long, navigable 3D environments. Genie 3
+extended this further with consistency and longer rollouts.
+
+The implication is large: **world models can be pre-trained at LLM scale
+on passive video** and used downstream for both simulation and as
+synthetic-data engines for embodied agents.
+
+```python
+# Sketch: training a Dreamer-style latent dynamics model
+import torch.nn.functional as F
+
+def world_model_loss(encoder, dynamics, decoder, x, a):
+    # x: (B, T, C, H, W) frames; a: (B, T, A) actions
+    z = encoder(x)                                  # (B, T, D)
+    z_pred = dynamics(z[:, :-1], a[:, :-1])         # (B, T-1, D)
+    x_recon = decoder(z)
+    recon_loss = F.mse_loss(x_recon, x)
+    dyn_loss  = F.mse_loss(z_pred, z[:, 1:].detach())
+    return recon_loss + dyn_loss
+```
+
+## Why world models matter now
+
+Three reasons world models moved from niche to load-bearing in 2024–2026:
+
+1. **Sample efficiency for embodied AI.** Robots can't easily collect
+   millions of episodes of every behavior. A learned world model lets
+   you train policies in imagination.
+2. **Counterfactual reasoning for safety.** GAIA-1 and similar driving
+   models let autonomy stacks ask "what if I turn left now?" without
+   real-world risk.
+3. **Synthetic data for foundation models.** A scaled video world model
+   produces rollouts that are training data for *other* models —
+   particularly robotic policies and embodied agents.
+
+<Callout variant="insight" title="The argument under it all">
+LeCun's claim is that the next breakthroughs in AI will not come from
+larger language models trained on text but from *world models* trained on
+video, audio, and embodied experience. Whether or not you accept that, the
+empirical movement of large research budgets toward V-JEPA, Genie,
+DreamerV3, and Sora-as-world-model interpretations suggests the field
+takes the bet seriously.
+</Callout>
+
+## Open questions
+
+- **Long-horizon prediction.** Latents drift over long rollouts. How to
+  ground them periodically (against real frames? language anchors?) is
+  open.
+- **Action vocabularies.** Genie's latent actions are discrete and
+  inferred. The right action representation for arbitrary domains is
+  unsettled.
+- **Bridging language and dynamics.** Most LLMs have weak embodied
+  intuition. Most world models have weak language. Hybrid architectures
+  (vision-language-world models) are the live research frontier.
+
+<Callout variant="warning" title="Don't confuse video generation with world modeling">
+Sora makes plausible-looking video. That's not the same as a *useful
+world model* — a world model has to be controllable, consistent, and
+support counterfactuals. Sora's outputs often violate physics in ways
+that would catastrophically misguide a planner. The two research programs
+are converging but are not the same thing yet.
+</Callout>
+
+## What to study next
+
+- Read DreamerV3 for the full RL-side recipe; it's surprisingly
+  approachable.
+- Skim V-JEPA and the LeCun position paper *A path towards autonomous
+  machine intelligence* — the conceptual frame for the program.
+- Watch the Genie 2 demos and reflect on what counts as "training data"
+  for an embodied agent.

@@ -88,6 +88,15 @@ quiz:
       - "For copyright reasons."
     answer: 1
     explanation: "The reasoning trace is the model's *internal* monologue — backtracking, second-guessing, trying alternative approaches. Showing it raw is distracting and harms the user experience. o1 hides them entirely; R1 shows them in `<think>` tags. Either way, the *answer* is summarized from the trace."
+  - id: "reason-q5"
+    question: "Your team has a reasoning model and a 100x cheaper non-reasoning model. You're deploying it for a customer-support chatbot answering FAQ-style questions. What's the right routing strategy?"
+    choices:
+      - "Always route to the reasoning model — quality is highest."
+      - "Always route to the cheap model — FAQs don't need reasoning."
+      - "Route by difficulty: a small classifier (or even the cheap model itself) decides whether to escalate; reasoning compute is only spent where it pays off."
+      - "Round-robin between them."
+    answer: 2
+    explanation: "Test-time compute is fungible with quality, but only marginally useful on easy problems. The economically correct move is *adaptive routing*: classify or sample with the cheap model, only invoke the reasoning model when the answer is uncertain. This is exactly what frontier APIs (o3-mini-high, Claude with extended thinking budget) now expose as a knob — paying for reasoning only when it's earned."
 ---
 
 For five years, the dominant story of LLM progress was: bigger model, more
@@ -224,6 +233,20 @@ or arrives at the right answer for the wrong reason. Use reasoning models
 where their answers can be verified or audited. Don't trust their
 introspection.
 </Callout>
+
+## Distillation: reasoning is teachable
+
+A surprising R1 finding: once you have a strong reasoning teacher, you can
+*distill* its reasoning behavior into a smaller model with plain SFT — no
+RL needed. DeepSeek released R1-Distill-Qwen-32B, which beat much larger
+non-reasoning models on math and code benchmarks despite being a routine
+fine-tune on R1's traces.
+
+This matters for two reasons. First, RL training is expensive and finicky;
+SFT on traces is not. Second, it suggests reasoning is a relatively
+compact, transferable behavior — once one model learns it, others can copy.
+Expect more of the open-source ecosystem to converge on a pattern of
+"frontier lab does the RL run, the rest of the field distills."
 
 ## What to study next
 

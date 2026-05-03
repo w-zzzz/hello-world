@@ -81,6 +81,15 @@ quiz:
       - "It eliminates overfitting"
     answer: 0
     explanation: "Minibatch gradients are noisy but unbiased. The noise acts as implicit regularization, helping escape saddles and find flatter minima — and crucially, you can do many noisy steps in the time one full-batch step would take."
+  - id: "opt-q5"
+    question: "You double the batch size on a working LLM training run. What is the most defensible change to the learning rate that preserves training dynamics?"
+    choices:
+      - "Halve the learning rate"
+      - "Leave it unchanged — batch size and LR are orthogonal"
+      - "Multiply the learning rate by $\\sqrt{2}$ (square-root scaling), since per-step gradient noise drops by $\\sqrt{2}$"
+      - "Set it to the original value times 2"
+    answer: 2
+    explanation: "Doubling the batch size cuts gradient variance by 2 (so its standard deviation by $\\sqrt{2}$). The 'square-root rule' (Krizhevsky 2014, refined by McCandlish et al.) says scale LR by $\\sqrt{2}$ to keep the noise-to-signal ratio constant. Linear scaling can work for small jumps but tends to diverge at large batches without warmup adjustments."
 ---
 
 Training a modern neural network is, mechanically, just gradient descent. But

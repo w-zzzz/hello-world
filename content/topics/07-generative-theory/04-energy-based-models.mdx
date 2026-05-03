@@ -1,0 +1,243 @@
+---
+slug: "07-generative-theory/04-energy-based-models"
+part: "07-generative-theory"
+partTitle: "Generative modeling theory"
+partIndex: 7
+topicIndex: 4
+title: "Energy-based models"
+hook: "Score matching, contrastive divergence, and LeCun's preferred frame."
+estMinutes: 16
+difficulty: 4
+prereqs: ["07-generative-theory/01-vae", "01-math/02-probability-information"]
+hasHeroViz: false
+researchers: ["lecun", "ho"]
+papers:
+  - title: "A Tutorial on Energy-Based Learning"
+    authors: "LeCun, Chopra, Hadsell, Ranzato, Huang"
+    year: 2006
+    url: "https://yann.lecun.com/exdb/publis/pdf/lecun-06.pdf"
+  - title: "Generative Modeling by Estimating Gradients of the Data Distribution"
+    authors: "Song, Ermon"
+    year: 2019
+    url: "https://arxiv.org/abs/1907.05600"
+  - title: "How to Train Your Energy-Based Models"
+    authors: "Song, Kingma"
+    year: 2021
+    url: "https://arxiv.org/abs/2101.03288"
+  - title: "Implicit Generation and Modeling with Energy-Based Models"
+    authors: "Du, Mordatch"
+    year: 2019
+    url: "https://arxiv.org/abs/1903.08689"
+freeResources:
+  - kind: "blog"
+    title: "What are Diffusion Models? — score-matching connection"
+    source: "Lilian Weng"
+    url: "https://lilianweng.github.io/posts/2021-07-11-diffusion-models/"
+  - kind: "blog"
+    title: "Energy-Based Models — overview"
+    source: "Yang Song"
+    url: "https://yang-song.net/blog/2021/score/"
+  - kind: "video"
+    title: "LeCun on energy-based models"
+    source: "DeepMind / NeurIPS"
+    url: "https://www.youtube.com/results?search_query=lecun+energy+based+models"
+quiz:
+  - id: "ebm-q1"
+    question: "An energy-based model defines $p_\\theta(x) = \\exp(-E_\\theta(x)) / Z(\\theta)$. Why is the partition function $Z(\\theta) = \\int \\exp(-E_\\theta(x)) dx$ the central computational obstacle?"
+    choices:
+      - "It is small."
+      - "Computing it requires integrating over all $x$ — intractable in high dimensions — so direct maximum likelihood needs approximations (MCMC, score matching, contrastive methods)."
+      - "It vanishes."
+      - "It has no gradient."
+    answer: 1
+    explanation: "EBMs are flexible because $E_\\theta$ can be any neural network. The price is that $Z$ is an integral over the data space — uncomputable in closed form for $x \\in \\mathbb{R}^d$ with $d > 5$ or so. Every EBM training method is essentially a way to dodge $Z$."
+  - id: "ebm-q2"
+    question: "Score matching avoids the partition function how?"
+    choices:
+      - "It uses a different normalizer."
+      - "It fits the *score* $\\nabla_x \\log p(x)$, which is the gradient of $-E_\\theta(x)$ — and crucially does not depend on $Z$ since $\\nabla_x \\log Z = 0$."
+      - "It quantizes the data."
+      - "It uses MCMC."
+    answer: 1
+    explanation: "$\\nabla_x \\log p_\\theta(x) = -\\nabla_x E_\\theta(x) - \\nabla_x \\log Z(\\theta)$. The second term is zero because $Z$ does not depend on $x$. So matching the score sidesteps $Z$ entirely. Hyvärinen (2005) showed this can be turned into a tractable objective."
+  - id: "ebm-q3"
+    question: "What is the precise relationship between score matching and modern diffusion models?"
+    choices:
+      - "They are unrelated."
+      - "DDPM's noise-prediction loss is *equivalent*, up to a per-timestep weighting, to denoising score matching at multiple noise levels — diffusion is a particular score-based generative recipe."
+      - "Diffusion came first."
+      - "Score matching is faster."
+    answer: 1
+    explanation: "Vincent (2011) introduced denoising score matching; Song & Ermon (2019) generalized it to multiple noise levels; Ho et al. (2020) reparameterized as noise prediction in DDPM. They are the same family — diffusion models *are* score-based EBMs trained by score matching at multiple noise scales."
+  - id: "ebm-q4"
+    question: "Why does LeCun argue energy-based formulations are the right frame for general AI?"
+    choices:
+      - "Energy is a physical quantity."
+      - "An energy function $E(x, y)$ defines compatibility between inputs and outputs without forcing a normalized probability — well-suited to multi-modal outputs (multiple plausible futures), implicit constraints, and joint embedding architectures like JEPA."
+      - "EBMs are faster."
+      - "EBMs require less data."
+    answer: 1
+    explanation: "Predicting *the* next pixel is bad because many futures are plausible. An EBM scores compatibility between candidate $y$'s and a context $x$ without insisting on a normalized distribution — letting many low-energy answers coexist. JEPA, contrastive losses, and modern self-supervised methods all sit naturally inside this frame."
+---
+
+Energy-based models are one of the oldest and most general probabilistic
+frames in machine learning. They are also experiencing a quiet revival:
+diffusion models, JEPA, contrastive learning, and even modern preference
+learning are best understood as energy-based methods in disguise. If you
+internalize the EBM picture, much of the modern generative landscape
+reorganizes itself around a single thread.
+
+## The basic object
+
+An EBM defines an unnormalized probability through an **energy function**
+$E_\theta(x)$:
+
+$$
+p_\theta(x) = \frac{\exp(-E_\theta(x))}{Z(\theta)}, \qquad Z(\theta) = \int \exp(-E_\theta(x))\, dx
+$$
+
+Low energy = high probability. The energy can be *any* neural network.
+This is the EBM's superpower — and its curse, because the partition
+function $Z(\theta)$ involves an intractable integral over the data
+space.
+
+Compare to other generative families:
+
+- **Autoregressive models** (GPT) decompose $p(x) = \prod p(x_i | x_{<i})$
+  with each factor explicitly normalized. No $Z$ problem, but the
+  factorization is restrictive.
+- **VAEs** use a tractable lower bound (the ELBO).
+- **Normalizing flows** require invertible transforms with tractable
+  Jacobians.
+- **GANs** sidestep likelihood entirely.
+- **EBMs** keep the maximum modeling flexibility and pay for it with $Z$.
+
+Every EBM training method is a way to optimize $E_\theta$ without
+computing $Z$.
+
+## Training option 1: contrastive divergence
+
+The exact MLE gradient is:
+
+$$
+\nabla_\theta \log p_\theta(x) = -\nabla_\theta E_\theta(x) + \mathbb{E}_{x' \sim p_\theta}[\nabla_\theta E_\theta(x')]
+$$
+
+The first term is easy. The second is an expectation under the model —
+which we can't sample from exactly. **Contrastive divergence** (Hinton)
+approximates it with a few steps of MCMC starting from data points. CD
+trained the original Restricted Boltzmann Machines and Deep Belief Nets,
+and is still the canonical EBM training algorithm even though it's
+biased (the chains don't fully mix).
+
+## Training option 2: score matching
+
+A more elegant approach: don't fit $p_\theta$ directly, fit its **score**:
+
+$$
+s_\theta(x) = \nabla_x \log p_\theta(x) = -\nabla_x E_\theta(x)
+$$
+
+Crucially, the score doesn't depend on $Z$ — taking a gradient with
+respect to $x$ kills any $x$-independent constant. Hyvärinen (2005)
+showed that minimizing $\| s_\theta(x) - \nabla_x \log p_{\text{data}}(x)\|^2$
+can be rewritten using integration by parts into a form that doesn't
+require knowing the data score at all.
+
+Vincent (2011)'s **denoising score matching** is even more practical: add
+Gaussian noise $\sigma$ to the data, fit $s_\theta(x + \sigma \epsilon, \sigma) \approx -\epsilon / \sigma$.
+This is just MSE on noise.
+
+```python
+import torch.nn.functional as F
+
+def denoising_score_matching(score_model, x, sigma):
+    eps = torch.randn_like(x)
+    x_noisy = x + sigma * eps
+    score_pred = score_model(x_noisy, sigma)
+    target = -eps / sigma
+    return F.mse_loss(score_pred, target)
+```
+
+If this code looks familiar, it should: it's a sibling of the DDPM
+training loss. Diffusion models *are* score-based EBMs trained at
+multiple noise levels. The whole denoising-diffusion paradigm sits inside
+the EBM frame.
+
+<PaperCard
+  title="Generative Modeling by Estimating Gradients of the Data Distribution"
+  authors="Song, Ermon"
+  year={2019}
+  url="https://arxiv.org/abs/1907.05600"
+/>
+
+## Sampling: Langevin dynamics
+
+Once you have a score, you can sample from the EBM with **Langevin MCMC**:
+
+$$
+x_{t+1} = x_t + \frac{\eta}{2} s_\theta(x_t) + \sqrt{\eta}\, z_t, \qquad z_t \sim \mathcal{N}(0, I)
+$$
+
+A walker following the score ascent with Gaussian noise converges to the
+EBM's distribution. Practical issues — slow mixing, poor coverage of
+disconnected modes — motivated the multi-noise-level construction of
+Song & Ermon, which is also why diffusion samplers walk from high to low
+noise.
+
+## Why LeCun keeps pushing EBMs
+
+LeCun's Position Paper (2022) argues that the natural frame for general
+AI is energy-based. Two reasons:
+
+1. **Multi-modality.** The future is not unique — many continuations of a
+   video are plausible. A normalized probabilistic model has to spread
+   mass across all of them; an energy function can give *all of them*
+   low energy without forcing a global comparison.
+2. **Joint embedding.** JEPA (also covered in the previous topic) is
+   literally an EBM: $E(x, y) = \| \text{enc}(x) - \text{enc}(y)\|^2$
+   measures compatibility between an input and its predicted
+   representation. The training loss minimizes this energy on matched
+   pairs while preventing collapse with implicit or explicit
+   contrastive terms.
+
+<Callout variant="insight" title="EBMs are everywhere if you squint">
+Contrastive learning (CLIP, SimCLR) minimizes an energy between matched
+pairs while pushing up energy between mismatched ones. Diffusion is
+multi-scale denoising score matching. JEPA predicts in a learned latent
+space using an energy. Even DPO has an energy-based interpretation —
+the implicit reward is essentially a log-density ratio. Recognizing the
+common skeleton clarifies a lot of the modern generative literature.
+</Callout>
+
+## Where EBMs struggle
+
+- **Sampling cost.** Langevin chains and other MCMC are much slower than
+  feedforward generation. Diffusion mitigates this with multi-noise
+  schedules + cleverly designed reverse-time SDEs, but compute per
+  sample is still high.
+- **Evaluation.** Without $Z$, you can't compare likelihoods between
+  models. EBM benchmarks rely on sample-quality metrics (FID,
+  perplexity-on-test under bridge models) rather than direct
+  log-likelihoods.
+- **Mode coverage and spurious modes.** Implicit generation can create
+  high-density regions where there is no data. Careful training and
+  architectural inductive biases matter.
+
+<Callout variant="warning" title="Don't equate 'no normalizer' with 'no problem'">
+Skipping $Z$ in training doesn't mean you've avoided it. Sampling still
+requires implicit access to relative densities; evaluating quality
+requires picking a proxy; sample diversity requires good mode coverage.
+The EBM frame buys flexibility but inherits a bouquet of subtleties that
+normalized models do not have.
+</Callout>
+
+## What to study next
+
+- Read Yang Song's blog post on score-based generative models — the
+  cleanest single source linking EBMs, score matching, diffusion, and
+  Langevin sampling.
+- Skim LeCun's position paper for the EBM-as-foundation-of-general-AI
+  argument.
+- Move on to JEPA (the previous topic) and notice that you have already
+  seen the EBM machinery in disguise.

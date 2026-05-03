@@ -84,6 +84,15 @@ quiz:
       - "It removes attention."
     answer: 1
     explanation: "The target's forward over a candidate sequence costs roughly the same as a single token (memory-bound). If the draft is right most of the time, you get $k$x speedup at the cost of running a small model. The output distribution is provably identical in expectation."
+  - id: "flash-q5"
+    question: "An LLM service has 1000 users sending requests with the same 8K-token system prompt followed by short, varied user messages. Without prefix sharing, each request stores its own KV cache. With prefix sharing under PagedAttention, what happens?"
+    choices:
+      - "Memory usage doubles."
+      - "The shared 8K-token prefix is stored *once* in physical KV blocks; each request's page table maps to the same blocks, dropping aggregate KV memory by ~99% for the prefix portion."
+      - "Throughput drops because of locking."
+      - "Speculative decoding stops working."
+    answer: 1
+    explanation: "This is exactly the workload that PagedAttention's virtual-memory analogy was designed for. Identical prefix tokens hash to the same physical block, so the system prompt occupies one copy in HBM regardless of concurrent requests. Production chat services with shared system prompts see this as the largest single source of throughput improvement in vLLM."
 ---
 
 Attention's $O(n^2)$ time complexity gets all the textbook attention. The
@@ -226,6 +235,21 @@ KV cache is too big, batches are not being filled, the prompt prefix is
 being recomputed, or you forgot to enable FlashAttention. Always profile
 HBM bandwidth utilization before optimizing anything else.
 </Callout>
+
+## Continuous batching: the second half of the throughput story
+
+PagedAttention solves the *space* problem; **continuous batching** (a.k.a.
+in-flight batching, dynamic batching) solves the *time* problem. The naive
+approach is "static batching": fill a batch of $B$ requests, run them
+together, return when the slowest finishes. The wasted time is
+catastrophic — short requests sit idle while long ones decode.
+
+Continuous batching swaps requests in and out of the batch *every step*. A
+request that finishes generates one final token, leaves the batch, and a
+new request fills its slot on the next iteration. Combined with
+PagedAttention (the page table makes mid-batch swaps cheap), this keeps the
+GPU saturated. The vLLM and TensorRT-LLM throughput numbers (~24x over
+naive servers) come from these two ideas working together.
 
 ## What to read next
 

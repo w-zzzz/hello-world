@@ -89,6 +89,15 @@ quiz:
       - "Increases the number of steps."
     answer: 1
     explanation: "During training, the model is randomly trained without conditioning (10% of the time). At sampling, you compute both predictions and extrapolate: this concentrates the distribution on conditional samples at the cost of diversity. $w \\approx 7.5$ is a typical SD setting."
+  - id: "diff-q5"
+    question: "Your diffusion model produces high-quality samples at 50 sampling steps but you need 5-step inference for a real-time app. Which strategy preserves the most quality?"
+    choices:
+      - "Skip 90% of the timesteps with a fixed schedule."
+      - "Distill the 50-step teacher into a few-step student via a consistency model, latent consistency model (LCM), or rectified-flow distillation — each step is then trained to take a much larger jump."
+      - "Run the model on smaller images."
+      - "Quantize to int4."
+    answer: 1
+    explanation: "Naively skipping timesteps degrades quality fast — the schedule is designed for many small denoising jumps. Distillation produces a *new* student model whose forward pass is calibrated to take large, accurate jumps along the trajectory. SDXL Turbo (1-2 steps) and the Flux Schnell line use this exact recipe; they're the reason interactive image generation feels possible."
 ---
 
 Diffusion is the dominant paradigm for generating images, video, audio, 3D
@@ -238,6 +247,20 @@ diffusion captures the full distribution, GANs collapse modes; (3)
 controllability — diffusion conditions cleanly via cross-attention, GANs
 were more brittle. The shift was decisive by ~2022.
 </Callout>
+
+## The score-matching connection
+
+There's a deeper unification under all of this. The noise-prediction loss
+$\| \epsilon - \epsilon_\theta(x_t, t)\|^2$ is, up to a constant rescale,
+equivalent to **denoising score matching** — fitting
+$s_\theta(x_t, t) \approx \nabla_{x_t} \log p_t(x_t)$, the gradient of the
+log-density of the noised distribution at level $t$. The reverse-time SDE
+$dx = [f(x, t) - g(t)^2 \nabla_x \log p_t(x)]dt + g(t)\,d\bar W$ (Song et
+al. 2021) shows that any way of estimating this score — DDPM noise
+prediction, score-matching, EDM v-prediction — gives you the same generative
+process up to numerical-integration choices. This is why "diffusion
+models" and "score-based generative models" describe the same family of
+algorithms despite their independent histories.
 
 ## What to study next
 

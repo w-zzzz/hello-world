@@ -65,6 +65,24 @@ quiz:
       - "It accelerates the forward pass."
     answer: 2
     explanation: "Residuals add the identity to whatever the layer learns. The gradient inherits a copy of the upstream signal regardless of $f$'s Jacobian, which is why ResNets train far deeper than plain stacks."
+  - id: "bp-q4"
+    question: "Reverse-mode autodiff stores intermediate activations from the forward pass to compute the backward pass. What does *gradient checkpointing* (activation recomputation) trade?"
+    choices:
+      - "It trades parameter count for memory."
+      - "It trades extra forward FLOPs at backward time for a much smaller activation memory footprint — recompute selected activations from saved boundaries instead of holding them all."
+      - "It eliminates the need for the backward pass."
+      - "It quantizes activations."
+    answer: 1
+    explanation: "Activation memory typically dominates GPU memory at training. Checkpointing keeps only a few 'anchor' activations and re-runs forward subgraphs during backward to regenerate the rest. Cost: ~33% extra FLOPs per step. Reward: training a 70B model on hardware that otherwise OOMs. Used in essentially every modern training stack."
+  - id: "bp-q5"
+    question: "Your training loss is steady but the gradient norm of layer 1 is $10^{-9}$ while layer 12 is $10^{-2}$. What is the most likely cause and fix?"
+    choices:
+      - "The model is converged; nothing to do."
+      - "Vanishing gradients in early layers from saturating nonlinearities or poor initialization. Likely fixes: switch to ReLU/GELU, add residuals, use He/Glorot init, add LayerNorm."
+      - "The learning rate is too low; raise it 100x."
+      - "The dataset is too small; gather more data."
+    answer: 1
+    explanation: "A 7-order-of-magnitude gradient gap across depth is the textbook vanishing-gradient signature. Layer 1 will not learn at all under any reasonable LR. The cure is architectural — make the gradient pass through. This pattern is visible in every pre-ResNet vs post-ResNet training-curve comparison."
 ---
 
 If you can derive backpropagation, you can read every modern deep-learning
@@ -178,6 +196,48 @@ check learning rate is not too large; (3) print min/max of activations and
 gradients per layer; (4) reduce batch to 1 and look for shape mismatches; (5)
 verify your data normalization didn't divide by zero.
 </Callout>
+
+## Forward-mode vs reverse-mode: why we always pick reverse
+
+Autodiff comes in two flavors. **Forward-mode** propagates a tangent vector
+along with the inputs and recovers a directional derivative in one forward
+pass; cost scales with the number of *inputs*. **Reverse-mode** does a
+forward pass, caches activations, then sweeps backward to accumulate
+gradients; cost scales with the number of *outputs*.
+
+Neural networks have one scalar output (the loss) and millions of input
+parameters, so reverse-mode is the unambiguous winner — one backward pass
+gives you the gradient with respect to every parameter for the price of
+roughly two forward passes. Forward-mode autodiff is still useful in
+contexts like Hessian-vector products and certain JAX transformations, but
+for "compute $\nabla_\theta L$" it has no role.
+
+This asymmetry is why every training framework — PyTorch's autograd, JAX's
+`grad`, TensorFlow's `GradientTape` — defaults to reverse-mode, and why
+"backpropagation" and "reverse-mode AD" have become synonyms in practice.
+
+## A linear-algebra view of a layer
+
+A single dense layer $y = Wx$ has gradient
+$\partial L/\partial W = (\partial L/\partial y) \, x^\top$ — the outer
+product of upstream gradient and input. Stack hundreds of such layers and
+the gradient flowing into layer 1 is
+
+$$
+\frac{\partial L}{\partial x_0} = \frac{\partial L}{\partial x_T} \prod_{i=1}^{T} J_i
+$$
+
+where $J_i$ is the Jacobian of layer $i$. The product of Jacobians is
+where everything fragile in deep learning lives. If their singular values
+average above 1, the product *explodes*; below 1, it *vanishes*. He / Glorot
+initialization is engineered to keep $\mathbb{E}[\|J_i\|_2] \approx 1$ at
+init. Normalization layers (BatchNorm, LayerNorm, RMSNorm) maintain this
+property *during* training. Residual connections turn the product into
+$\prod (I + J_i)$, which behaves like a sum near identity — gradients can no
+longer vanish even at hundreds of layers deep.
+
+This is the deep reason the architecture decisions in modern networks are
+what they are: every one of them is a Jacobian-product hygiene measure.
 
 ## Why this lasts
 

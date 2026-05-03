@@ -48,6 +48,15 @@ quiz:
       - "$O(\\max(m, n))$"
     answer: 1
     explanation: "Multiplying a $B \\times n$ matrix by an $n \\times m$ matrix costs $O(Bmn)$. This is why people care about effective rank, low-rank adapters (LoRA), and tensor parallelism."
+  - id: "linalg-q3"
+    question: "LoRA adapts a frozen weight $W \\in \\mathbb{R}^{m \\times n}$ by adding $\\Delta W = BA$ where $A \\in \\mathbb{R}^{r \\times n}$ and $B \\in \\mathbb{R}^{m \\times r}$ for small $r$. Why does this save memory?"
+    choices:
+      - "It quantizes the weights."
+      - "It only stores $r(m+n)$ trainable parameters instead of $mn$, and the optimizer state grows with the trainable count."
+      - "It removes activation checkpointing."
+      - "It avoids the backward pass."
+    answer: 1
+    explanation: "The structural assumption is that the *update* lives in a low-dimensional subspace, so $\\Delta W$ has rank at most $r$. With Adam carrying two moment buffers per trainable parameter, going from $mn$ to $r(m+n)$ parameters reduces optimizer memory by orders of magnitude — the linear-algebra reason fine-tuning a 70B model can fit on one GPU."
 ---
 
 Linear algebra is the language the rest of machine learning is written in. Before
@@ -136,11 +145,62 @@ Spectral norm controls Lipschitz constants, which controls how badly small
 input perturbations explode through the network. Spectral normalization (used
 in some GAN variants) directly clips this.
 
+The **condition number** $\kappa(W) = \sigma_{\max} / \sigma_{\min}$ measures
+how badly $W$ stretches some directions relative to others. A high condition
+number is the linear-algebraic signature of the gradient pathology that
+momentum and Adam are designed to fix: the loss surface looks like a long,
+narrow ravine with steep walls and a shallow floor. Optimizers that ignore
+this structure either oscillate across the ravine or crawl along the floor.
+Preconditioning (Shampoo, K-FAC) literally tries to invert the curvature so
+that every direction is on the same scale.
+
 <Callout variant="info" title="Three things to memorize">
 1. Matrix–vector multiply: $O(mn)$.
 2. The SVD always exists, and the top-$k$ truncation is the best rank-$k$ approximation in Frobenius norm.
 3. A symmetric matrix has a full set of orthonormal eigenvectors; a covariance matrix is symmetric and PSD.
 </Callout>
+
+## Eigenvalues, eigenvectors, and what they tell you
+
+For a square matrix $A$, the equation $A v = \lambda v$ identifies the
+*invariant directions* of $A$: along $v$, the linear map only stretches by
+$\lambda$. The set of $\lambda$ is the **spectrum**. For a symmetric (or
+Hermitian) matrix, eigenvalues are real and the eigenvectors form an
+orthonormal basis — the **spectral theorem**.
+
+Two places this is load-bearing in deep learning:
+
+- **Hessian eigenvalues** describe local curvature of the loss. Their
+  distribution explains why some training runs are stable and others diverge.
+  Sharpness-aware minimization, the "edge of stability" papers, and most
+  optimizer theory are eigenvalue arguments at heart.
+- **Covariance matrix eigenvalues** are PCA. The top eigenvectors of
+  $X^\top X$ are the directions of maximum variance — the "natural" axes of
+  the data. Whitening transforms align inputs to make optimization easier.
+
+<Callout variant="insight" title="Linear maps as geometry, not symbols">
+Every matrix you see in a paper has a geometric interpretation. $W_Q K^\top$
+in attention is just *measuring angles*. A LayerNorm is a *projection onto a
+sphere followed by a learned rescale*. A residual connection is the
+*identity map plus a small perturbation*. If you find yourself confused by
+notation, draw the picture.
+</Callout>
+
+## The matmul is the model
+
+A useful sanity check: count the matmuls in any architecture and you've
+counted essentially all the FLOPs. A Transformer block at hidden size $d$,
+sequence length $T$, with MLP factor 4, costs roughly:
+
+$$
+\text{FLOPs/block} \approx \underbrace{8 T d^2}_{\text{Q,K,V,O proj}} + \underbrace{2 T^2 d}_{\text{attention scores+out}} + \underbrace{16 T d^2}_{\text{MLP}}
+$$
+
+For modest $T$ the MLP dominates; for long context attention takes over.
+This single counting exercise is what makes scaling laws and tensor-
+parallelism sharding decisions tractable. *Everything* about LLM systems —
+why FlashAttention matters, why MoE saves compute, why TP splits along the
+"head" axis — comes back to where this matmul work is.
 
 ## How to study this
 
