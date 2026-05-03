@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getOrCreateUserId } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { rateLimit, clientKey, tooManyRequests } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const userId = await getOrCreateUserId();
@@ -17,6 +19,12 @@ const PostSchema = z.object({ slug: z.string().min(3) });
 
 /** Toggle: returns { favorited: boolean } reflecting the new state. */
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(`favorites:${clientKey(req)}`, 60, 60_000);
+  if (!rl.ok) {
+    logger.warn("rate_limited", { route: "/api/favorites", retryAfterMs: rl.retryAfterMs });
+    return tooManyRequests(rl.retryAfterMs);
+  }
+
   const userId = await getOrCreateUserId();
   const body = await req.json().catch(() => null);
   const parsed = PostSchema.safeParse(body);

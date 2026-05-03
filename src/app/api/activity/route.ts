@@ -1,11 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getOrCreateUserId } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { rateLimit, clientKey, tooManyRequests } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 /** Return per-day quiz attempt counts for the last 84 days (12 weeks),
  *  oldest → newest, including zero-count days so the heatmap can render
  *  a contiguous grid. */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const rl = rateLimit(`activity:${clientKey(req)}`, 30, 60_000);
+  if (!rl.ok) {
+    logger.warn("rate_limited", { route: "/api/activity", retryAfterMs: rl.retryAfterMs });
+    return tooManyRequests(rl.retryAfterMs);
+  }
+
   const userId = await getOrCreateUserId();
   const days = 84;
 

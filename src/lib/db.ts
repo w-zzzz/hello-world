@@ -1,4 +1,5 @@
 import "server-only";
+import "@/lib/env"; // validate env before any DB use; throws on misconfig
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 

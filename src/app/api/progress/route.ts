@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getOrCreateUserId } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { rateLimit, clientKey, tooManyRequests } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   const userId = await getOrCreateUserId();
@@ -25,6 +27,12 @@ const PatchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
+  const rl = rateLimit(`progress:${clientKey(req)}`, 60, 60_000);
+  if (!rl.ok) {
+    logger.warn("rate_limited", { route: "/api/progress", retryAfterMs: rl.retryAfterMs });
+    return tooManyRequests(rl.retryAfterMs);
+  }
+
   const userId = await getOrCreateUserId();
   const body = await req.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);

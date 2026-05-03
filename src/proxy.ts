@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const COOKIE = "mlmap_uid";
 const ONE_YEAR = 60 * 60 * 24 * 365;
+const isProd = process.env.NODE_ENV === "production";
 
 function newId() {
   // Stable client id; not cryptographic. Generate at the edge.
@@ -16,7 +17,10 @@ export function proxy(req: NextRequest) {
       maxAge: ONE_YEAR,
       path: "/",
       sameSite: "lax",
-      httpOnly: false, // allow client read for SWR keying
+      // Client SWR keys off this cookie, so it can't be httpOnly.
+      httpOnly: false,
+      // HTTPS-only in prod; allow http on localhost so dev still works.
+      secure: isProd,
     });
   }
   return res;

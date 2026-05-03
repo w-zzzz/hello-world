@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { nextReview } from "@/lib/sr";
 import { XP } from "@/lib/mastery";
+import { rateLimit, clientKey, tooManyRequests } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const COOKIE = "mlmap_uid";
 
@@ -25,6 +27,12 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(`review:${clientKey(req)}`, 60, 60_000);
+  if (!rl.ok) {
+    logger.warn("rate_limited", { route: "/api/review", retryAfterMs: rl.retryAfterMs });
+    return tooManyRequests(rl.retryAfterMs);
+  }
+
   const userId = req.cookies.get(COOKIE)?.value;
   if (!userId) return NextResponse.json({ error: "no session" }, { status: 401 });
   const body = await req.json().catch(() => null);

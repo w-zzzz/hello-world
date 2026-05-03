@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { XP, applyStreak, levelOf, updateMastery } from "@/lib/mastery";
 import { nextReview } from "@/lib/sr";
+import { rateLimit, clientKey, tooManyRequests } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const COOKIE = "mlmap_uid";
 
@@ -15,6 +17,12 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(`quiz:${clientKey(req)}`, 60, 60_000);
+  if (!rl.ok) {
+    logger.warn("rate_limited", { route: "/api/quiz", retryAfterMs: rl.retryAfterMs });
+    return tooManyRequests(rl.retryAfterMs);
+  }
+
   const userId = req.cookies.get(COOKIE)?.value;
   if (!userId) return NextResponse.json({ error: "no session" }, { status: 401 });
   await prisma.user.upsert({ where: { id: userId }, create: { id: userId }, update: {} });
