@@ -1,0 +1,215 @@
+---
+slug: "11-niche-pivotal/02-test-time-training"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 2
+title: "Test-time training & adaptation"
+hook: "Learn at inference under distribution shift."
+estMinutes: 12
+difficulty: 4
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["levine"]
+papers:
+  - title: "Test-Time Training with Self-Supervision for Generalization under Distribution Shifts"
+    authors: "Sun, Wang, Liu, Miller, Efros, Hardt"
+    year: 2019
+    url: "https://arxiv.org/abs/1909.13231"
+  - title: "Tent: Fully Test-Time Adaptation by Entropy Minimization"
+    authors: "Wang, Shelhamer, Liu, Olshausen, Darrell"
+    year: 2020
+    url: "https://arxiv.org/abs/2006.10726"
+  - title: "Learning to (Learn at Test Time): RNNs with Expressive Hidden States"
+    authors: "Sun et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2407.04620"
+hfResources:
+  - kind: "library"
+    title: "robustbench"
+    url: "https://github.com/RobustBench/robustbench"
+freeResources:
+  - kind: "blog"
+    title: "Test-time training and adaptation: a survey"
+    source: "ar5iv"
+    url: "https://arxiv.org/abs/2303.15361"
+quiz:
+  - id: "ttt-q1"
+    question: "What is the basic idea of test-time training (Sun et al. 2019)?"
+    choices:
+      - "Re-train the whole model on each test example."
+      - "At inference, run a few SGD steps on a self-supervised auxiliary loss (e.g. rotation prediction) computed on the *test input itself*, then make the prediction."
+      - "Use ensembling."
+      - "Increase batch size."
+    answer: 1
+    explanation: "TTT trains the encoder jointly with a main task and a self-supervised side task. At test time, only the side task's loss can be computed (no labels), but a few gradient steps on it adapt the encoder to the test distribution before predicting."
+  - id: "ttt-q2"
+    question: "Tent (test-time entropy minimization) adapts only:"
+    choices:
+      - "The full model."
+      - "The affine parameters of batch-normalization layers, by minimizing the entropy of the model's output predictions on test batches."
+      - "The classifier head only."
+      - "Nothing — it is a regularizer."
+    answer: 1
+    explanation: "Tent freezes most of the network and updates BN's per-channel scale and shift to lower the test-batch prediction entropy. Cheap, often surprisingly effective, and a solid baseline for benchmark distribution shift."
+  - id: "ttt-q3"
+    question: "Why might TTT-like methods recover quality under covariate shift?"
+    choices:
+      - "Gradient steps are magic."
+      - "If the auxiliary self-supervised loss is correlated with the main task's loss across distributions, lowering it on test data biases the model toward features that also help the main task on that data."
+      - "They reduce variance."
+      - "They average predictions."
+    answer: 1
+    explanation: "The empirical correlation between auxiliary and main losses is the lever. Where it holds, TTT helps; where the auxiliary task is uncorrelated with the main task on shifted data, TTT can hurt — known and reproducible."
+  - id: "ttt-q4"
+    question: "How does the 'TTT layer' (Sun et al. 2024) generalize this to sequence models?"
+    choices:
+      - "It runs Tent inside attention."
+      - "It treats the hidden state of an RNN-style layer as a small model whose parameters are updated by SGD on a self-supervised objective with each new token, giving an expressive content-aware memory."
+      - "It re-pretrains the model."
+      - "It removes recurrence."
+    answer: 1
+    explanation: "The TTT layer parameterizes the hidden state as a small neural network and updates its parameters via gradient descent on every input. The view 'inference = optimization' fuses learning and recall in a single forward pass."
+---
+
+Most of the deep-learning curriculum assumes a training/test split: you
+train on data, freeze the parameters, and run inference. Test-time
+training (TTT) breaks that assumption. The model continues to learn at
+inference time — not from labels (it doesn't have them) but from a
+self-supervised signal it can compute on the test input itself.
+
+This is a small idea with a long reach. It treats inference as
+*optimization*, which connects to in-context learning, to RNN-style
+sequence models, and to the broader question: how should a model handle
+inputs unlike anything it saw at training?
+
+## Why this matters
+
+Production systems face distribution shift constantly. The image is
+from a new camera, the text is in a new register, the traffic pattern
+shifted. Re-training is expensive and slow. TTT-style adaptation is
+cheap, online, and surprisingly effective on real benchmarks.
+
+It is also a useful conceptual lens. The recent TTT-as-a-layer work
+shows that the boundary between "learning" and "inference" is more
+porous than it seems.
+
+## The basic recipe
+
+You train your model jointly on:
+
+- The **main task** $\mathcal{L}_\text{main}(f_\theta(x), y)$.
+- A **self-supervised auxiliary task** $\mathcal{L}_\text{aux}(g_\phi(x))$
+  that does not use labels — rotation prediction, masked reconstruction,
+  contrastive matching.
+
+At test time, only the auxiliary task is computable on the unlabeled
+input $x_\text{test}$. So:
+
+```python
+def ttt_predict(model, x_test, num_steps=10, lr=1e-3):
+    state = clone(model.state_dict())   # save weights
+    opt = torch.optim.SGD(model.parameters(), lr=lr)
+    for _ in range(num_steps):
+        loss = aux_loss(model, x_test)
+        opt.zero_grad(); loss.backward(); opt.step()
+    pred = model.predict(x_test)
+    model.load_state_dict(state)        # restore for next sample
+    return pred
+```
+
+The encoder is briefly adapted to make the test input look more
+familiar before the prediction is made.
+
+<Callout variant="insight" title="The hidden assumption">
+TTT is doing a kind of bet: lowering the auxiliary loss on the test
+input correlates with lowering the main loss. When the auxiliary task
+is genuinely related to what the main task uses (e.g. rotation
+prediction shares low-level features with classification), this works.
+When it is not, TTT can degrade performance. Diagnose, do not assume.
+</Callout>
+
+## Cheaper variants
+
+### Tent: entropy minimization
+
+Wang et al. (2020) showed that you can skip the auxiliary task and just
+minimize the *entropy* of the model's predictions on a test batch.
+Confident predictions are presumed correct; the model adapts toward
+making more of them. To keep computation bounded, only the BN affine
+parameters are updated.
+
+$$
+\mathcal{L}_\text{Tent}(x) = -\sum_c p_c(x) \log p_c(x)
+$$
+
+This works embarrassingly well on standard distribution-shift
+benchmarks (ImageNet-C, CIFAR-C). The cost is one extra forward and
+backward at inference per batch.
+
+### Norm statistics adjustment
+
+Even simpler: at inference, recompute BN statistics on the test batch
+instead of using the training-time running average. Often the bulk of
+the win comes from this alone.
+
+## TTT-as-a-layer: the recent twist
+
+Sun et al. (2024) generalize TTT into a *sequence-modeling* primitive.
+Instead of a fixed RNN hidden state, the hidden state is itself a small
+network whose parameters are updated via SGD on a self-supervised loss
+with each new token:
+
+$$
+W_t = W_{t-1} - \eta \nabla_W \mathcal{L}(W_{t-1}, x_t), \qquad y_t = f_{W_t}(x_t)
+$$
+
+The "memory" is the parameters of an inner model, the "recall" is
+running that inner model on the current input, and "writing" is a
+gradient step. The hidden state is *expressive* because it is a
+function, not a vector.
+
+This view connects TTT to in-context learning theory, to fast-weights
+networks (Schmidhuber, 1992), and to Mamba-style selective state.
+Inference and learning, once fully separated, are now starting to
+collapse into the same operation.
+
+<PaperCard
+  title="Test-Time Training with Self-Supervision for Generalization under Distribution Shifts"
+  authors="Sun, Wang, Liu, Miller, Efros, Hardt"
+  year={2019}
+  url="https://arxiv.org/abs/1909.13231"
+/>
+
+## What can go wrong
+
+Several real failure modes:
+
+- **Wrong direction**: if the auxiliary loss anti-correlates with the
+  main loss on shifted inputs, TTT actively harms.
+- **Forgetting**: continual TTT on a stream can drift the parameters
+  away from useful regions. State must be reset or constrained.
+- **Compute**: ten gradient steps per test input is ten times the
+  inference cost. Acceptable for batched offline inference, harder for
+  real-time loops.
+- **Privacy and trust**: a model that updates at inference is harder to
+  audit, version, or reproduce.
+
+<Callout variant="warning" title="When TTT is the wrong tool">
+For shift you can characterize and have data for, fine-tune. For shift
+you can detect and route, mixture-of-experts is cleaner. TTT shines
+when shift is unpredictable, online, and the auxiliary signal is
+strong. Pick the right hammer.
+</Callout>
+
+## What to read next
+
+- Sun et al. 2019 — the canonical paper.
+- Tent (Wang et al. 2020) — the strongest minimalist baseline.
+- The 2024 TTT-layer paper for the sequence-modeling generalization.
+- The continual-learning literature, which shares many of TTT's
+  failure modes (and some of its remedies: replay, EWC, parameter
+  isolation).
+
+If "the model should keep learning" sounds heretical, TTT is the
+gentlest, best-justified version of the heresy. Worth knowing about.
