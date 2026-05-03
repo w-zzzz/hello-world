@@ -35,6 +35,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Dummy DATABASE_URL so the Zod env validation in src/lib/env.ts passes during
+# `next build` page-data collection. The real value is injected at runtime by
+# Railway service variables.
+ENV DATABASE_URL="file:./placeholder.db"
+
 # `pnpm build` runs `next build`. If `next.config.ts` enables `output: "standalone"`
 # the runner stage can switch to copying `.next/standalone` for a smaller image.
 RUN pnpm build
