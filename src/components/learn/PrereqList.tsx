@@ -17,7 +17,7 @@ export function PrereqList({ prereqs }: { prereqs: string[] }) {
             <li key={slug}>
               <Link
                 href={`/learn/${slug}`}
-                className="inline-flex items-center gap-2 rounded-full border border-soft bg-[var(--color-bg)] px-3 py-1.5 text-sm hover:border-[var(--color-accent)]/40 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-soft bg-[var(--color-bg)] px-3 py-1.5 text-sm hover:border-[var(--color-accent)]/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
               >
                 <span
                   className="h-2 w-2 rounded-full"

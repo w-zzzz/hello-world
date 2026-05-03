@@ -71,7 +71,10 @@ export function QuizBlock({
   }
 
   return (
-    <section className="mt-16 rounded-3xl border border-soft surface p-6 sm:p-8">
+    <section
+      aria-label="Topic quiz"
+      className="mt-16 rounded-3xl border border-soft surface p-6 sm:p-8"
+    >
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted-fg)] font-medium">
           Check your understanding
@@ -95,9 +98,11 @@ export function QuizBlock({
                 type="button"
                 onClick={() => submit(i)}
                 disabled={revealed}
+                aria-label={`Choice ${String.fromCharCode(65 + i)}: ${c.replace(/\$([^$]+)\$/g, "$1")}`}
                 className={cn(
                   "group w-full text-left rounded-2xl border border-soft bg-[var(--color-bg)] px-5 py-3.5",
                   "transition-all duration-200 disabled:cursor-default",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2",
                   !revealed && "hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-muted)]/40",
                   showCorrect && "!border-emerald-500/60 !bg-emerald-500/10",
                   showWrong && "!border-rose-500/60 !bg-rose-500/10"
@@ -138,7 +143,7 @@ export function QuizBlock({
               <button
                 type="button"
                 onClick={nextQuestion}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] px-5 py-2 text-sm font-medium hover:scale-[1.02] transition-transform"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] px-5 py-2 text-sm font-medium hover:scale-[1.02] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
               >
                 {idx + 1 < questions.length ? "Next question" : "Finish"}
                 <ChevronRight className="h-4 w-4" />

@@ -47,7 +47,7 @@ export function DueQueue() {
               <li key={it.id}>
                 <Link
                   href={`/learn/${it.topicSlug}`}
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-soft bg-[var(--color-bg)] px-4 py-2.5 hover:border-[var(--color-accent)]/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-soft bg-[var(--color-bg)] px-4 py-2.5 hover:border-[var(--color-accent)]/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
                 >
                   <span className="min-w-0">
                     <span className="block text-sm font-medium truncate">

@@ -10,6 +10,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      // `server-only` is a Next.js bundler hint; in unit tests we stub it out
+      // so that server modules (e.g. `src/lib/mdx.ts`) can be exercised
+      // directly for schema-validation tests.
+      "server-only": path.resolve(__dirname, "tests/_stubs/server-only.ts"),
     },
   },
 });

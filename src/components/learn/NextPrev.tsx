@@ -8,7 +8,7 @@ export function NextPrev({ prev, next }: { prev: TopicMeta | null; next: TopicMe
       {prev ? (
         <Link
           href={`/learn/${prev.slug}`}
-          className="group rounded-2xl border border-soft surface p-5 hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-muted)]/40 transition-colors"
+          className="group rounded-2xl border border-soft surface p-5 hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-muted)]/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
         >
           <div className="flex items-center gap-1 text-xs uppercase tracking-[0.18em] text-[var(--color-muted-fg)]">
             <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-0.5" />

@@ -21,7 +21,8 @@ export function PartProgress({ progress }: { progress: ProgressRow[] }) {
             <li key={p.slug}>
               <Link
                 href={`/map?focus=${p.slug}`}
-                className="group block rounded-2xl border border-soft bg-[var(--color-bg)] p-4 hover:border-[var(--color-accent)]/40 transition-colors"
+                aria-label={`${p.title}: ${completed} of ${topics.length} done, ${(avgMastery * 100).toFixed(0)} percent mastery`}
+                className="group block rounded-2xl border border-soft bg-[var(--color-bg)] p-4 hover:border-[var(--color-accent)]/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">

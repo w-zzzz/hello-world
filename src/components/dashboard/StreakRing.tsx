@@ -13,7 +13,12 @@ export function StreakRing({ count, goal = 30 }: { count: number; goal?: number 
       </div>
       <div className="mt-3 grid place-items-center">
         <div className="relative h-[160px] w-[160px]">
-          <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
+          <svg
+            role="img"
+            aria-label={`Streak: ${count} of ${goal} days, ${Math.round(pct * 100)} percent`}
+            viewBox="0 0 140 140"
+            className="h-full w-full -rotate-90"
+          >
             <circle cx="70" cy="70" r="60" fill="none" stroke="var(--color-muted)" strokeWidth="10" />
             <motion.circle
               cx="70"
