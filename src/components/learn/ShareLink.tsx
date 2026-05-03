@@ -41,7 +41,7 @@ export function ShareLink({ slug, title }: { slug: string; title: string }) {
       <button
         type="button"
         onClick={onCopy}
-        aria-label="Copy link to this topic"
+        aria-label={copied ? "Copied — link copied to clipboard" : "Share — copy link to this topic"}
         title="Copy link"
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full border border-soft px-2.5 py-1 text-xs text-[var(--color-muted-fg)]",

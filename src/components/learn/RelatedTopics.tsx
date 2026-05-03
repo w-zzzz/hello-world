@@ -88,8 +88,11 @@ export function RelatedTopics({ slug }: { slug: string }) {
                     {km.label}
                   </span>
                   <span
-                    className="grid h-5 w-5 place-items-center rounded text-[9px] font-semibold text-white tabular-nums"
-                    style={{ backgroundColor: `var(${part.hueVar})` }}
+                    className="grid h-5 w-5 place-items-center rounded text-[9px] font-semibold tabular-nums"
+                    style={{
+                      backgroundColor: `var(${part.hueVar})`,
+                      color: `var(${part.hueVar}-fg)`,
+                    }}
                     aria-hidden
                   >
                     {String(part.index).padStart(2, "0")}

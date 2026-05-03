@@ -334,13 +334,13 @@ export function NNPlayground() {
             </div>
           </Field>
           <Field label={`Hidden layers · ${hidden}`}>
-            <input type="range" min={1} max={4} step={1} value={hidden} onChange={(e) => setHidden(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
+            <input aria-label="Hidden layers" type="range" min={1} max={4} step={1} value={hidden} onChange={(e) => setHidden(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
           </Field>
           <Field label={`Neurons / layer · ${neurons}`}>
-            <input type="range" min={2} max={16} step={1} value={neurons} onChange={(e) => setNeurons(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
+            <input aria-label="Neurons per layer" type="range" min={2} max={16} step={1} value={neurons} onChange={(e) => setNeurons(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
           </Field>
           <Field label={`Learning rate · ${lr.toFixed(2)}`}>
-            <input type="range" min={0.01} max={1} step={0.01} value={lr} onChange={(e) => setLr(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
+            <input aria-label="Learning rate" type="range" min={0.01} max={1} step={0.01} value={lr} onChange={(e) => setLr(+e.target.value)} className="w-full accent-[var(--color-accent)]" />
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => setPlaying((p) => !p)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-fg)] text-[var(--color-bg)] px-3 py-2 text-xs font-medium">

@@ -27,8 +27,11 @@ export function PartProgress({ progress }: { progress: ProgressRow[] }) {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
-                      className="grid h-7 w-7 place-items-center rounded-lg text-[10px] font-semibold tabular-nums text-white shrink-0"
-                      style={{ backgroundColor: `var(${p.hueVar})` }}
+                      className="grid h-7 w-7 place-items-center rounded-lg text-[10px] font-semibold tabular-nums shrink-0"
+                      style={{
+                        backgroundColor: `var(${p.hueVar})`,
+                        color: `var(${p.hueVar}-fg)`,
+                      }}
                     >
                       {String(p.index).padStart(2, "0")}
                     </span>

@@ -218,6 +218,7 @@ export function GradientDescent() {
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-5">
           <Field label="Loss surface">
             <select
+              aria-label="Loss surface"
               value={landscapeKey}
               onChange={(e) => setLandscapeKey(e.target.value)}
               className="w-full rounded-lg border border-soft bg-[var(--color-bg)] px-3 py-1.5 text-sm"
@@ -247,6 +248,7 @@ export function GradientDescent() {
           </Field>
           <Field label={`Learning rate · ${lr.toFixed(4)}`}>
             <input
+              aria-label="Learning rate"
               type="range"
               min={-4}
               max={0}

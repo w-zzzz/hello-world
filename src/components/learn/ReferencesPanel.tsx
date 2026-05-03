@@ -66,14 +66,14 @@ export function ReferencesPanel({
 
       {hf.length > 0 && (
         <Section title="Hugging Face">
-          <ul className="space-y-1.5">
+          <ul className="space-y-1">
             {hf.map((r) => (
               <li key={r.url}>
                 <a
                   href={r.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs flex items-center justify-between gap-2 text-[var(--color-muted-fg)] hover:text-[var(--color-accent)]"
+                  className="min-h-8 -mx-1 px-1 py-1.5 rounded-md text-xs flex items-center justify-between gap-2 text-[var(--color-muted-fg)] hover:text-[var(--color-accent)] hover:bg-[var(--color-muted)]/60 transition-colors"
                 >
                   <span className="truncate">{r.title}</span>
                   <ArrowUpRight className="h-3 w-3 shrink-0" />
@@ -86,14 +86,14 @@ export function ReferencesPanel({
 
       {free.length > 0 && (
         <Section title="Read & watch">
-          <ul className="space-y-1.5">
+          <ul className="space-y-1">
             {free.map((r) => (
               <li key={r.url}>
                 <a
                   href={r.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs flex items-center justify-between gap-2 text-[var(--color-muted-fg)] hover:text-[var(--color-accent)]"
+                  className="min-h-8 -mx-1 px-1 py-1.5 rounded-md text-xs flex items-center justify-between gap-2 text-[var(--color-muted-fg)] hover:text-[var(--color-accent)] hover:bg-[var(--color-muted)]/60 transition-colors"
                 >
                   <span className="truncate">
                     {r.title}

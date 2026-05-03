@@ -224,8 +224,11 @@ export function CurriculumGraph({ focus }: { focus?: string }) {
               return (
                 <div className="flex items-center gap-3">
                   <span
-                    className="grid h-7 w-7 place-items-center rounded-md text-[10px] font-semibold tabular-nums text-white shrink-0"
-                    style={{ backgroundColor: `var(${p.hueVar})` }}
+                    className="grid h-7 w-7 place-items-center rounded-md text-[10px] font-semibold tabular-nums shrink-0"
+                    style={{
+                      backgroundColor: `var(${p.hueVar})`,
+                      color: `var(${p.hueVar}-fg)`,
+                    }}
                   >
                     {String(p.index).padStart(2, "0")}.{String(t.topicIndex).padStart(2, "0")}
                   </span>

@@ -241,6 +241,7 @@ export function DiffusionDenoise() {
           </label>
           <Field label={`Timestep · ${t}/${T}`}>
             <input
+              aria-label="Timestep"
               type="range"
               min={0}
               max={T}

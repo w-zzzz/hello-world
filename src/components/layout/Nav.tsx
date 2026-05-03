@@ -117,7 +117,7 @@ export function Nav() {
           <button
             type="button"
             onClick={() => openCommandPalette()}
-            aria-label="Open command palette"
+            aria-label="Search — open command palette"
             title="Search · ⌘K"
             className={cn(
               "hidden sm:inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full border border-soft",

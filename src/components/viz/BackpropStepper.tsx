@@ -260,10 +260,10 @@ export function BackpropStepper() {
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
           </div>
-          <Slider label={`x₁ = ${x1.toFixed(2)}`} min={-2} max={2} value={x1} onChange={setX1} />
-          <Slider label={`x₂ = ${x2.toFixed(2)}`} min={-2} max={2} value={x2} onChange={setX2} />
-          <Slider label={`w₁ = ${w1.toFixed(2)}`} min={-2} max={2} value={w1} onChange={setW1} />
-          <Slider label={`w₂ = ${w2.toFixed(2)}`} min={-2} max={2} value={w2} onChange={setW2} />
+          <Slider label={`x₁ = ${x1.toFixed(2)}`} ariaLabel="x1 input" min={-2} max={2} value={x1} onChange={setX1} />
+          <Slider label={`x₂ = ${x2.toFixed(2)}`} ariaLabel="x2 input" min={-2} max={2} value={x2} onChange={setX2} />
+          <Slider label={`w₁ = ${w1.toFixed(2)}`} ariaLabel="w1 weight" min={-2} max={2} value={w1} onChange={setW1} />
+          <Slider label={`w₂ = ${w2.toFixed(2)}`} ariaLabel="w2 weight" min={-2} max={2} value={w2} onChange={setW2} />
           {phase === "backward" && activeId && (
             <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-[10px] font-mono leading-relaxed text-[var(--color-fg)]">
               {chainExpr(activeId)}
@@ -288,12 +288,16 @@ export function BackpropStepper() {
 
 function Slider({
   label,
+  ariaLabel,
   value,
   min,
   max,
   onChange,
 }: {
   label: string;
+  /** Plain-text fallback used as aria-label since `label` may include math
+   *  symbols/values that don't read well with assistive tech. */
+  ariaLabel?: string;
   value: number;
   min: number;
   max: number;
@@ -305,6 +309,7 @@ function Slider({
         {label}
       </div>
       <input
+        aria-label={ariaLabel ?? label}
         type="range"
         min={min}
         max={max}

@@ -31,8 +31,11 @@ export function TopicHeader({
       </div>
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         <span
-          className="grid h-7 px-2.5 place-items-center rounded-md text-xs font-semibold tabular-nums text-white"
-          style={{ backgroundColor: `var(${part.hueVar})` }}
+          className="grid h-7 px-2.5 place-items-center rounded-md text-xs font-semibold tabular-nums"
+          style={{
+            backgroundColor: `var(${part.hueVar})`,
+            color: `var(${part.hueVar}-fg)`,
+          }}
         >
           {String(part.index).padStart(2, "0")}.{String(topic.topicIndex).padStart(2, "0")}
         </span>

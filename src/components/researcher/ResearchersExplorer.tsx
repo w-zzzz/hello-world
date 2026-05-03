@@ -38,6 +38,8 @@ export function ResearchersExplorer({ researchers }: { researchers: Researcher[]
         <div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-muted-fg)]" />
           <input
+            aria-label="Search researchers"
+            name="researchers-search"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

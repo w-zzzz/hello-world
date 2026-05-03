@@ -210,6 +210,7 @@ export function RLGridworld() {
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-4">
           <Field label={`ε (explore) · ${epsilon.toFixed(2)}`}>
             <input
+              aria-label="Epsilon (exploration rate)"
               type="range"
               min={0}
               max={1}
@@ -221,6 +222,7 @@ export function RLGridworld() {
           </Field>
           <Field label={`α (learning rate) · ${alpha.toFixed(2)}`}>
             <input
+              aria-label="Alpha (learning rate)"
               type="range"
               min={0.01}
               max={1}
@@ -232,6 +234,7 @@ export function RLGridworld() {
           </Field>
           <Field label={`γ (discount) · ${gamma.toFixed(2)}`}>
             <input
+              aria-label="Gamma (discount factor)"
               type="range"
               min={0.5}
               max={0.999}
@@ -243,6 +246,7 @@ export function RLGridworld() {
           </Field>
           <Field label={`Speed · ${speed}ms`}>
             <input
+              aria-label="Speed"
               type="range"
               min={5}
               max={200}

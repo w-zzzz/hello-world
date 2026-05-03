@@ -153,15 +153,18 @@ export default function Home() {
 
           <ul className="mt-16 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {parts.map((p, i) => (
-              <ScrollReveal key={p.slug} delay={i * 0.025}>
+              <ScrollReveal key={p.slug} as="li" delay={i * 0.025}>
                 <Link
                   href={`/map?focus=${p.slug}`}
                   className="group block rounded-2xl border border-soft bg-[var(--color-bg)] p-6 hover:border-[var(--color-accent)]/40 hover:shadow-lg hover:shadow-black/5 transition-all duration-300"
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className="grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold tabular-nums text-white"
-                      style={{ backgroundColor: `var(--color-part-${p.i})` }}
+                      className="grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold tabular-nums"
+                      style={{
+                        backgroundColor: `var(--color-part-${p.i})`,
+                        color: `var(--color-part-${p.i}-fg)`,
+                      }}
                     >
                       {String(p.i).padStart(2, "0")}
                     </span>
@@ -361,8 +364,11 @@ export default function Home() {
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className="grid h-11 w-11 place-items-center rounded-2xl text-white"
-                      style={{ backgroundColor: `var(${c.tint})` }}
+                      className="grid h-11 w-11 place-items-center rounded-2xl"
+                      style={{
+                        backgroundColor: `var(${c.tint})`,
+                        color: `var(${c.tint}-fg)`,
+                      }}
                     >
                       <c.Icon className="h-5 w-5" />
                     </span>

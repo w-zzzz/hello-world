@@ -80,6 +80,8 @@ export function TokenizerViz() {
           </div>
         </div>
         <textarea
+          aria-label="Text to tokenize"
+          name="tokenizer-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}

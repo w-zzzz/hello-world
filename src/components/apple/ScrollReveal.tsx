@@ -11,7 +11,9 @@ type Props = {
   y?: number;
   blur?: boolean;
   once?: boolean;
-  as?: keyof React.JSX.IntrinsicElements;
+  /** Underlying tag — set to "li" when this component is a direct child of a
+   *  <ul>/<ol> so list semantics aren't broken by an interposed <div>. */
+  as?: "div" | "li" | "section" | "article";
 };
 
 export function ScrollReveal({
@@ -21,6 +23,7 @@ export function ScrollReveal({
   y = 32,
   blur = false,
   once = true,
+  as = "div",
 }: Props) {
   const reduce = useReducedMotion();
   const variants: Variants = {
@@ -39,8 +42,12 @@ export function ScrollReveal({
     },
   };
 
+  // motion[T] is overloaded for the standard intrinsic tags we expose here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MotionTag = (motion as any)[as] as typeof motion.div;
+
   return (
-    <motion.div
+    <MotionTag
       className={cn(className)}
       initial="hidden"
       whileInView="show"
@@ -48,6 +55,6 @@ export function ScrollReveal({
       variants={variants}
     >
       {children}
-    </motion.div>
+    </MotionTag>
   );
 }

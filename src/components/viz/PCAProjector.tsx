@@ -142,6 +142,7 @@ export function PCAProjector() {
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-4">
           <Field label={`Correlation ρ · ${rho.toFixed(2)}`}>
             <input
+              aria-label="Correlation rho"
               type="range"
               min={-0.95}
               max={0.95}
@@ -153,6 +154,7 @@ export function PCAProjector() {
           </Field>
           <Field label={`Projection angle θ · ${(theta * 180 / Math.PI).toFixed(0)}°`}>
             <input
+              aria-label="Projection angle theta"
               type="range"
               min={0}
               max={Math.PI}
@@ -170,6 +172,7 @@ export function PCAProjector() {
           </Field>
           <Field label={`Sample size · ${n}`}>
             <input
+              aria-label="Sample size"
               type="range"
               min={20}
               max={500}

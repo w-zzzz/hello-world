@@ -30,7 +30,7 @@ export function FavoriteButton({ slug, className, compact = false }: Props) {
       type="button"
       onClick={onClick}
       aria-pressed={fav}
-      aria-label={fav ? "Remove from favorites" : "Add to favorites"}
+      aria-label={fav ? "Saved — remove from favorites" : "Save — add to favorites"}
       title={fav ? "Saved" : "Save for later"}
       className={cn(
         "group inline-flex items-center gap-1.5 rounded-full border border-soft text-xs font-medium transition-colors",

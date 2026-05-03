@@ -236,6 +236,8 @@ export function CommandPalette() {
                   <div className="flex items-center gap-2 px-4 border-b border-soft">
                     <Search className="h-4 w-4 text-[var(--color-muted-fg)] shrink-0" />
                     <input
+                      aria-label="Search topics, researchers, and visualizations"
+                      name="command-palette-search"
                       autoFocus
                       value={q}
                       onChange={(e) => setQ(e.target.value)}

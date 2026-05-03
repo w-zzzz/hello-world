@@ -257,6 +257,7 @@ export function TransformerWalkthrough3D() {
               Sequence length · {seqLen}
             </div>
             <input
+              aria-label="Sequence length"
               type="range"
               min={4}
               max={2048}

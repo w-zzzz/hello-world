@@ -67,8 +67,11 @@ function MapInner() {
                 <div key={p.slug} className="rounded-2xl border border-soft surface p-5">
                   <div className="flex items-center gap-3">
                     <span
-                      className="grid h-8 w-8 place-items-center rounded-lg text-xs font-semibold tabular-nums text-white"
-                      style={{ backgroundColor: `var(${p.hueVar})` }}
+                      className="grid h-8 w-8 place-items-center rounded-lg text-xs font-semibold tabular-nums"
+                      style={{
+                        backgroundColor: `var(${p.hueVar})`,
+                        color: `var(${p.hueVar}-fg)`,
+                      }}
                     >
                       {String(p.index).padStart(2, "0")}
                     </span>

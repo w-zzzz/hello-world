@@ -281,6 +281,8 @@ export function EmbeddingExplorer3D() {
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-muted-fg)]" />
               <input
+                aria-label="Search words"
+                name="embedding-search"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

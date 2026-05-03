@@ -37,22 +37,23 @@ export const mdxComponents = {
     <p className="mt-5 text-[17px] leading-[1.75] text-[var(--color-fg)] text-pretty" {...props} />
   ),
   a: ({ href = "", children, ...rest }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    // Body-prose anchors meet WCAG AA on both light and dark themes by:
+    //   1. using --color-link-fg (a brighter accent than --color-accent) so
+    //      contrast against neighbouring --color-fg is ≥4.5:1, and
+    //   2. always-on underline so identification doesn't depend on color
+    //      alone (WCAG 1.4.1).
+    const linkClass =
+      "text-[var(--color-link-fg)] underline underline-offset-4 decoration-[var(--color-link-fg)]/50 hover:decoration-[var(--color-link-fg)]";
     const external = /^https?:\/\//.test(href);
     if (external) {
       return (
-        <a
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[var(--color-accent)] underline-offset-4 hover:underline"
-          {...rest}
-        >
+        <a href={href} target="_blank" rel="noreferrer" className={linkClass} {...rest}>
           {children}
         </a>
       );
     }
     return (
-      <Link href={href} className="text-[var(--color-accent)] underline-offset-4 hover:underline">
+      <Link href={href} className={linkClass}>
         {children}
       </Link>
     );

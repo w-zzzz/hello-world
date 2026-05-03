@@ -133,6 +133,7 @@ export function AttentionHeatmap() {
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-5">
           <Field label="Sentence">
             <select
+              aria-label="Sentence"
               value={sentenceId}
               onChange={(e) => setSentenceId(e.target.value)}
               className="w-full rounded-lg border border-soft bg-[var(--color-bg)] px-3 py-1.5 text-sm"
@@ -144,6 +145,7 @@ export function AttentionHeatmap() {
           </Field>
           <Field label={`Layer ${layer + 1} of ${ATTENTION_LAYERS}`}>
             <input
+              aria-label="Layer"
               type="range"
               min={0}
               max={ATTENTION_LAYERS - 1}
@@ -154,6 +156,7 @@ export function AttentionHeatmap() {
           </Field>
           <Field label={`Head ${head + 1} of ${ATTENTION_HEADS}`}>
             <input
+              aria-label="Head"
               type="range"
               min={0}
               max={ATTENTION_HEADS - 1}

@@ -173,6 +173,7 @@ export function KernelTrickViz() {
         <div className="border-t lg:border-t-0 lg:border-l border-soft p-5 space-y-4">
           <Field label={`Lift α · ${alpha.toFixed(2)}`}>
             <input
+              aria-label="Lift alpha"
               type="range"
               min={0}
               max={1}
@@ -184,6 +185,7 @@ export function KernelTrickViz() {
           </Field>
           <Field label={`Plane height z · ${planeZ.toFixed(2)}`}>
             <input
+              aria-label="Plane height z"
               type="range"
               min={0}
               max={3}
