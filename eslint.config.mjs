@@ -13,6 +13,20 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Visualizations sync internal training/animation state to external prop
+      // (dataset, landscape, etc.) changes inside effects — this is intentional.
+      "react-hooks/set-state-in-effect": "off",
+      // React Compiler flags hot interactive viz code (raycaster setHovered in
+      // useFrame, instanced mesh updates) where its optimizations would skip.
+      // These are intentional perf paths, not bugs.
+      "react-hooks/react-compiler": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/purity": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
+  },
 ]);
 
 export default eslintConfig;

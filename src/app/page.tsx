@@ -192,7 +192,7 @@ export default function Home() {
       <section className="py-24 border-y border-soft">
         <ScrollReveal className="text-center mx-auto max-w-3xl px-6">
           <div className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted-fg)] font-medium">
-            With the field's voices
+            With the field&apos;s voices
           </div>
           <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight">
             Pioneers, leaders, and rising stars.

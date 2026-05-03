@@ -14,13 +14,13 @@ export default function ResearchersPage() {
       <div className="mx-auto max-w-7xl px-6">
         <ScrollReveal>
           <div className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted-fg)] font-medium">
-            With the field's voices
+            With the field&apos;s voices
           </div>
           <h1 className="mt-3 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.05] text-balance">
             {RESEARCHERS.length} researchers worth following.
           </h1>
           <p className="mt-4 text-lg text-[var(--color-muted-fg)] max-w-2xl text-pretty">
-            Pioneers, current leaders, and the rising voices behind today's
+            Pioneers, current leaders, and the rising voices behind today&apos;s
             architectures, alignment, interpretability, infrastructure, and
             generative theory.
           </p>

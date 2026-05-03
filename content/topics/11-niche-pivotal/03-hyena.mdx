@@ -1,0 +1,237 @@
+---
+slug: "11-niche-pivotal/03-hyena"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 3
+title: "Hyena & long convolutions"
+hook: "Subquadratic alternatives via implicit conv."
+estMinutes: 14
+difficulty: 4
+prereqs: ["10-cutting-edge/02-mamba-ssm"]
+hasHeroViz: false
+researchers: ["poli", "dao"]
+papers:
+  - title: "Hyena Hierarchy: Towards Larger Convolutional Language Models"
+    authors: "Poli, Massaroli, Nguyen, Fu, Dao, Baccus, Bengio, Ermon, Ré"
+    year: 2023
+    url: "https://arxiv.org/abs/2302.10866"
+  - title: "Hungry Hungry Hippos: Towards Language Modeling with State Space Models"
+    authors: "Fu, Dao, Saab, Thomas, Rudra, Ré"
+    year: 2022
+    url: "https://arxiv.org/abs/2212.14052"
+  - title: "Long Convolutions via Filter-Free Computation: An FFT Perspective"
+    authors: "Various"
+    year: 2023
+    url: "https://arxiv.org/abs/2310.18780"
+hfResources:
+  - kind: "library"
+    title: "safari (Hyena reference repo)"
+    url: "https://github.com/HazyResearch/safari"
+  - kind: "model"
+    title: "togethercomputer/StripedHyena-Nous-7B"
+    url: "https://huggingface.co/togethercomputer/StripedHyena-Nous-7B"
+freeResources:
+  - kind: "blog"
+    title: "Long convolutions for sequence modeling"
+    source: "Hazy Research"
+    url: "https://hazyresearch.stanford.edu/blog/2023-12-11-zoology2-based"
+quiz:
+  - id: "hyena-q1"
+    question: "What is an 'implicit' long convolution as used in Hyena?"
+    choices:
+      - "A convolution with no kernel."
+      - "A convolution whose filter is *parameterized as a function* (e.g. a small MLP that produces filter values from positional inputs) rather than stored as $L$ explicit weights."
+      - "A 1x1 convolution."
+      - "A separable convolution."
+    answer: 1
+    explanation: "Storing an $L$-tap filter explicitly costs $O(L)$ parameters. Hyena learns a function $\\gamma(t; \\phi)$ that *generates* the filter on demand, decoupling expressivity from sequence length and giving smooth, structured filters."
+  - id: "hyena-q2"
+    question: "Hyena evaluates the convolution efficiently using:"
+    choices:
+      - "FFT in $O(L \\log L)$ time."
+      - "Direct loop in $O(L^2)$."
+      - "Random projection."
+      - "Rejection sampling."
+    answer: 0
+    explanation: "Linear convolution becomes pointwise multiplication in the frequency domain. With FFT, a length-$L$ convolution costs $O(L \\log L)$ — strictly subquadratic, the headline win over attention."
+  - id: "hyena-q3"
+    question: "What is the role of input-dependent gating in Hyena?"
+    choices:
+      - "It replaces the convolution."
+      - "It makes the operator content-aware: gates modulate the convolution outputs based on the input, recovering some of attention's data-dependent routing without quadratic cost."
+      - "It only affects training stability."
+      - "It is purely cosmetic."
+    answer: 1
+    explanation: "A pure long convolution is content-blind. Gating multiplies the convolution output by a learned, input-dependent signal — a cheap form of selectivity that closes some of the gap to attention on language tasks."
+  - id: "hyena-q4"
+    question: "Where do long-convolution architectures most clearly shine?"
+    choices:
+      - "Tabular data."
+      - "Very long sequences (DNA, audio, code) where attention's quadratic cost is prohibitive but global mixing is still required."
+      - "Image classification."
+      - "Reinforcement learning."
+    answer: 1
+    explanation: "On 100k–1M token sequences, even FlashAttention struggles. Long convolutions plus FFT scale to these lengths cheaply. Genomics (HyenaDNA, Evo) is the archetypal use case."
+---
+
+Attention is $O(n^2)$. State-space models gave us one $O(n)$ alternative.
+Hyena gave us another, with a different starting point: **just use a
+long convolution, but make the filter implicit and the evaluation
+FFT-based**. The result is a primitive that is sub-quadratic, fully
+parallel, and competitive with attention on a meaningful slice of
+language modeling.
+
+Hyena, H3, and StripedHyena are the architectures most often paired with
+or compared to Mamba in the post-Transformer conversation. Knowing them
+gives you a complete picture of the long-context architecture space.
+
+## Why this matters
+
+For $n = 1M$-token sequences (genomic, audio, code), attention is
+infeasible regardless of FlashAttention tricks. The two leading
+alternatives are selective SSMs (Mamba) and long convolutions (Hyena).
+They differ substantially in what they can express, how easily they
+train, and where they fail. The long-convolution lens is also a
+clarifying way to think about S4 — same underlying machinery, different
+emphasis.
+
+## A long convolution
+
+For input $x \in \mathbb{R}^n$ and filter $h \in \mathbb{R}^n$,
+
+$$
+(h * x)_i = \sum_{j=0}^{i} h_{i-j} \, x_j
+$$
+
+is a length-$n$ causal convolution. The filter $h$ has the same length
+as the input — it is *global*. Naively, this is $O(n^2)$, no better
+than attention.
+
+Two ideas redeem it.
+
+### 1. FFT-based evaluation
+
+Linear convolution is pointwise multiplication in frequency space:
+
+$$
+h * x = \mathcal{F}^{-1}(\mathcal{F}(h) \odot \mathcal{F}(x))
+$$
+
+With FFT, this costs $O(n \log n)$. For $n$ in the millions, this is
+multiple orders of magnitude cheaper than attention.
+
+### 2. Implicit filter parameterization
+
+A length-$n$ filter directly stored is $O(n)$ parameters that grow
+with sequence length — wasteful and unstable. Hyena instead defines
+
+$$
+h_t = \gamma(t; \phi)
+$$
+
+where $\gamma$ is a small MLP (or sinusoidal positional encoder + MLP)
+and $\phi$ is a fixed-size parameter vector. The filter is generated
+on demand for whatever length you need; the parameter count does not
+scale with $n$.
+
+This is the same conceptual move that S4 makes (filter = impulse
+response of an SSM), arrived at from a different direction. The
+filters end up smooth, structured, and surprisingly interpretable.
+
+```python
+import torch
+import torch.nn as nn
+
+class HyenaFilter(nn.Module):
+    def __init__(self, d_model, max_len=8192, hidden=64):
+        super().__init__()
+        self.t_emb = nn.Linear(1, hidden)         # positional embedder
+        self.mlp = nn.Sequential(
+            nn.SiLU(), nn.Linear(hidden, hidden),
+            nn.SiLU(), nn.Linear(hidden, d_model),
+        )
+        self.register_buffer("t", torch.arange(max_len).float()[:, None])
+
+    def forward(self, length):
+        return self.mlp(self.t_emb(self.t[:length]))   # (L, D)
+
+def fft_conv(x, h):
+    L = x.shape[-1]
+    n = 2 * L
+    X = torch.fft.rfft(x, n=n)
+    H = torch.fft.rfft(h.transpose(-1, -2), n=n)
+    return torch.fft.irfft(X * H, n=n)[..., :L]
+```
+
+## Hyena: convolution + gating
+
+A pure long convolution is content-blind: the filter doesn't depend on
+$x$. Hyena recovers selectivity through **gating**. Project $x$ into
+$N$ branches, apply long convolutions $h^{(1)}, \dots, h^{(N)}$, and
+multiplicatively combine:
+
+$$
+y = \sigma(v_N) \odot (h^{(N)} * (\sigma(v_{N-1}) \odot (h^{(N-1)} * \cdots)))
+$$
+
+where $v_i$ are linear projections of the input. The gates are
+data-dependent, so the *effective* operator depends on $x$ even though
+the filters do not. Empirically this closes a substantial fraction of
+the gap to attention.
+
+<PaperCard
+  title="Hyena Hierarchy: Towards Larger Convolutional Language Models"
+  authors="Poli, Massaroli, Nguyen, Fu, Dao, Baccus, Bengio, Ermon, Ré"
+  year={2023}
+  url="https://arxiv.org/abs/2302.10866"
+/>
+
+## How it compares to Mamba
+
+Both are sub-quadratic. Both are linear-time at inference (with cached
+state for SSMs; with caching tricks for Hyena). Differences:
+
+- **Inductive bias**: Mamba's selective recurrence puts gating at the
+  state-update level. Hyena puts it in multiplicative branches. Empirically
+  similar performance on language, with task-dependent winners.
+- **Hardware**: Hyena's FFT path is great for very long sequences but
+  has overhead at moderate lengths. Mamba's parallel scan kernel wins
+  at the lengths most language workloads use.
+- **Theory**: SSMs come with HiPPO-style approximation guarantees;
+  long convolutions don't (yet).
+
+<Callout variant="insight" title="The convolution / SSM duality">
+A linear time-invariant SSM *is* a long convolution — its impulse
+response is the filter. Hyena and S4 are different parameterizations
+of the same function class. Selectivity (input-dependent parameters)
+is what breaks them apart: Mamba does it inside the recurrence; Hyena
+does it via gating. Two designs around the same trade.
+</Callout>
+
+## Where it has shipped
+
+- **HyenaDNA**: a long-context genomics model, 1M-token context, runs
+  at lengths attention cannot reach.
+- **StripedHyena**: a hybrid (some attention layers, some Hyena) that
+  trains efficiently and serves as the backbone of Together's open
+  models.
+- **Evo**: foundation models for DNA/RNA sequences, built on the same
+  family.
+
+The pattern echoes Mamba's: niche dominance on extreme-length tasks,
+hybrids on general language.
+
+## Open questions
+
+- **In-context retrieval**: like Mamba, Hyena underperforms attention
+  on tasks that demand precise location-based recall.
+- **Hardware support**: FFT on GPUs is well-optimized but not as
+  thoroughly tuned as matmul. Mamba-2's matmul-based formulation is one
+  response; whether long-conv methods follow suit is open.
+- **Scaling laws**: the loss-vs-compute curves for these architectures
+  are still being mapped.
+
+If you internalize three operators — attention, selective SSMs, gated
+long convolutions — you have the conceptual map of the post-Transformer
+architecture space. The rest is hybrids, kernels, and engineering.

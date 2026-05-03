@@ -55,7 +55,7 @@ function computeLayout(): { nodes: Node[]; links: Link[] } {
 }
 
 export function CurriculumGraph({ focus }: { focus?: string }) {
-  const layout = React.useMemo(computeLayout, []);
+  const layout = React.useMemo(() => computeLayout(), []);
   const { progress } = useAllProgress();
   const progByTopic = React.useMemo(
     () => new Map(progress.map((p) => [p.topicSlug, p])),

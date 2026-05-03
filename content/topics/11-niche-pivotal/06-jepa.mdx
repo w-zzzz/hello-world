@@ -1,0 +1,239 @@
+---
+slug: "11-niche-pivotal/06-jepa"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 6
+title: "JEPA & non-contrastive SSL"
+hook: "Predict representations, not pixels."
+estMinutes: 14
+difficulty: 4
+prereqs: ["06-multimodal/01-clip"]
+hasHeroViz: false
+researchers: ["lecun", "assran"]
+papers:
+  - title: "Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture"
+    authors: "Assran, Duval, Misra, Bojanowski, Vincent, Rabbat, LeCun, Ballas"
+    year: 2023
+    url: "https://arxiv.org/abs/2301.08243"
+  - title: "Revisiting Feature Prediction for Learning Visual Representations from Video"
+    authors: "Bardes, Garrido, Ponce, Chen, Rabbat, LeCun, Assran, Ballas"
+    year: 2024
+    url: "https://arxiv.org/abs/2404.08471"
+  - title: "A Path Towards Autonomous Machine Intelligence"
+    authors: "LeCun"
+    year: 2022
+    url: "https://openreview.net/pdf?id=BZ5a1r-kVsf"
+  - title: "Bootstrap Your Own Latent (BYOL)"
+    authors: "Grill et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2006.07733"
+hfResources:
+  - kind: "model"
+    title: "facebook/ijepa_vith14_22k"
+    url: "https://huggingface.co/facebook/ijepa_vith14_22k"
+  - kind: "library"
+    title: "jepa repository"
+    url: "https://github.com/facebookresearch/jepa"
+freeResources:
+  - kind: "blog"
+    title: "Yann LeCun on JEPA and world models"
+    source: "Meta AI"
+    url: "https://ai.meta.com/blog/yann-lecun-advances-in-ai-research/"
+  - kind: "video"
+    title: "I-JEPA explained"
+    source: "Meta AI"
+    url: "https://www.youtube.com/watch?v=jSdHmImyUjk"
+quiz:
+  - id: "jepa-q1"
+    question: "What is the central design choice that distinguishes JEPA from generative SSL like masked autoencoders (MAE)?"
+    choices:
+      - "JEPA uses larger models."
+      - "JEPA predicts target *representations* of masked regions in an embedding space, not pixels — sidestepping the cost of modeling unpredictable low-level detail."
+      - "JEPA does not use masking."
+      - "JEPA uses contrastive losses."
+    answer: 1
+    explanation: "Pixel-level prediction wastes capacity on uncertain texture and noise. JEPA's predictor maps from context features to an EMA target encoder's features in the masked region, learning what is *predictable* about content without rendering pixels."
+  - id: "jepa-q2"
+    question: "How does JEPA avoid the trivial 'collapse' solution where every embedding is the same vector?"
+    choices:
+      - "By using a contrastive loss with negatives."
+      - "By using a non-symmetric design: a stop-gradient on the target encoder (an EMA of the context encoder), so the predictor has a moving but stable target rather than two coupled encoders that could co-collapse."
+      - "By regularizing weights."
+      - "By scaling losses."
+    answer: 1
+    explanation: "BYOL and JEPA share this asymmetry trick: a stop-gradient plus EMA target prevents the gradient from flowing into both branches simultaneously, which would otherwise drive them to a trivial fixed point."
+  - id: "jepa-q3"
+    question: "Why is V-JEPA's video-feature-prediction approach a step toward 'world models' in LeCun's vision?"
+    choices:
+      - "It generates video."
+      - "By predicting unseen patches' representations from observed patches across frames, the model learns about temporal structure and causality at the level of abstract features rather than raw pixels — closer to how a planning agent would represent its environment."
+      - "It uses RL."
+      - "It is faster."
+    answer: 1
+    explanation: "LeCun argues a world model should predict *what matters* about future states, not every pixel. JEPA's representation-space prediction is a concrete instantiation of that abstraction. Whether it's the right one is unsettled."
+  - id: "jepa-q4"
+    question: "Compared to contrastive methods (CLIP, SimCLR), JEPA-family approaches:"
+    choices:
+      - "Always outperform them."
+      - "Avoid the need for explicit negative samples and large batch sizes — the prediction loss replaces the contrastive 'push apart' objective — at the cost of relying on architectural tricks (EMA, masking) for collapse avoidance."
+      - "Are identical in design."
+      - "Use language signal."
+    answer: 1
+    explanation: "Contrastive losses need many negatives to be informative. JEPA's regression-style loss does not. The trade-off is more delicate hyperparameters and design choices to keep training stable; the win is simpler scaling."
+---
+
+Most self-supervised learning trained on images either contrastively
+(CLIP, SimCLR — pull positive pairs together, push everything else
+apart) or generatively (MAE — reconstruct masked pixels). **JEPA** —
+the Joint-Embedding Predictive Architecture, championed by Yann LeCun
+and Meta — proposes a third path: predict the *embeddings* of masked
+regions, not the pixels. The image, video, and audio variants of this
+idea are some of the most promising non-contrastive SSL methods in
+2024–2026.
+
+## Why this matters
+
+LeCun's argument is that current generative SSL wastes capacity on
+modeling unpredictable, semantically irrelevant detail (the exact
+texture of grass, the precise shape of a cloud). A model that has to
+generate *pixels* must commit predictions to every variation. A model
+that predicts *features* gets to ignore what doesn't matter and focus
+on what does.
+
+This isn't only philosophical. I-JEPA matches or beats MAE on most
+linear-probe benchmarks at significantly less compute, and V-JEPA
+extends the recipe to video — the natural setting for "world model"
+ambitions.
+
+## The architecture
+
+JEPA has three modules:
+
+- **Context encoder** $E_\theta$ that processes the visible patches.
+- **Target encoder** $E_\xi$ that processes the *full* image; weights
+  are an exponential moving average of $E_\theta$ (no gradient flow).
+- **Predictor** $P_\phi$ that takes the context's output plus a
+  positional spec for the masked region and predicts what the target
+  encoder produces there.
+
+The training signal is a regression loss in feature space:
+
+$$
+\mathcal{L} = \sum_{m \in \text{masks}} \big\| P_\phi(E_\theta(x_\text{ctx}), m) - \mathrm{sg}\big[E_\xi(x_\text{full})\big]_m \big\|^2
+$$
+
+`sg` is stop-gradient. The target side does not learn directly from
+loss; only from EMA of the context side's improvements. This
+asymmetric structure is critical.
+
+## Why it doesn't collapse
+
+Predicting features into another network's features sounds like a
+recipe for **representation collapse**: both sides converging to a
+constant. If you let gradients flow through both encoders, that's
+exactly what happens. The fix, inherited from BYOL, is the
+**stop-gradient + EMA** asymmetry. The target encoder is a slowly
+moving teacher; the context encoder cannot influence it directly. Empirically
+and (after several years of analysis) somewhat theoretically, this is
+enough to prevent collapse.
+
+<Callout variant="insight" title="The non-contrastive SSL puzzle">
+For years it was thought that you needed contrastive negatives to
+prevent collapse. BYOL showed this was false; JEPA inherits the trick.
+We now have multiple methods that learn rich features without
+explicit negative samples — the practical implication is *much*
+smaller batch sizes and simpler infrastructure.
+</Callout>
+
+## I-JEPA in practice
+
+The image version (I-JEPA) takes a Vision Transformer's patches as
+context, masks several large blocks, and predicts the target
+encoder's embeddings in the masked blocks from the context encoder's
+embeddings of the visible blocks.
+
+```python
+import torch
+import torch.nn.functional as F
+
+def ijepa_step(context_enc, target_enc, predictor, x):
+    # x: (B, C, H, W), patchified into N tokens
+    ctx_idx, tgt_idx = sample_block_masks(num_patches=N)
+    ctx_tokens = context_enc(x, idx=ctx_idx)              # context features
+    with torch.no_grad():
+        tgt_tokens = target_enc(x)[..., tgt_idx, :]       # target features
+    pred = predictor(ctx_tokens, mask_positions=tgt_idx)
+    loss = F.smooth_l1_loss(pred, tgt_tokens)
+    return loss
+```
+
+The target encoder's parameters are updated as an EMA of the context
+encoder's:
+
+$$
+\xi \leftarrow \tau \xi + (1 - \tau) \theta
+$$
+
+with $\tau$ close to 1 (e.g., 0.996, ramped to 1 over training).
+
+## V-JEPA: the video version
+
+V-JEPA (2024) extends this to video. Now the masked regions can span
+both space and time, and the model must predict features for unseen
+spatiotemporal blocks. The information available in observed frames
+constrains motion, object identity, and (sometimes) causal structure.
+
+The argument is that V-JEPA learns useful **temporal predictability**
+without ever generating a frame. A 16-frame clip with half its patches
+masked across space and time gives a strong learning signal in feature
+space; the same setup at the pixel level would force the model to
+predict precise textures it cannot know.
+
+Empirically, V-JEPA features transfer well to action recognition and
+video understanding, often beating models that were trained
+generatively at the pixel level.
+
+<PaperCard
+  title="Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture"
+  authors="Assran, Duval, Misra, Bojanowski, Vincent, Rabbat, LeCun, Ballas"
+  year={2023}
+  url="https://arxiv.org/abs/2301.08243"
+/>
+
+## The world-models bet
+
+LeCun's larger argument — laid out in *A Path Towards Autonomous
+Machine Intelligence* — is that LLMs alone cannot reach human-level
+intelligence because they lack a *world model*: a learned, predictive
+internal simulator. Pixel-generative models nominally have such a
+simulator, but at the wrong level of abstraction. JEPA-style predictive
+models, in this view, learn the right kind of simulator because they
+predict in the space of meaningful features.
+
+Whether this is correct is a live debate. The position is internally
+consistent and produces strong empirical artifacts (I-JEPA, V-JEPA,
+audio JEPA). The counterposition — that scaling generative training
+keeps producing capability gains, including emergent world-model-like
+behavior — is also empirically backed.
+
+<Callout variant="warning" title="The honest caveat">
+JEPA performs strongly on benchmarks but does not yet have a clear
+'world-model emergent behavior' demonstration analogous to ICL in
+language models. The bet is theoretically motivated and empirically
+promising; the verdict is open.
+</Callout>
+
+## What to read next
+
+- LeCun's "Path Towards Autonomous Machine Intelligence" position
+  paper for the philosophical frame.
+- The I-JEPA and V-JEPA papers for the methods.
+- BYOL and DINO/DINOv2 for adjacent non-contrastive SSL — the same
+  asymmetry trick under different objectives.
+- Bardes et al.'s VICReg work for an information-theoretic alternative
+  to BYOL/JEPA's collapse-avoidance.
+
+If you internalize "predict in feature space, not pixel space," much of
+the current SSL frontier becomes legible — and the ongoing JEPA-vs-
+generative-SSL debate becomes a genuine question rather than a slogan.

@@ -127,7 +127,6 @@ function trainStep(layers: Layer[], xs: [number, number][], ys: number[], lr: nu
         gB[l][i] += delta[i];
       }
       if (l > 0) {
-        const aPrevAct = acts[l]; // activation of layer l (post)
         const newDelta: number[] = Array(layers[l - 1].W.length).fill(0);
         for (let j = 0; j < newDelta.length; j++) {
           let s = 0;

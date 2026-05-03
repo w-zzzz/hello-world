@@ -7,7 +7,6 @@ const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
 const filename = url.replace(/^file:/, "");
 
 declare global {
-  // eslint-disable-next-line no-var
   var __prisma: PrismaClient | undefined;
 }
 

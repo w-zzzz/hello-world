@@ -1,0 +1,254 @@
+---
+slug: "11-niche-pivotal/04-geometric-dl"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 4
+title: "Geometric deep learning"
+hook: "Equivariance, GNNs, the right symmetries."
+estMinutes: 16
+difficulty: 4
+prereqs: ["03-deep-learning/02-cnn"]
+hasHeroViz: false
+researchers: ["bronstein", "welling"]
+papers:
+  - title: "Geometric Deep Learning: Grids, Groups, Graphs, Geodesics, and Gauges"
+    authors: "Bronstein, Bruna, Cohen, Veličković"
+    year: 2021
+    url: "https://arxiv.org/abs/2104.13478"
+  - title: "Semi-Supervised Classification with Graph Convolutional Networks"
+    authors: "Kipf, Welling"
+    year: 2016
+    url: "https://arxiv.org/abs/1609.02907"
+  - title: "E(n) Equivariant Graph Neural Networks"
+    authors: "Satorras, Hoogeboom, Welling"
+    year: 2021
+    url: "https://arxiv.org/abs/2102.09844"
+  - title: "Highly accurate protein structure prediction with AlphaFold"
+    authors: "Jumper et al. (DeepMind)"
+    year: 2021
+    url: "https://www.nature.com/articles/s41586-021-03819-2"
+hfResources:
+  - kind: "library"
+    title: "PyTorch Geometric"
+    url: "https://pytorch-geometric.readthedocs.io/"
+  - kind: "library"
+    title: "DGL — Deep Graph Library"
+    url: "https://www.dgl.ai/"
+freeResources:
+  - kind: "course"
+    title: "Geometric Deep Learning Course (AMMI)"
+    source: "Bronstein, Bruna, Cohen, Veličković"
+    url: "https://geometricdeeplearning.com/lectures/"
+  - kind: "blog"
+    title: "Graph Neural Networks: A Review of Methods and Applications"
+    source: "Distill"
+    url: "https://distill.pub/2021/gnn-intro/"
+quiz:
+  - id: "geo-q1"
+    question: "A function $f$ is **equivariant** to a group $G$ if:"
+    choices:
+      - "$f(gx) = f(x)$ for all $g \\in G$."
+      - "$f(gx) = g \\cdot f(x)$ for all $g \\in G$ — applying the symmetry to the input is the same as applying it to the output."
+      - "$f$ is linear."
+      - "$f$ commutes with addition."
+    answer: 1
+    explanation: "Invariance ($f(gx) = f(x)$) is a special case of equivariance where $G$ acts trivially on the output. Convolutions are translation-equivariant; rotation-equivariant networks generalize this to other groups."
+  - id: "geo-q2"
+    question: "Why is a CNN naturally translation-equivariant?"
+    choices:
+      - "Because of pooling."
+      - "Because the same kernel is applied identically at every spatial location, so shifting the input shifts the output by the same amount."
+      - "Because of nonlinearities."
+      - "Random initialization."
+    answer: 1
+    explanation: "Weight sharing across positions is exactly what makes convolution translation-equivariant. Subsequent global pooling makes the final output translation-invariant."
+  - id: "geo-q3"
+    question: "Message-passing in a GNN computes a node's update from:"
+    choices:
+      - "Random other nodes."
+      - "An aggregation (sum, mean, max, attention) of messages from its neighbors, transformed by learnable functions."
+      - "Only the global graph statistics."
+      - "Sequential traversal."
+    answer: 1
+    explanation: "$h_i^{(l+1)} = \\phi(h_i^{(l)}, \\mathrm{AGG}_{j \\in N(i)} \\, \\psi(h_i^{(l)}, h_j^{(l)}))$ is the standard MPNN form. Permutation equivariance comes from the aggregation being symmetric in its arguments."
+  - id: "geo-q4"
+    question: "Why does an SE(3)-equivariant GNN make sense for molecules?"
+    choices:
+      - "Molecules are linear."
+      - "Atomic positions live in 3D and physical laws are invariant to rigid translations and rotations; baking SE(3) equivariance into the network removes the need to learn this symmetry from data."
+      - "It is faster."
+      - "It uses less memory."
+    answer: 1
+    explanation: "The same molecule rotated should yield rotated forces, the same energy, etc. Networks that respect this exactly (E(n)-EGNN, NequIP) are dramatically more sample-efficient than non-equivariant ones for molecular tasks."
+---
+
+Most of deep learning is built on grids: image pixels, audio samples,
+token sequences. But much of the world isn't gridded — molecules,
+proteins, social networks, 3D point clouds, particle systems. **Geometric
+deep learning** is the program of designing architectures that respect
+the structure and symmetries of these domains, instead of pretending
+they are images.
+
+The payoff is concrete and large: AlphaFold's protein-structure
+revolution, near-quantum-chemistry-quality molecular potentials, drug
+discovery, social network analysis. Every one of these uses
+architectures that respect a specific symmetry.
+
+## Why this matters
+
+A model that knows the symmetries of its data needs less data to learn,
+generalizes better off-distribution, and is more interpretable. CNNs
+beat MLPs on images because translation equivariance was baked in.
+GNNs and SE(3)-equivariant networks do the same for graphs and 3D
+structures. Choosing the right inductive bias is, after scale, the
+single highest-leverage decision in modeling a structured domain.
+
+## Equivariance: the unifying idea
+
+Let $G$ be a group of transformations (translations, rotations,
+permutations). A function $f$ is **equivariant** to $G$ if
+
+$$
+f(g \cdot x) = g \cdot f(x) \qquad \forall g \in G
+$$
+
+That is, applying the symmetry to the input has the same effect as
+applying it to the output. **Invariance** is the special case where
+the right side is just $f(x)$.
+
+The geometric deep-learning thesis (Bronstein et al.) is that nearly
+every successful deep architecture can be derived as the *most general
+equivariant function* for some group:
+
+- **CNNs** = translation-equivariant on grids.
+- **Spherical CNNs** = rotation-equivariant on the sphere.
+- **GNNs** = permutation-equivariant on graphs.
+- **Transformers** = permutation-equivariant on sets (then add
+  positional encoding).
+- **DeepSets / PointNet** = permutation-invariant on sets.
+- **EGNNs / NequIP / SE(3)-Transformer** = E(n) or SE(3)-equivariant on
+  point clouds in $\mathbb{R}^d$.
+
+A surprising amount of architectural progress has come from "what
+symmetry am I missing?"
+
+## Graph neural networks
+
+Graphs are the canonical irregular structure. A GNN's job is to compute
+node representations that depend on the local neighborhood, in a way
+that is invariant to how the nodes are *named* (permutation-equivariant).
+
+The standard message-passing formulation: at layer $l$,
+
+$$
+h_i^{(l+1)} = \phi\!\left( h_i^{(l)}, \; \bigoplus_{j \in N(i)} \psi(h_i^{(l)}, h_j^{(l)}, e_{ij}) \right)
+$$
+
+where $\bigoplus$ is a permutation-invariant aggregator (sum, mean,
+max, attention). $\psi$ computes the message from neighbor $j$ to node
+$i$; $\phi$ updates the node representation.
+
+```python
+import torch
+import torch.nn as nn
+import torch_scatter
+
+class MPNN(nn.Module):
+    def __init__(self, d):
+        super().__init__()
+        self.msg = nn.Sequential(nn.Linear(2 * d, d), nn.ReLU(), nn.Linear(d, d))
+        self.upd = nn.Sequential(nn.Linear(2 * d, d), nn.ReLU(), nn.Linear(d, d))
+
+    def forward(self, h, edge_index):  # edges = (2, E)
+        src, dst = edge_index
+        m = self.msg(torch.cat([h[src], h[dst]], dim=-1))
+        agg = torch_scatter.scatter_sum(m, dst, dim=0, dim_size=h.shape[0])
+        return self.upd(torch.cat([h, agg], dim=-1))
+```
+
+Different aggregators, different attention, different normalizations
+give you the GCN/GAT/GraphSAGE/GIN family. They differ in expressive
+power: the Weisfeiler-Lehman test bounds what message-passing GNNs can
+distinguish; GIN is the maximum expressive 1-WL design.
+
+<Callout variant="insight" title="Permutation equivariance is non-negotiable">
+A graph has no canonical node ordering. If your model's predictions
+depend on the order, you've encoded an arbitrary choice. Sum, mean, and
+attention aggregations are permutation-invariant; transformers on
+sets work for the same reason.
+</Callout>
+
+## SE(3) equivariance: the AlphaFold ingredient
+
+For molecules and proteins, the atoms live in $\mathbb{R}^3$. A rigid
+translation or rotation of the molecule should give a rotated-and-
+translated output (forces, structures, energies). Networks that respect
+this exactly include **EGNN**, **NequIP**, **MACE**, and the
+**SE(3)-Transformer**.
+
+The key trick is to update positions and features in ways that mix
+correctly under SE(3). For EGNN:
+
+$$
+\mathbf{x}_i^{l+1} = \mathbf{x}_i^l + \frac{1}{|N(i)|} \sum_{j \in N(i)} (\mathbf{x}_i^l - \mathbf{x}_j^l) \, \phi_x(m_{ij})
+$$
+
+The position update is a sum of *relative* vectors weighted by scalars
+— manifestly SE(3)-equivariant. Feature updates use only invariant
+quantities (distances, scalars). The network respects rotation and
+translation by construction; you cannot break it by feeding rotated
+inputs.
+
+<PaperCard
+  title="Geometric Deep Learning: Grids, Groups, Graphs, Geodesics, and Gauges"
+  authors="Bronstein, Bruna, Cohen, Veličković"
+  year={2021}
+  url="https://arxiv.org/abs/2104.13478"
+/>
+
+## When equivariance pays off
+
+Equivariance is not free — it constrains the function class. The win
+shows up when:
+
+- Data is *limited* relative to the symmetry group's size. Augmentation
+  can mimic some symmetries but is sample-inefficient.
+- Generalization to *unseen* group elements matters (a molecule in a
+  rotation never seen at training).
+- Physical correctness is required (energy conservation, force
+  symmetry).
+
+For very large datasets and unconstrained problems (raw web text), the
+cost of constraining the model often exceeds the benefit. This is why
+plain transformers — which only enforce permutation equivariance — beat
+all the symmetry-rich variants on language.
+
+<Callout variant="warning" title="Approximate equivariance is often a trap">
+Encoding equivariance approximately (data augmentation, symmetric loss
+functions) gives you something that *behaves* equivariantly *on average*
+but fails on rare configurations. For physics, structural biology, and
+anywhere correctness matters, prefer architectures that respect the
+symmetry exactly.
+</Callout>
+
+## Where it ships
+
+- **AlphaFold 2/3** — equivariant attention over residues and atoms.
+- **GNoME** (DeepMind) — graph networks for materials discovery,
+  millions of new stable crystals.
+- **Drug discovery** — equivariant models for binding-affinity
+  prediction.
+- **Particle physics** and **astronomy** — GNNs over event/object
+  graphs.
+
+## What to read next
+
+- Bronstein et al.'s book-length survey is the comprehensive resource.
+- Kipf & Welling's GCN paper for the canonical message-passing example.
+- The EGNN paper for a clean, minimal SE(3)-equivariant design.
+- AlphaFold 2 and 3 for the most consequential geometric DL deployment.
+
+If your data has structure you can name — rotations, permutations, a
+graph — start with an architecture that respects it. The symmetry tax
+is real and so is the compounded sample-efficiency win.

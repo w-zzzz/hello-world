@@ -584,7 +584,7 @@ export const RESEARCHERS: Researcher[] = [
     name: "Laurens van der Maaten",
     affiliation: "Meta",
     area: ["visualization", "generative"],
-    short: "t-SNE.",
+    short: "Author of t-SNE; visualization research at Meta.",
     bio: "Authored t-SNE and influential visualization tooling; works on AI research at Meta.",
     links: [],
     keyPapers: [

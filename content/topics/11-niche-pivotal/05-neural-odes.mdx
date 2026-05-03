@@ -1,0 +1,244 @@
+---
+slug: "11-niche-pivotal/05-neural-odes"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 5
+title: "Neural ODEs & continuous depth"
+hook: "Layers as time, training via the adjoint."
+estMinutes: 14
+difficulty: 5
+prereqs: ["03-deep-learning/01-mlp-backprop"]
+hasHeroViz: false
+researchers: ["chen-node"]
+papers:
+  - title: "Neural Ordinary Differential Equations"
+    authors: "Chen, Rubanova, Bettencourt, Duvenaud"
+    year: 2018
+    url: "https://arxiv.org/abs/1806.07366"
+  - title: "FFJORD: Free-form Continuous Dynamics for Scalable Reversible Generative Models"
+    authors: "Grathwohl, Chen, Bettencourt, Sutskever, Duvenaud"
+    year: 2018
+    url: "https://arxiv.org/abs/1810.01367"
+  - title: "Flow Matching for Generative Modeling"
+    authors: "Lipman, Chen, Ben-Hamu, Nickel, Le"
+    year: 2022
+    url: "https://arxiv.org/abs/2210.02747"
+hfResources:
+  - kind: "library"
+    title: "torchdiffeq"
+    url: "https://github.com/rtqichen/torchdiffeq"
+  - kind: "library"
+    title: "Diffrax (JAX)"
+    url: "https://docs.kidger.site/diffrax/"
+freeResources:
+  - kind: "blog"
+    title: "Neural ODEs explained"
+    source: "Mikael Henaff"
+    url: "https://www.cs.toronto.edu/~rtqichen/posters/neural_ode_poster.pdf"
+  - kind: "course"
+    title: "Patrick Kidger's PhD thesis: On Neural Differential Equations"
+    url: "https://arxiv.org/abs/2202.02435"
+quiz:
+  - id: "node-q1"
+    question: "A residual block $h_{l+1} = h_l + f_\\theta(h_l)$ can be viewed as:"
+    choices:
+      - "A pure linear layer."
+      - "An Euler-step discretization of the ODE $\\frac{dh}{dt} = f_\\theta(h(t))$ with step size 1."
+      - "A random projection."
+      - "A Fourier transform."
+    answer: 1
+    explanation: "Forward Euler with step size $\\Delta t = 1$ gives exactly $h_{t+1} = h_t + f(h_t)$. ResNets are this discretization; neural ODEs take $\\Delta t \\to 0$ and treat depth as continuous time."
+  - id: "node-q2"
+    question: "What is the adjoint method's main advantage for training Neural ODEs?"
+    choices:
+      - "It is more accurate than backprop."
+      - "Memory cost is independent of solver depth: instead of storing every intermediate activation, you re-solve a backward ODE for the gradient."
+      - "It eliminates the need for an optimizer."
+      - "It always converges faster."
+    answer: 1
+    explanation: "Naive backprop through an adaptive ODE solver stores every internal step — memory-prohibitive. The adjoint approach derives a backward ODE $\\frac{da}{dt} = -a^\\top \\partial f / \\partial h$ that recovers gradients with $O(1)$ memory in solver steps."
+  - id: "node-q3"
+    question: "Why are continuous normalizing flows (FFJORD) tractable where discrete flows often are not?"
+    choices:
+      - "They use simpler architectures."
+      - "The change-of-variables for an ODE involves the trace of the Jacobian (not the determinant), which can be estimated cheaply with the Hutchinson stochastic-trace estimator."
+      - "They skip the log-determinant entirely."
+      - "They are not — they are slower."
+    answer: 1
+    explanation: "$\\frac{d \\log p}{dt} = -\\mathrm{tr}(\\partial f / \\partial h)$. Replacing log-determinants with traces removes the need for restrictive architectures (coupling layers, autoregressive flows) and allows arbitrary networks $f$."
+  - id: "node-q4"
+    question: "What is the relationship between Neural ODEs and modern flow matching?"
+    choices:
+      - "They are unrelated."
+      - "Flow matching trains a vector field $v_\\theta$ directly to match a target probability path; the resulting model is sampled by integrating an ODE — i.e., it is a Neural ODE trained without simulation through the solver."
+      - "Flow matching replaces ODEs with PDEs."
+      - "Flow matching uses no neural networks."
+    answer: 1
+    explanation: "Flow matching (Lipman et al.) gives a simulation-free objective for training the velocity field of a continuous normalizing flow. Sampling is still an ODE solve. Modern image and video generators (SD3, Flux) are Neural ODEs in this sense."
+---
+
+Most of deep learning is *discrete*: layers, integer step counts,
+finite-difference updates. **Neural ODEs** ask a different question. If
+a residual block looks like an Euler step, what happens if we let the
+step size go to zero? The depth becomes continuous time, the layer
+becomes a vector field, and the entire forward pass is the trajectory
+of a differential equation.
+
+This view connects deep learning to numerical analysis, makes new
+generative models possible (continuous normalizing flows, flow
+matching), and quietly underlies some of the most successful image and
+video generators of 2024–2026.
+
+## Why this matters
+
+Neural ODEs are not just an aesthetic reformulation. They yield:
+
+- **Adaptive computation**: the solver picks the number of function
+  evaluations based on the input.
+- **$O(1)$ memory training** via the adjoint method.
+- **Continuous-time models** for irregularly sampled time series.
+- **A clean route to flow-based generative models** that beat
+  diffusion in many regimes.
+
+Even if you never train a Neural ODE per se, the conceptual machinery is
+load-bearing for flow matching, which now powers Stable Diffusion 3,
+Flux, and many video generators.
+
+## Layers as time
+
+A residual network has the recurrence
+
+$$
+h_{l+1} = h_l + f_{\theta_l}(h_l)
+$$
+
+This is exactly forward Euler integration of $\frac{dh}{dt} = f_\theta(h, t)$
+with $\Delta t = 1$. Take $\Delta t \to 0$ and you get the Neural ODE
+formulation: the network is a vector field $f_\theta$ defining how
+hidden states evolve in time, and the forward pass is
+
+$$
+h(T) = h(0) + \int_0^T f_\theta(h(t), t) \, dt
+$$
+
+Solve the integral with whatever ODE solver you like — Euler, RK4, an
+adaptive method. The number of function evaluations is now a
+*runtime* choice, not a fixed architectural one.
+
+## The adjoint method
+
+Backpropagating through an adaptive ODE solver naively requires storing
+every intermediate state — memory grows with the number of solver steps.
+The adjoint method gives you the gradient by solving *another* ODE
+backward in time:
+
+$$
+\frac{d a(t)}{dt} = -a(t)^\top \frac{\partial f}{\partial h}, \qquad a(T) = \frac{\partial L}{\partial h(T)}
+$$
+
+with parameter-gradient sums computed similarly. Memory cost is
+constant in the number of solver steps. The cost is some numerical
+imprecision (forward and backward solvers do not perfectly cancel), and
+the adjoint can be unstable for stiff systems — a real issue in
+practice.
+
+```python
+import torch
+from torchdiffeq import odeint_adjoint as odeint
+
+class ODEFunc(torch.nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(dim + 1, 128), torch.nn.SiLU(),
+            torch.nn.Linear(128, dim),
+        )
+    def forward(self, t, h):
+        return self.net(torch.cat([h, t.expand_as(h[..., :1])], dim=-1))
+
+func = ODEFunc(dim=2)
+t = torch.linspace(0, 1, 2)
+h0 = torch.randn(8, 2)
+hT = odeint(func, h0, t, method="dopri5")[-1]
+```
+
+`odeint_adjoint` plumbs the backward ODE for you. The forward call
+behaves like a giant ResNet whose depth the solver chooses adaptively.
+
+## Continuous normalizing flows
+
+Normalizing flows transform a simple distribution into a complex one
+through invertible maps. Discrete flows require restrictive
+architectures (coupling layers, autoregressive masks) to make the
+log-determinant of the Jacobian tractable.
+
+Continuous flows replace this with an ODE. The change-of-variables
+becomes
+
+$$
+\frac{d \log p(h(t))}{dt} = -\mathrm{tr}\!\left(\frac{\partial f_\theta}{\partial h}\right)
+$$
+
+A *trace*, not a determinant. Hutchinson's estimator turns the trace
+into a cheap stochastic estimate, removing the architectural
+constraint. FFJORD trained free-form vector fields with this trick.
+
+<PaperCard
+  title="Neural Ordinary Differential Equations"
+  authors="Chen, Rubanova, Bettencourt, Duvenaud"
+  year={2018}
+  url="https://arxiv.org/abs/1806.07366"
+/>
+
+## Flow matching: the modern reincarnation
+
+The 2018 Neural ODE story stalled in part because training continuous
+flows by simulating through the solver is expensive. **Flow matching**
+(Lipman et al., 2022) solved this. Define a target probability path
+$p_t$ from prior $p_0$ to data $p_1$. Define the corresponding
+velocity field $u_t$ that flows samples along this path. Train a
+neural network $v_\theta$ to match $u_t$ via a *simple regression
+loss*:
+
+$$
+\mathcal{L}_\text{FM}(\theta) = \mathbb{E}_{t, x_t} \big\| v_\theta(x_t, t) - u_t(x_t) \big\|^2
+$$
+
+No solver in the training loop. At sampling time you integrate the
+learned $v_\theta$ as a Neural ODE.
+
+This is what powers modern flow-based image/video generation. Stable
+Diffusion 3 and Flux are flow-matching models. Conceptually they are
+Neural ODEs trained with a much friendlier objective than 2018-era
+adjoint training.
+
+<Callout variant="insight" title="Why flow matching beat 'pure' Neural ODEs">
+Backpropagating through an adaptive solver is expensive and brittle.
+Flow matching gives you almost everything you want — a continuous,
+ODE-sampleable generative model — with a regression loss as simple as
+diffusion's. The key insight: don't simulate during training; supervise
+the velocity directly.
+</Callout>
+
+## Limitations and where they bite
+
+- **Stiff dynamics** are slow to integrate; some ResNets resist Neural-
+  ODE-fication for this reason.
+- **Adjoint instability** on long horizons or sharp dynamics requires
+  checkpointing or alternative methods.
+- **Function-evaluation count** at inference can be high; flow matching
+  partly addresses this with rectified-flow-style straightening.
+
+## What to read next
+
+- Chen et al. 2018 — the original Neural ODE paper.
+- FFJORD — for continuous normalizing flows.
+- Patrick Kidger's PhD thesis "On Neural Differential Equations" — the
+  comprehensive synthesis.
+- Lipman et al.'s flow-matching paper, then the rectified-flow line —
+  the line connects directly to today's diffusion/flow generators.
+
+If "depth as time" sounds like an aesthetic flourish, flow matching is
+the hard evidence that the framework is doing real work in production
+generative models.
