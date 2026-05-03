@@ -35,6 +35,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Dummy DATABASE_URL satisfies the Zod schema in src/lib/env.ts at build time.
+# next build evaluates server routes (e.g. /api/health) which import src/lib/db.ts
+# -> src/lib/env.ts, triggering validation. The runner stage does not inherit this
+# value; Railway's real DATABASE_URL service variable is used at runtime.
+ENV DATABASE_URL="file:./placeholder.db"
+
 # `pnpm build` runs `next build`. If `next.config.ts` enables `output: "standalone"`
 # the runner stage can switch to copying `.next/standalone` for a smaller image.
 RUN pnpm build
