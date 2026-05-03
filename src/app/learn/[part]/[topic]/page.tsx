@@ -9,6 +9,7 @@ import { NextPrev } from "@/components/learn/NextPrev";
 import { PrereqList } from "@/components/learn/PrereqList";
 import { ReferencesPanel } from "@/components/learn/ReferencesPanel";
 import { ScrollDepthTracker } from "@/components/learn/ScrollDepthTracker";
+import { QuizBlock } from "@/components/learn/QuizBlock";
 import { TOPIC_BY_SLUG, nextTopic, prevTopic } from "../../../../../content/curriculum";
 
 export const dynamicParams = true;
@@ -63,6 +64,9 @@ export default async function TopicPage({
           <div className="mt-12 prose-block">
             <MDXRemote source={content} options={mdxOptions} components={mdxComponents} />
           </div>
+          {frontmatter.quiz && frontmatter.quiz.length > 0 && (
+            <QuizBlock topicSlug={slug} questions={frontmatter.quiz} />
+          )}
           <NextPrev prev={prev} next={next} />
         </div>
         <ReferencesPanel
