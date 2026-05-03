@@ -130,6 +130,13 @@ export function CurriculumGraph({ focus }: { focus?: string }) {
                           const completed = p?.status === "completed";
                           const muted = focusedPart && n.partSlug !== focusedPart.slug;
                           const isHover = hover === n.slug;
+                          const label = `${n.title} — ${part.short}, ${
+                            completed
+                              ? "completed"
+                              : mastery > 0
+                              ? `${Math.round(mastery * 100)}% mastery`
+                              : "not started"
+                          }`;
                           return (
                             <g
                               key={n.slug}
@@ -139,7 +146,27 @@ export function CurriculumGraph({ focus }: { focus?: string }) {
                               opacity={muted ? 0.32 : 1}
                               style={{ cursor: "pointer" }}
                             >
-                              <Link href={`/learn/${n.slug}`}>
+                              <Link
+                                href={`/learn/${n.slug}`}
+                                aria-label={label}
+                                tabIndex={0}
+                                onFocus={() => setHover(n.slug)}
+                                onBlur={() => setHover((h) => (h === n.slug ? null : h))}
+                                className="focus-visible:outline-none [&:focus-visible_circle.focus-ring]:opacity-100"
+                              >
+                                <title>{label}</title>
+                                {/* Larger transparent hit-target for touch + keyboard. */}
+                                <circle r={22} fill="transparent" />
+                                {/* Keyboard focus ring — only visible on :focus-visible. */}
+                                <circle
+                                  className="focus-ring"
+                                  r={16}
+                                  fill="none"
+                                  stroke="var(--color-accent)"
+                                  strokeWidth={2}
+                                  opacity={0}
+                                  style={{ transition: "opacity 150ms" }}
+                                />
                                 {n.hasHeroViz && (
                                   <circle
                                     r={20}

@@ -10,6 +10,10 @@ import { PrereqList } from "@/components/learn/PrereqList";
 import { ReferencesPanel } from "@/components/learn/ReferencesPanel";
 import { ScrollDepthTracker } from "@/components/learn/ScrollDepthTracker";
 import { QuizBlock } from "@/components/learn/QuizBlock";
+import { RelatedTopics } from "@/components/learn/RelatedTopics";
+import { TableOfContents } from "@/components/learn/TableOfContents";
+import { extractHeadings } from "@/lib/headings";
+import { estimateReadingMinutes } from "@/lib/reading-time";
 import { TOPIC_BY_SLUG, nextTopic, prevTopic } from "../../../../../content/curriculum";
 
 export const dynamicParams = true;
@@ -53,13 +57,20 @@ export default async function TopicPage({
   const { frontmatter, content } = loaded;
   const prev = prevTopic(slug);
   const next = nextTopic(slug);
+  const readingMinutes = estimateReadingMinutes(content);
+  const headings = extractHeadings(content);
 
   return (
     <article className="pt-32 pb-16">
       <ScrollDepthTracker slug={slug} />
-      <div className="mx-auto max-w-7xl px-6 grid gap-12 lg:grid-cols-[1fr_280px]">
+      <div className="mx-auto max-w-7xl px-6 grid gap-12 lg:grid-cols-[1fr_280px] xl:grid-cols-[220px_1fr_280px]">
+        {/* TOC sidebar — appears on xl viewports as the leftmost column. */}
+        <aside className="hidden xl:block xl:sticky xl:top-24 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto pr-2 -ml-2">
+          <TableOfContents headings={headings} />
+        </aside>
+
         <div className="min-w-0 max-w-3xl">
-          <TopicHeader topic={meta} />
+          <TopicHeader topic={meta} readingMinutes={readingMinutes} />
           <PrereqList prereqs={meta.prereqs} />
           <div className="mt-12 prose-block">
             <MDXRemote source={content} options={mdxOptions} components={mdxComponents} />
@@ -67,6 +78,7 @@ export default async function TopicPage({
           {frontmatter.quiz && frontmatter.quiz.length > 0 && (
             <QuizBlock topicSlug={slug} questions={frontmatter.quiz} />
           )}
+          <RelatedTopics slug={slug} />
           <NextPrev prev={prev} next={next} />
         </div>
         <ReferencesPanel

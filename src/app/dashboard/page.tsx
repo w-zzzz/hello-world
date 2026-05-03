@@ -6,6 +6,7 @@ import { StreakRing } from "@/components/dashboard/StreakRing";
 import { XPBar } from "@/components/dashboard/XPBar";
 import { DueQueue } from "@/components/dashboard/DueQueue";
 import { PartProgress } from "@/components/dashboard/PartProgress";
+import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
 import { ScrollReveal } from "@/components/apple/ScrollReveal";
 import { TOPICS } from "../../../content/curriculum";
 
@@ -43,12 +44,16 @@ export default function DashboardPage() {
           <ScrollReveal delay={0.15}><DueQueue /></ScrollReveal>
         </div>
 
+        <div className="mt-5">
+          <ScrollReveal delay={0.18}><ActivityHeatmap /></ScrollReveal>
+        </div>
+
         <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
           <ScrollReveal delay={0.2}><PartProgress progress={progress} /></ScrollReveal>
           <ScrollReveal delay={0.25}>
             <div className="rounded-3xl border border-soft surface p-6">
               <div className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted-fg)] font-medium">
-                Activity
+                Mastery
               </div>
               <ul className="mt-5 space-y-3 text-sm">
                 <Stat label="Topics completed" value={completed} total={totalTopics} />

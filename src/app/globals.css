@@ -130,3 +130,80 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Editorial: pull-quotes & inline-quote refinements --- */
+.prose-block blockquote {
+  position: relative;
+}
+.prose-block blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: -0.6em;
+  top: -0.4em;
+  font-family: var(--font-sans);
+  font-size: 2.2em;
+  line-height: 1;
+  color: color-mix(in oklch, var(--color-accent), transparent 45%);
+  pointer-events: none;
+}
+
+/* --- Subtle micro-interaction: link underline reveal --- */
+@layer utilities {
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 300ms var(--ease-apple);
+  }
+  .link-underline:hover,
+  .link-underline:focus-visible {
+    background-size: 100% 1px;
+  }
+}
+
+/* --- Print stylesheet: optimized topic pages for paper --- */
+@media print {
+  :root {
+    --color-bg: #fff;
+    --color-fg: #111;
+    --color-muted: #f3f3f3;
+    --color-muted-fg: #555;
+    --color-border: #ddd;
+    --color-card: #fff;
+    --color-accent: #1a4ed8;
+  }
+  body {
+    background: #fff !important;
+    color: #111 !important;
+    font-size: 11pt;
+  }
+  /* Hide chrome that doesn't belong on paper. */
+  header, nav, footer, aside,
+  [data-print-hide],
+  .gradient-mesh,
+  button {
+    display: none !important;
+  }
+  article {
+    padding: 0 !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: underline;
+  }
+  /* Show URLs after external links so the paper version is self-sufficient. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #555;
+  }
+  pre, blockquote, figure, table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h1, h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}

@@ -5,6 +5,7 @@ import { PaperCard } from "./PaperCard";
 import { Embed } from "./Embed";
 import { Figure } from "./Figure";
 import { CodeBlock } from "./CodeBlock";
+import { Term } from "./Term";
 
 const headingClasses: Record<string, string> = {
   h1: "scroll-mt-28 mt-16 text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] text-balance",
@@ -91,4 +92,5 @@ export const mdxComponents = {
   PaperCard,
   Embed,
   Figure,
+  Term,
 };

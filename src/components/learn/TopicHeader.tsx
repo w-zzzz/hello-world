@@ -3,8 +3,16 @@ import { Clock, ArrowLeft } from "lucide-react";
 import type { TopicMeta } from "@/lib/types";
 import { PART_BY_SLUG } from "../../../content/curriculum";
 import { FavoriteButton } from "@/components/learn/FavoriteButton";
+import { ReadingTime } from "@/components/learn/ReadingTime";
+import { ShareLink } from "@/components/learn/ShareLink";
 
-export function TopicHeader({ topic }: { topic: TopicMeta }) {
+export function TopicHeader({
+  topic,
+  readingMinutes,
+}: {
+  topic: TopicMeta;
+  readingMinutes?: number;
+}) {
   const part = PART_BY_SLUG[topic.partSlug];
   return (
     <header className="border-b border-soft pb-10">
@@ -16,7 +24,10 @@ export function TopicHeader({ topic }: { topic: TopicMeta }) {
           <ArrowLeft className="h-3.5 w-3.5" />
           {part.title}
         </Link>
-        <FavoriteButton slug={topic.slug} />
+        <div className="flex items-center gap-2">
+          <ShareLink slug={topic.slug} title={topic.title} />
+          <FavoriteButton slug={topic.slug} />
+        </div>
       </div>
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         <span
@@ -30,8 +41,11 @@ export function TopicHeader({ topic }: { topic: TopicMeta }) {
         </span>
         <span className="ml-2 inline-flex items-center gap-1.5 text-xs text-[var(--color-muted-fg)]">
           <Clock className="h-3 w-3" />
-          {topic.estMinutes} min
+          {topic.estMinutes} min lesson
         </span>
+        {readingMinutes !== undefined && readingMinutes !== topic.estMinutes && (
+          <ReadingTime minutes={readingMinutes} />
+        )}
         <span className="text-xs text-[var(--color-muted-fg)]">·</span>
         <span className="text-xs text-[var(--color-muted-fg)]">
           difficulty {"●".repeat(topic.difficulty)}
