@@ -22,10 +22,11 @@ const links = [
   { href: "/dashboard", label: "Dashboard" },
 ];
 
-// On the desktop bar we keep things tight — show only the most important
-// links. The full set is available in the mobile sheet and the command palette.
+// On the desktop bar we keep things tight — show the navigation surface a
+// learner reaches for most. The full set is available in the mobile sheet and
+// the command palette.
 const desktopLinks = links.filter((l) =>
-  ["Map", "Learn", "Researchers", "Resources", "Dashboard"].includes(l.label)
+  ["Map", "Timeline", "Paths", "Stories", "Researchers", "Dashboard"].includes(l.label)
 );
 
 export function Nav() {
