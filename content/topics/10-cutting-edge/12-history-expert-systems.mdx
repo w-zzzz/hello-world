@@ -1,0 +1,245 @@
+---
+slug: "10-cutting-edge/12-history-expert-systems"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 12
+title: "Expert systems & the second AI winter"
+hook: "MYCIN, DENDRAL, Cyc — why hand-coded knowledge hit a wall."
+estMinutes: 14
+difficulty: 2
+prereqs: []
+hasHeroViz: false
+researchers: ["russell"]
+papers:
+  - title: "DENDRAL: A Case Study of the First Expert System for Scientific Hypothesis Formation"
+    authors: "Lindsay, Buchanan, Feigenbaum, Lederberg"
+    year: 1993
+    url: "https://stacks.stanford.edu/file/druid:rs074tk1455/rs074tk1455.pdf"
+  - title: "Rule-Based Expert Systems: The MYCIN Experiments of the Stanford Heuristic Programming Project"
+    authors: "Buchanan, Shortliffe (eds.)"
+    year: 1984
+    url: "https://www.shortliffe.net/Buchanan-Shortliffe-1984/MYCIN%20Book.htm"
+  - title: "CYC: A Large-Scale Investment in Knowledge Infrastructure"
+    authors: "Doug Lenat"
+    year: 1995
+    url: "https://dl.acm.org/doi/10.1145/219717.219745"
+freeResources:
+  - kind: "book"
+    title: "Artificial Intelligence: A Modern Approach (chapter 7-9)"
+    source: "Russell, Norvig"
+    url: "https://aima.cs.berkeley.edu/"
+  - kind: "blog"
+    title: "An Oral History of AI Winters"
+    source: "Communications of the ACM"
+    url: "https://cacm.acm.org/news/the-three-winters-of-ai/"
+  - kind: "video"
+    title: "Doug Lenat — Cyc retrospective"
+    source: "Lex Fridman podcast"
+    url: "https://www.youtube.com/watch?v=3wMKoSRbGVs"
+quiz:
+  - id: "exp-q1"
+    question: "What is the structural form of a classical expert system like MYCIN?"
+    choices:
+      - "A neural network."
+      - "A knowledge base of hand-coded *if-then* rules combined with an inference engine that does forward and/or backward chaining, often with certainty factors to handle uncertainty."
+      - "A database with SQL."
+      - "A reinforcement learner."
+    answer: 1
+    explanation: "MYCIN had ~600 rules of the form 'IF organism is gram-negative AND patient has fever THEN consider gentamicin (CF 0.7)'. The inference engine chained rules to produce treatment recommendations. The architecture — declarative knowledge base separate from inference engine — was the canonical good-old-fashioned-AI (GOFAI) design that dominated 1970s-80s applied AI."
+  - id: "exp-q2"
+    question: "Why did the *knowledge acquisition bottleneck* limit expert systems in practice?"
+    choices:
+      - "Computers were too slow."
+      - "Building a useful rule base required domain experts and knowledge engineers to elicit, formalize, and maintain thousands of rules — a labor-intensive process that did not scale beyond narrow domains and degraded as the world changed."
+      - "Rules were not Turing-complete."
+      - "Memory was insufficient."
+    answer: 1
+    explanation: "Each rule had to be elicited from human experts (often via days of interviews), formalized, debugged for interactions with other rules, and maintained as the underlying domain shifted. MYCIN took years to assemble ~600 rules. Cyc spent four decades and millions of axioms on commonsense knowledge and is still incomplete. This is the *opposite* of the data-driven scaling story that powered modern ML."
+  - id: "exp-q3"
+    question: "What killed the commercial expert-systems boom around 1987-1993?"
+    choices:
+      - "A specific theorem."
+      - "The collapse of dedicated LISP machine vendors (Symbolics, LMI), increasing maintenance costs of large rule bases, and the rise of cheaper general-purpose workstations with statistical methods that handled noisy real-world data better than rule-based systems."
+      - "Government bans."
+      - "A virus."
+    answer: 1
+    explanation: "The boom was concrete (R1/XCON saved DEC tens of millions configuring VAX systems) but fragile. LISP machines were specialized and expensive; rule-base maintenance grew super-linearly; and statistical methods — and later, neural networks — handled the messy distributions of real-world data more gracefully than brittle rules. By 1993 the commercial expert-systems industry had largely collapsed."
+  - id: "exp-q4"
+    question: "What is the operational lesson from the expert-systems era for modern LLM-era practice?"
+    choices:
+      - "Hand-coded rules are useless."
+      - "Hand-coded knowledge is fragile *as the only mechanism* but is invaluable *in the loop*: tools, retrieval indexes, validation rules, agent guardrails, and verifier oracles all encode hand-built knowledge that complements (rather than replaces) learned models."
+      - "All AI should be neural."
+      - "Symbolic AI was correct."
+    answer: 1
+    explanation: "The expert-systems era proved hand-coded rules cannot scale to general competence. The modern lesson is the opposite of what the 1980s assumed: don't try to encode the *whole* world in rules, but *do* use rules wherever you have crisp ground truth. Lean theorem provers verifying AlphaProof, calculator tools called by LLMs, RAG indexes, JSON schemas in agent outputs — all are descendants of expert-system thinking, embedded in a learned-model pipeline."
+---
+
+The second AI winter is the one most working researchers remember. It came
+out of the *expert systems* boom of the 1980s — the most commercially
+successful AI of its era — and crashed hard around 1987-1993. Knowing why
+expert systems worked, then why they collapsed, is the cleanest existing
+case study of what happens when a paradigm hits a structural ceiling.
+
+It also matters because expert-systems thinking has *not* gone away. It
+hides inside every modern agent that calls a calculator, every retrieval
+index, every JSON schema, every Lean verifier in a reasoning loop. The
+lesson was never "rules are bad"; it was "rules alone do not scale."
+
+## DENDRAL and the birth of expert systems
+
+DENDRAL (Stanford, 1965) is generally credited as the first expert system.
+The problem: given a mass-spectrometry trace and a chemical formula, infer
+the molecular structure. Edward Feigenbaum, Joshua Lederberg, and Bruce
+Buchanan built a system that encoded the heuristic rules a human chemist
+would use — try the most plausible substructures first, prune the search
+space — and the system outperformed graduate students on its target task.
+
+The lesson Feigenbaum drew from DENDRAL became the *knowledge principle*:
+intelligence comes mostly from *knowledge of the domain*, not from
+general-purpose reasoning. To make a smart AI, encode what experts know.
+
+This was the founding bet of an entire generation.
+
+## MYCIN, R1/XCON, and the commercial boom
+
+MYCIN (Stanford, 1972-mid-80s) diagnosed bacterial infections and
+recommended antibiotics. ~600 rules, certainty factors for uncertainty,
+backward chaining inference engine. In blind evaluations MYCIN's
+recommendations matched those of infectious-disease specialists. (It was
+never clinically deployed, partly for liability reasons.)
+
+R1/XCON (DEC + CMU, 1980) configured VAX computer systems. Customers
+specified components; XCON produced a complete consistent configuration.
+By 1986 it was reported to be saving DEC ~$25M/year. This was real,
+production-scale AI generating measurable revenue.
+
+The commercial boom that followed was significant. Symbolics and LMI
+shipped specialized LISP machines — physical workstations optimized for
+running LISP, which was the dominant AI programming language. By 1985 the
+expert systems industry was worth billions; major corporations had
+dedicated AI departments; consultants like Teknowledge and IntelliCorp
+sold knowledge-engineering services.
+
+## The structural ceiling
+
+Three problems compounded:
+
+1. **The knowledge acquisition bottleneck**. Each rule required eliciting
+   tacit expertise from a human, formalizing it, debugging interactions
+   with the existing rule base. A 600-rule system took years to build. A
+   million-rule system was a multi-decade project (Cyc, founded 1984,
+   still ongoing as of 2025).
+2. **Brittleness at the edges**. Expert systems performed well *within*
+   the carefully engineered scope of the rule base and failed
+   catastrophically just outside it. They had no notion of "I don't
+   know" beyond what was encoded.
+3. **Maintenance cost grew super-linearly**. Adding a rule could break
+   inferences that depended on the absence of that rule's hypothesis.
+   Rule bases became archaeological sites.
+
+By the late 1980s, companies that had invested heavily in expert systems
+discovered that maintenance costs were eating the savings. The dedicated
+LISP-machine market collapsed (1987-1990) as cheaper general-purpose
+workstations from Sun and others became available. The expert-systems
+industry did not survive the early 1990s in recognizable form.
+
+## Cyc: the noble failure
+
+Doug Lenat's **Cyc** project (started 1984 at MCC, then Cycorp) is the
+most ambitious expert-systems-lineage project ever attempted. The premise:
+encode all of human commonsense knowledge as logical axioms — millions of
+facts about objects, agents, time, causality, social conventions — and you
+will have a substrate on which intelligent reasoning becomes possible.
+
+After four decades of effort, Cyc has accumulated millions of axioms in
+several specialized ontologies. It has been used commercially in narrow
+applications. It has not produced general intelligence. The project is
+the cleanest existing demonstration that the *encode-everything-by-hand*
+strategy does not reach commonsense competence at any feasible scale.
+
+The data-driven approach took the opposite bet — *let the model learn
+commonsense from text and images at scale* — and it worked.
+
+## What expert systems left behind
+
+Three technical legacies survive in modern practice:
+
+1. **Tools and verifiers in the loop with LLMs**. A calculator the model
+   can call, a Python REPL, Lean (in AlphaProof), a unit-test runner
+   (in coding agents) — all are crisp rule-based systems that
+   complement the learned model. This is the *productive* version of
+   the expert-systems insight: hand-coded knowledge for *crisp* domains,
+   learning for *fuzzy* ones.
+2. **RAG and structured retrieval**. The retrieval index is a knowledge
+   base. The query rewriter is a small inference engine. The pattern is
+   familiar.
+3. **Schema-constrained outputs**. JSON-mode, structured output, function
+   schemas — declarative specifications that constrain model behavior.
+   These are descendants of frame-based knowledge representation.
+
+```python
+# A modern echo of the expert-system pattern, embedded in an LLM agent.
+@tool
+def calculate_drug_dose(weight_kg: float, age_y: int, drug: str) -> dict:
+    """Computes pediatric dosing based on hand-coded clinical rules.
+    Falls through to LLM reasoning if no rule applies."""
+    rule = DOSING_RULES.lookup(drug, age_y)
+    if rule:
+        return {"dose_mg": rule.compute(weight_kg), "source": rule.id}
+    raise ToolNotApplicable("No clinical rule for this combination.")
+```
+
+This is exactly the pattern MYCIN tried to be — but as one tool among many,
+called by a learned model that knows when to invoke it and when to reason
+freely. The hybrid is the right answer.
+
+## What killed the second winter
+
+The crash bottomed around 1993. Recovery came from three sources, none of
+them rule-based:
+
+- **Statistical NLP** (IBM's translation system, late 80s) showed that
+  noisy real-world tasks responded better to data than to rules.
+- **Bayesian networks** (Pearl, 1988) gave a principled treatment of
+  uncertainty that handled what expert-system "certainty factors" had
+  bodged.
+- **Neural networks** survived in pockets (CNN for digit recognition,
+  LSTM for sequences) and re-emerged with deep belief nets (2006) and
+  AlexNet (2012).
+
+The third winter — should one come — will probably look different from
+the previous two. But the dynamic of overclaiming, structural ceiling,
+funding retreat is durable enough that it is worth knowing the historical
+shape.
+
+<Callout variant="insight" title="Why this is in a 2026 ML curriculum">
+The 1980s expert-systems community made a wrong but understandable bet:
+that intelligence was mostly knowledge encoded as rules. Modern LLMs
+are the opposite bet: that intelligence emerges from learning over data
+at scale. Both bets are partial. The systems that work best in 2026 —
+agentic coding, AlphaProof, RAG-augmented chatbots — combine learned
+models with hand-coded knowledge in tools and verifiers. We have
+synthesized the two paradigms; we just don't always remember the
+provenance.
+</Callout>
+
+<PaperCard
+  title="Rule-Based Expert Systems: The MYCIN Experiments of the Stanford Heuristic Programming Project"
+  authors="Buchanan, Shortliffe (editors)"
+  year={1984}
+  url="https://www.shortliffe.net/Buchanan-Shortliffe-1984/MYCIN%20Book.htm"
+  takeaway="The most thorough surviving record of how a real expert system was built and evaluated. Read the certainty-factor chapter for an honest account of how 1980s AI handled uncertainty before Bayesian networks won."
+/>
+
+## What to do next
+
+- Read Russell & Norvig's chapter on logical agents and knowledge
+  representation to see how the field treats this material now.
+- Listen to Doug Lenat's Lex Fridman conversation (recorded shortly
+  before his death in 2023) for an unusually candid retrospective on
+  Cyc.
+- Notice how often modern systems re-invent expert-systems patterns —
+  every JSON-schema-constrained output is a tiny frame-based knowledge
+  representation.

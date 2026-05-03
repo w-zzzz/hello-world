@@ -1,0 +1,263 @@
+---
+slug: "10-cutting-edge/14-history-rl-atari-to-go"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 14
+title: "From Atari to Go: deep RL's coming-of-age"
+hook: "DQN 2013, AlphaGo 2016, AlphaZero, MuZero."
+estMinutes: 16
+difficulty: 3
+prereqs: ["08-rl/02-q-learning"]
+hasHeroViz: false
+researchers: ["silver", "hassabis", "sutton"]
+papers:
+  - title: "Playing Atari with Deep Reinforcement Learning"
+    authors: "Mnih, Kavukcuoglu, Silver, Graves, Antonoglou, Wierstra, Riedmiller"
+    year: 2013
+    url: "https://arxiv.org/abs/1312.5602"
+  - title: "Human-level control through deep reinforcement learning"
+    authors: "Mnih, Kavukcuoglu, Silver, et al."
+    year: 2015
+    url: "https://www.nature.com/articles/nature14236"
+  - title: "Mastering the game of Go with deep neural networks and tree search (AlphaGo)"
+    authors: "Silver, Huang, Maddison, et al."
+    year: 2016
+    url: "https://www.nature.com/articles/nature16961"
+  - title: "Mastering the game of Go without human knowledge (AlphaGo Zero)"
+    authors: "Silver, Schrittwieser, Simonyan, et al."
+    year: 2017
+    url: "https://www.nature.com/articles/nature24270"
+  - title: "Mastering Atari, Go, chess and shogi by planning with a learned model (MuZero)"
+    authors: "Schrittwieser, Antonoglou, Hubert, et al."
+    year: 2020
+    url: "https://www.nature.com/articles/s41586-020-03051-4"
+hfResources:
+  - kind: "library"
+    title: "Stable-Baselines3 — modern PyTorch RL implementations"
+    url: "https://stable-baselines3.readthedocs.io/"
+  - kind: "library"
+    title: "CleanRL — single-file RL implementations"
+    url: "https://github.com/vwxyzjn/cleanrl"
+freeResources:
+  - kind: "video"
+    title: "AlphaGo — The Movie"
+    source: "DeepMind (full documentary)"
+    url: "https://www.youtube.com/watch?v=WXuK6gekU1Y"
+  - kind: "blog"
+    title: "Deep Reinforcement Learning Doesn't Work Yet"
+    source: "Alex Irpan"
+    url: "https://www.alexirpan.com/2018/02/14/rl-hard.html"
+  - kind: "video"
+    title: "David Silver — Reinforcement Learning lectures"
+    source: "DeepMind / UCL"
+    url: "https://www.davidsilver.uk/teaching/"
+quiz:
+  - id: "drl-q1"
+    question: "What was the central technical contribution of DQN (2013/2015)?"
+    choices:
+      - "Just adding a deep network."
+      - "Combining Q-learning with a deep CNN, an *experience replay buffer* to break correlation between consecutive samples, and a *separate target network* updated lazily — together stabilizing what had been wildly unstable nonlinear value-function approximation."
+      - "Removing exploration."
+      - "Switching to policy gradients."
+    answer: 1
+    explanation: "Mnih et al. did not invent any single piece of DQN, but their *combination* — replay buffer + target network + epsilon-greedy + Huber-loss CNN regression — turned the previously divergent 'deep Q-learning' into a stable algorithm that worked on 49 Atari games from raw pixels with no game-specific tuning. It was the existence proof that deep RL could work."
+  - id: "drl-q2"
+    question: "What did AlphaGo (2016) combine to defeat Lee Sedol?"
+    choices:
+      - "Pure search."
+      - "A *policy network* (initially supervised on human expert moves, then refined via self-play policy gradients), a *value network* trained to predict game outcomes, and Monte Carlo Tree Search using the policy as a prior and the value as a leaf evaluator — a deep-learning + classical-search hybrid."
+      - "A single Transformer."
+      - "Hand-coded heuristics."
+    answer: 1
+    explanation: "AlphaGo's hybrid architecture — neural priors + classical MCTS — was the master stroke. The policy network reduced the branching factor (from ~250 legal moves to a few promising candidates); the value network avoided having to roll out games to terminal states. Without either neural component MCTS was too weak; without MCTS the neural networks alone could not match top humans."
+  - id: "drl-q3"
+    question: "AlphaGo Zero (2017) and AlphaZero (2018) removed what compared to AlphaGo?"
+    choices:
+      - "The neural networks."
+      - "All human-derived data — no supervised training on human games at all. Both networks (policy and value) are trained from scratch via pure self-play, with MCTS as both the policy improvement operator and the data generator."
+      - "MCTS."
+      - "The reward signal."
+    answer: 1
+    explanation: "AlphaGo Zero showed that human game records were unnecessary — and in fact a hindrance, since they biased the policy toward suboptimal human openings. AlphaZero generalized to Go, chess, and shogi from a single algorithm. The 'self-play with search as policy improvement' loop is one of the cleanest existing examples of how RL can produce superhuman performance without imitation."
+  - id: "drl-q4"
+    question: "What is the lineage from AlphaZero to modern reasoning LLMs (o1, R1, o3)?"
+    choices:
+      - "There is no connection."
+      - "The 'search + neural prior + verifier reward' template that AlphaZero perfected for board games is essentially the same template used for modern reasoning RL: an LLM proposes reasoning steps, a verifier (test suite, formal checker, ground-truth answer) provides reward, and the policy is improved by RL — sometimes with explicit MCTS-on-LLMs."
+      - "Reasoning LLMs use only supervised learning."
+      - "Reasoning LLMs do not use reward signals."
+    answer: 1
+    explanation: "The conceptual lineage is direct. AlphaProof, AlphaGeometry, and the broader 'verifier-grounded RL on reasoning' research programs explicitly cite the AlphaZero recipe. DeepSeek-R1's RL-from-scratch on math and code is a less search-heavy cousin. Even MCTS-on-LLMs (Tree of Thoughts, rStar) borrows the inner-loop structure. The 2010s deep-RL playbook is the substrate for the 2020s reasoning playbook."
+---
+
+The decade from 2013 to 2020 gave deep reinforcement learning its arc:
+from a research curiosity that solved Atari games, to a system that beat
+the world champion at Go, to a single algorithm that mastered Go, chess,
+and shogi from scratch, to one that learned the game's rules along with
+how to play. This module is the compressed history.
+
+It matters because the *recipe* perfected in this era — neural priors
+plus classical search plus self-play with verifiable rewards — is the
+same recipe currently being applied to mathematical reasoning, code
+generation, and theorem proving. The 2020s reasoning models inherit
+directly from the 2010s game-playing systems.
+
+## 2013-2015: DQN and the Atari benchmark
+
+Volodymyr Mnih's group at DeepMind published "Playing Atari with Deep
+Reinforcement Learning" at NIPS 2013. The system, **DQN**, took raw
+pixels (84×84 grayscale, 4 frames) and emitted Q-values for the joystick
+actions. It learned to play seven Atari games at superhuman level with
+*no game-specific tuning* — same network, same hyperparameters, same
+algorithm.
+
+The 2015 Nature paper extended this to 49 games and made DQN a household
+name in ML. The technical ingredients were each modest, but their
+combination had not been done before:
+
+- **Experience replay**: store transitions, sample a random minibatch
+  each gradient step. Breaks the correlation between consecutive
+  experiences that destabilizes nonlinear value-function approximation.
+- **Target network**: keep a lagged copy of the Q-network for computing
+  TD targets. Updated every $C$ steps; otherwise the target moves with
+  every gradient and bootstrapping diverges.
+- **Reward clipping** to $[-1, 1]$ for cross-game stability.
+- **Frame stacking** to give the network a sense of motion.
+
+The DQN paper remains a model of *combining known ideas precisely
+enough that the result works*.
+
+## 2016: AlphaGo and Lee Sedol
+
+Go had been the canonical "AI cannot solve this" game for two decades.
+The branching factor (~250 legal moves vs ~35 for chess) and the
+inability of static evaluation functions to assess positions made
+brute-force search infeasible. The 2016 prediction from many serious
+researchers was that beating top human Go players was a decade away.
+
+AlphaGo (DeepMind, 2016) combined three things:
+
+1. A **policy network** trained first on 30M positions from KGS expert
+   games (supervised), then fine-tuned via self-play with REINFORCE-style
+   policy gradients.
+2. A **value network** trained to predict game outcomes from positions.
+3. **Monte Carlo Tree Search** (MCTS) using the policy network as a
+   prior over child nodes and the value network (combined with rollouts)
+   as the leaf evaluator.
+
+In March 2016, AlphaGo defeated Lee Sedol 4-1 in a five-game match in
+Seoul that was watched by 280 million people. Game 4 — where Lee played
+the famous "move 78" wedge that AlphaGo could not handle — was the only
+game humans won; it remains the last time a top human beat a top engine
+at Go.
+
+## 2017-2018: AlphaGo Zero and AlphaZero
+
+AlphaGo Zero (Nature, October 2017) removed the supervised initialization
+entirely. The network was trained *from scratch* via self-play using MCTS
+as both the policy improvement operator and the data-generating policy.
+After three days of training it surpassed the original AlphaGo; after
+forty days it was a much stronger player than any prior version.
+
+AlphaZero (December 2017, generalized 2018) extended this to chess and
+shogi. *Same algorithm, no game-specific changes beyond the action
+space.* It defeated Stockfish (the strongest open chess engine) and
+Elmo (the top shogi engine). The conclusion: a single algorithm with
+the right inductive biases could master multiple perfect-information
+games at superhuman level *without* human knowledge.
+
+The training loop, in pseudocode:
+
+```python
+network = init_random()
+buffer = ReplayBuffer()
+while True:
+    # Self-play: generate games using MCTS guided by the current network.
+    for game in self_play(network, n_games=games_per_iteration):
+        buffer.add(game)
+    # Train: regress policy toward MCTS visit counts; regress value toward outcome.
+    for batch in buffer.sample(n_batches):
+        loss = (cross_entropy(network.policy(s), pi_mcts) +
+                mse(network.value(s), z_outcome) +
+                weight_decay)
+        loss.backward()
+        optimizer.step()
+```
+
+Two things in this loop are worth dwelling on. First, MCTS's visit
+distribution is a *better policy* than the network's raw output — search
+amplifies the model. Second, the network's value head bootstraps from
+Monte-Carlo outcomes, so the targets improve as the policy improves. The
+self-play loop is a perfect closed system: no human data, no external
+reward signal beyond win/loss, no domain knowledge.
+
+## 2019-2020: MuZero
+
+MuZero (Schrittwieser et al., Nature 2020) removed the requirement that
+the algorithm be told the game's *rules*. Instead it learns a *latent
+dynamics model*: given current state and an action, predict next-state
+representation, predicted reward, predicted policy, and predicted value.
+MCTS now runs on the *learned model*.
+
+The remarkable result: MuZero matched AlphaZero on Go, chess, and shogi
+*without being given the rules of any game*, and surpassed prior
+state-of-the-art on Atari. Model-based RL with a learned environment
+model finally worked.
+
+## What this lineage gave us
+
+Three threads from this decade run directly into 2026:
+
+1. **The search + neural-prior + self-play recipe** is the algorithmic
+   template for AlphaProof, AlphaGeometry, and verifier-grounded
+   reasoning RL. Replace "win/loss" with "passes formal proof check" or
+   "passes test suite" and you have the modern training loop for
+   reasoning systems.
+2. **Model-based RL with learned dynamics** (MuZero, Dreamer) is the
+   intellectual ancestor of world models in robotics (V-JEPA, π series)
+   and of world models for game-environment generation (Genie).
+3. **The honest limits of deep RL** (sample inefficiency, brittleness,
+   reward specification) shaped both the field's caution about RL-driven
+   progress claims and its current bet on combining RL with learned
+   priors and tools rather than RL alone.
+
+```text
+The recipe, distilled:
+  1. Neural network proposes (policy / value / reasoning step).
+  2. Search or verifier evaluates (MCTS, theorem prover, test suite).
+  3. Search outcome becomes training target (policy improvement).
+  4. Closed loop: better network → better search → better targets.
+
+This is AlphaZero. It is also AlphaProof. It is what reasoning RL
+on LLMs is converging toward.
+```
+
+<Callout variant="insight" title="The connection to reasoning LLMs">
+The most underappreciated fact about modern reasoning models (o1, R1,
+o3, AlphaProof) is how much DNA they share with AlphaZero. A learned
+neural model proposes; a verifier scores; the verifier's signal trains
+the proposer. The fact that the proposer is now an LLM and the
+"verifier" is a Lean checker or a unit-test runner does not change the
+core dynamic. Reading the AlphaZero paper carefully is one of the most
+important preparations for understanding where reasoning research is
+going next.
+</Callout>
+
+<PaperCard
+  title="Mastering the game of Go without human knowledge (AlphaGo Zero)"
+  authors="David Silver et al."
+  year={2017}
+  url="https://www.nature.com/articles/nature24270"
+  takeaway="The clearest exposition of the self-play + search + policy-improvement loop. Read it once for Go; read it twice if you want to understand where verifier-grounded reasoning RL is heading."
+/>
+
+## What to do next
+
+- Watch the AlphaGo documentary. It is the best record of what watching
+  a paradigm shift in real time felt like.
+- Implement DQN on Atari (CleanRL is the cleanest reference). Feel the
+  instability of pure deep Q-learning and watch the replay buffer + target
+  network fix it.
+- Read MuZero, then Dreamer-V3 (Hafner 2023) for the modern model-based
+  RL story.

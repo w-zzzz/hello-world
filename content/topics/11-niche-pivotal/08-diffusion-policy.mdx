@@ -1,0 +1,249 @@
+---
+slug: "11-niche-pivotal/08-diffusion-policy"
+part: "11-niche-pivotal"
+partTitle: "Niche but pivotal"
+partIndex: 11
+topicIndex: 8
+title: "Diffusion policies for control"
+hook: "Diffusion as a flexible distribution over action sequences — Chi 2023, π_0, RDT-1B."
+estMinutes: 16
+difficulty: 4
+prereqs: ["06-multimodal/03-diffusion-ddpm-sd", "08-rl/03-policy-gradient-ppo"]
+hasHeroViz: false
+researchers: ["chi-cheng", "levine", "finn"]
+papers:
+  - title: "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion"
+    authors: "Chi, Feng, Du, Xu, Cousineau, Burchfiel, Song"
+    year: 2023
+    url: "https://arxiv.org/abs/2303.04137"
+  - title: "3D Diffusion Policy"
+    authors: "Ze, Ze, Wang, Zhang, Chen, Su, et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2403.03954"
+  - title: "RDT-1B: A Diffusion Foundation Model for Bimanual Manipulation"
+    authors: "Liu, Wen, Lyu, Bai, Zhao, Wang"
+    year: 2024
+    url: "https://arxiv.org/abs/2410.07864"
+  - title: "Planning with Diffusion for Flexible Behavior Synthesis"
+    authors: "Janner, Du, Tenenbaum, Levine"
+    year: 2022
+    url: "https://arxiv.org/abs/2205.09991"
+hfResources:
+  - kind: "library"
+    title: "lerobot — diffusion policy implementations"
+    url: "https://huggingface.co/lerobot"
+  - kind: "model"
+    title: "robotics-diffusion-transformer/rdt-1b"
+    url: "https://huggingface.co/robotics-diffusion-transformer/rdt-1b"
+freeResources:
+  - kind: "blog"
+    title: "Diffusion Policy — project page"
+    source: "Cheng Chi"
+    url: "https://diffusion-policy.cs.columbia.edu/"
+  - kind: "video"
+    title: "Diffusion Policy — RSS 2023 talk"
+    source: "Cheng Chi"
+    url: "https://www.youtube.com/watch?v=w9Y2K1jmjJk"
+  - kind: "blog"
+    title: "Why diffusion is the right policy class for robots"
+    source: "Sergey Levine — RAIL blog"
+    url: "https://bair.berkeley.edu/blog/2024/02/05/diffusion-policy/"
+quiz:
+  - id: "dp-q1"
+    question: "Why is diffusion an unusually good policy class for robot manipulation, compared to a standard Gaussian-output policy?"
+    choices:
+      - "It is faster to compute."
+      - "Diffusion can represent highly *multimodal* action distributions: in many manipulation tasks there are several valid ways to achieve the goal (left or right around the obstacle), and a unimodal Gaussian averages them into a stuck-in-the-middle action that fails."
+      - "It uses fewer parameters."
+      - "It avoids needing rewards."
+    answer: 1
+    explanation: "Imitation learning from human demonstrations frequently produces multimodal action distributions — different demonstrators reach for the cup with different trajectories. A unimodal Gaussian policy averages these and ends up between modes, often hitting the obstacle. A diffusion policy can sample distinct modes cleanly, which is the central reason it became the dominant action head for visuomotor learning in 2023-25."
+  - id: "dp-q2"
+    question: "Diffusion Policy (Chi et al. 2023) predicts an entire *action chunk* (e.g. 16 future steps) at each decision rather than one action. Why does chunking help?"
+    choices:
+      - "It is required for diffusion."
+      - "Chunked actions reduce the effective horizon the policy has to reason over, suppress jitter from per-step noise, and capture short-horizon temporal dependencies that single-step policies cannot — empirically the single most important hyperparameter for performance."
+      - "Chunking reduces the number of parameters."
+      - "Chunking removes the need for observations."
+    answer: 1
+    explanation: "The chunk size $H$ trades off reactivity (small $H$, replan more often) against temporal smoothness and lookahead (large $H$, commit to a plan). Chi et al. found $H = 8\\text{-}16$ optimal for their tasks; smoothing across the chunk also helps reject perceptual noise. Chunked action prediction is now standard in π_0, RDT, OpenVLA, and most modern visuomotor policies."
+  - id: "dp-q3"
+    question: "What is the relationship between *Diffuser* (Janner et al. 2022) and Diffusion Policy (Chi et al. 2023)?"
+    choices:
+      - "They are unrelated."
+      - "Diffuser uses diffusion to plan entire state-action *trajectories* and pulls actions out of the plan (model-based, planning-as-inference); Diffusion Policy uses diffusion just to predict action chunks conditioned on observations (model-free imitation). Different bets, both productive."
+      - "Diffuser is the only useful one."
+      - "Diffusion Policy plans trajectories."
+    answer: 1
+    explanation: "Diffuser pioneered using diffusion as a flexible distribution over trajectories — sample a trajectory, classifier-guide it toward high reward, execute the first action, replan. Diffusion Policy is the simpler imitation-learning version: train on (observation, action chunk) pairs, sample at inference. Both work; in practice Diffusion Policy has won most adoption because imitation data is far more abundant than planning rewards."
+  - id: "dp-q4"
+    question: "RDT-1B (2024) and π_0/π_0.5 (Physical Intelligence) extend diffusion-policy ideas to *foundation* scale. What is the key architectural template?"
+    choices:
+      - "Pure CNNs."
+      - "A pre-trained vision-language backbone (PaliGemma-3B for π_0, a custom DiT for RDT) provides observation+language features; a diffusion or flow-matching action head generates continuous action chunks; trained on multi-embodiment, multi-task datasets in the millions of trajectories."
+      - "Tabular Q-learning."
+      - "Transformer alone, no diffusion."
+    answer: 1
+    explanation: "The template that emerged in 2024-25: VLM backbone for perception+language, diffusion or flow-matching action head for action chunk generation, multi-embodiment pre-training. RDT-1B uses 1B parameters and ~6k bimanual trajectories; π_0 uses ~10k hours across 7 embodiments. This is the modern recipe for visuomotor foundation models — and it sits at the intersection of diffusion (this module), VLA models (part 6 topic 6), and flow matching (part 6 topic 4)."
+---
+
+Diffusion did not just take over image generation. By 2023-2024 it had
+become the dominant policy class for robot visuomotor control, and it sits
+at the heart of every serious robot-learning foundation model in 2026.
+This module is about why — what makes diffusion the right policy class
+when the action distribution is multimodal — and how the idea connects to
+both classical RL and the VLA models in part 6.
+
+It is short and dense because the technical content is mostly familiar
+from part 6 (DDPM/flow matching) and part 8 (policy gradients). The new
+material is the *connection* and what it lets you do in the action space.
+
+## The motivating problem: multimodality
+
+Imitation learning from human demonstrations is the dominant data source
+for robot manipulation. The fundamental difficulty: human demonstrations
+are *multimodal*. Two demonstrators showing "pour water into the cup"
+will reach for the bottle with different trajectories — left arm or
+right arm, around the obstacle one way or the other, fast or slow.
+
+A standard Gaussian-output policy regresses to the *mean* of these
+demonstrations. The mean of "go left" and "go right" is "go straight
+through the obstacle." This failure mode is endemic in behavior cloning;
+it is one of the central reasons imitation learning has historically been
+fragile.
+
+The classical fixes — Gaussian mixtures, autoregressive
+discretization (RT-1, BC-Z) — work but each has costs. GMMs are hard
+to train stably; discretization fragments the action space and loses
+precision on continuous control.
+
+## Diffusion as a flexible action distribution
+
+A diffusion model is a *very* flexible distribution. It can represent
+arbitrarily multimodal action densities, including modes of different
+masses and shapes. Conditioning on observations (camera images,
+proprioception, language instruction) gives a conditional distribution
+$p(a_{1:H} \mid o)$ that captures whichever modes the data exhibits.
+
+The recipe (Chi et al. 2023):
+
+1. Each training example is $(o, a_{1:H})$ — observation and a chunk of
+   $H$ subsequent actions.
+2. Add noise to the action chunk: $a_{1:H}^{(k)} = \sqrt{\bar\alpha_k}\, a_{1:H} + \sqrt{1 - \bar\alpha_k}\, \varepsilon$.
+3. Train a network $\varepsilon_\theta(a_{1:H}^{(k)}, o, k)$ to predict
+   the noise.
+4. At inference: sample $a_{1:H}^{(K)} \sim \mathcal{N}(0, I)$, then
+   denoise iteratively conditioned on the current observation, execute
+   the first few actions, replan with a new observation, repeat.
+
+```python
+# Conceptual training step for Diffusion Policy.
+o, a_chunk = sample_demo()             # (obs, action chunk of length H)
+k = randint(1, K)                      # noise step
+noise = randn_like(a_chunk)
+a_noisy = sqrt(abar[k]) * a_chunk + sqrt(1 - abar[k]) * noise
+loss = mse(eps_net(a_noisy, o, k), noise)
+```
+
+The architectural choices that work best — at least in 2023-25 — are
+1D-conv U-Nets or transformer denoisers on the action chunk dimension,
+with FiLM-style conditioning on observations. Sampling uses DDIM or DPM-Solver
+to keep the inference cost down to ~10 denoising steps.
+
+## Why action chunking matters
+
+The other half of Diffusion Policy's recipe is **action chunking**: predict
+$H$ future actions ($H \approx 8\text{-}16$) and execute them open-loop
+before replanning. Chunking helps for several reasons:
+
+- **Temporal coherence.** Single-step policies introduce per-step jitter;
+  chunked predictions are smoother and more demonstration-like.
+- **Implicit lookahead.** The chunk captures short-horizon dependencies
+  ("first lift, then rotate, then place") that a per-step policy must
+  re-derive.
+- **Reactive replanning.** Re-querying every $H/2$ steps balances
+  reactivity with smoothness. The policy is not committed to a stale
+  plan if the world changes.
+
+The right $H$ is task-dependent (smaller for contact-rich, larger for
+free-motion) but the principle is universal: predict more than one step,
+re-plan often.
+
+## Diffuser, planning, and goal conditioning
+
+Janner et al.'s **Diffuser** (2022) makes a subtly different bet: use
+diffusion to model the joint distribution over *trajectories*
+(state-action sequences), then do classifier-guided sampling to bias
+toward high-reward trajectories. This is *planning as inference* — the
+model is the world; the sampler is the planner.
+
+Diffuser is more general (it can plan against new reward functions
+without retraining) but harder to train (needs a learned dynamics model).
+Diffusion Policy is simpler (pure imitation) and has won more adoption,
+but the two ideas combine elegantly: a learned dynamics model plus a
+diffusion-policy proposal yields a powerful planning system.
+
+Goal conditioning is where diffusion really shines. Sample-time
+guidance (classifier-free guidance from text-to-image, gradient guidance
+from a goal classifier, or constraint-projection from collision avoidance)
+all transfer naturally to action diffusion. Plan around obstacles,
+toward a goal pose, with arbitrary safety constraints — all without
+retraining.
+
+## The connection to flow matching
+
+Flow matching (covered in part 6 topic 4) is the natural successor to
+diffusion for action generation. Single-step generation, straighter
+trajectories, and easier to train at scale. Physical Intelligence's
+**π_0** uses flow matching as the action head precisely for this reason:
+a 50 Hz control loop cannot wait for 50 denoising steps, but it can wait
+for one flow-matching step.
+
+The 2025-26 trend is clearly toward flow-matching action heads on top of
+VLM backbones. Diffusion remains conceptually central — flow matching is
+a continuous-time generalization of the same idea — but production systems
+are largely converging on the cheaper sampler.
+
+## How this fits the rest of the curriculum
+
+Three places this module connects:
+
+- **Part 6 / Diffusion** gives the theoretical machinery (forward noising,
+  reverse denoising, score matching). Action diffusion just swaps "image"
+  for "action chunk."
+- **Part 6 / VLA** gives the architectural pattern (VLM backbone +
+  action head). Diffusion is one choice of action head; π_0's
+  flow-matching head is its successor.
+- **Part 8 / RL** gives the alternative paradigm (policy gradients,
+  reward maximization). Diffusion policies are *imitation*; RL
+  fine-tuning of diffusion policies (Diffusion-DPO for control,
+  AWR-style approaches) is the bridge to optimization beyond the
+  demonstration distribution.
+
+<Callout variant="insight" title="Why this is a 'niche but pivotal' topic">
+Diffusion policies are not yet the algorithm a typical ML engineer
+ships. But every serious robot foundation model in 2025-26 — π_0,
+RDT-1B, OpenVLA's diffusion variants, Boston Dynamics's manipulation
+research — uses some form of action diffusion or flow matching. The
+class of problems where multimodal action distributions matter (robot
+control, autonomous driving, music/animation generation) is growing
+quickly. Knowing the recipe puts you ahead of the field.
+</Callout>
+
+<PaperCard
+  title="Diffusion Policy: Visuomotor Policy Learning via Action Diffusion"
+  authors="Cheng Chi, Siyuan Feng, Yilun Du, Zhenjia Xu, Eric Cousineau, Benjamin Burchfiel, Shuran Song"
+  year={2023}
+  url="https://arxiv.org/abs/2303.04137"
+  takeaway="The paper that established diffusion as the default action head for visuomotor learning. Both the empirical results and the chunking analysis are worth careful reading; very little has needed to change in two years."
+/>
+
+## What to do next
+
+- Watch Chi's RSS 2023 talk; the worked examples make the multimodality
+  story concrete.
+- Re-read DDPM with action chunks in mind — almost no architectural
+  change is needed.
+- Skim π_0 and RDT-1B side by side to see how diffusion (or flow
+  matching) action heads scale up to multi-embodiment foundation
+  models.
