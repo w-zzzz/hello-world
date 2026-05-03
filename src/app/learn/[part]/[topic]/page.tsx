@@ -8,6 +8,7 @@ import { TopicHeader } from "@/components/learn/TopicHeader";
 import { NextPrev } from "@/components/learn/NextPrev";
 import { PrereqList } from "@/components/learn/PrereqList";
 import { ReferencesPanel } from "@/components/learn/ReferencesPanel";
+import { ScrollDepthTracker } from "@/components/learn/ScrollDepthTracker";
 import { TOPIC_BY_SLUG, nextTopic, prevTopic } from "../../../../../content/curriculum";
 
 export const dynamicParams = true;
@@ -54,6 +55,7 @@ export default async function TopicPage({
 
   return (
     <article className="pt-32 pb-16">
+      <ScrollDepthTracker slug={slug} />
       <div className="mx-auto max-w-7xl px-6 grid gap-12 lg:grid-cols-[1fr_280px]">
         <div className="min-w-0 max-w-3xl">
           <TopicHeader topic={meta} />

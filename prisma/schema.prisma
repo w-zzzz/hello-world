@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  xp          Int      @default(0)
+  streakCount Int      @default(0)
+  streakDate  DateTime?
+  prefs       String   @default("{}")
+
+  progress    Progress[]
+  attempts    QuizAttempt[]
+  reviews     ReviewItem[]
+}
+
+model Topic {
+  slug       String  @id
+  partSlug   String
+  partIndex  Int
+  topicIndex Int
+  title      String
+  hook       String
+  estMinutes Int
+  hasHeroViz Boolean @default(false)
+  vizKey     String?
+  prereqs    String  // JSON string
+
+  progress Progress[]
+  attempts QuizAttempt[]
+  reviews  ReviewItem[]
+
+  @@index([partIndex, topicIndex])
+}
+
+model Progress {
+  id          String   @id @default(cuid())
+  userId      String
+  topicSlug   String
+  status      String   @default("not_started")
+  mastery     Float    @default(0)
+  scrollDepth Float    @default(0)
+  completedAt DateTime?
+  updatedAt   DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicSlug], references: [slug])
+
+  @@unique([userId, topicSlug])
+  @@index([userId])
+}
+
+model QuizAttempt {
+  id         String   @id @default(cuid())
+  userId     String
+  topicSlug  String
+  questionId String
+  selected   Int
+  correct    Boolean
+  timeMs     Int
+  createdAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicSlug], references: [slug])
+
+  @@index([userId, topicSlug])
+}
+
+model ReviewItem {
+  id          String   @id @default(cuid())
+  userId      String
+  topicSlug   String
+  questionId  String
+  easiness    Float    @default(2.5)
+  interval    Int      @default(0)
+  repetitions Int      @default(0)
+  dueAt       DateTime @default(now())
+  lastGrade   Int?
+  updatedAt   DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicSlug], references: [slug])
+
+  @@unique([userId, topicSlug, questionId])
+  @@index([userId, dueAt])
+}
