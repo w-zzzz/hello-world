@@ -19,6 +19,20 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
+/**
+ * Inline theme-flash preventer. Runs synchronously before first paint to set the
+ * `dark` class on <html> when the user prefers (or last selected) dark mode, so
+ * the page never renders light then snap to dark on hydration. The `next-themes`
+ * provider hydrates after this and reads the same `mlmap-theme` storage key.
+ */
+const themeFlashPreventer = `
+try {
+  var t = localStorage.getItem("mlmap-theme");
+  if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  if (t === "dark") document.documentElement.classList.add("dark");
+} catch (e) {}
+`;
+
 export const metadata: Metadata = {
   metadataBase: new URL("http://localhost:3000"),
   title: {
@@ -63,6 +77,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${jetbrains.variable} antialiased`}
     >
+      <head>
+        {/* Static, build-time-known string — runs before first paint to set dark class. */}
+        <script dangerouslySetInnerHTML={{ __html: themeFlashPreventer }} />
+      </head>
       <body className="min-h-screen flex flex-col">
         <Providers>
           <SkipLink />

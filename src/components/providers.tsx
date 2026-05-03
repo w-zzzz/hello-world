@@ -12,6 +12,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       defaultTheme="dark"
       enableSystem
       disableTransitionOnChange={false}
+      storageKey="mlmap-theme"
     >
       <LenisProvider>{children}</LenisProvider>
       <Toaster

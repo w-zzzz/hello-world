@@ -20,55 +20,115 @@ export function QuizBlock({
   const [startedAt, setStartedAt] = React.useState(() => Date.now());
   const [submitting, setSubmitting] = React.useState(false);
 
-  if (!questions.length) return null;
+  // Refs let the keydown listener (registered once) read fresh values.
+  const idxRef = React.useRef(idx);
+  const revealedRef = React.useRef(revealed);
+  const submittingRef = React.useRef(submitting);
+  const questionsRef = React.useRef(questions);
+  const submitRef = React.useRef<(choice: number) => Promise<void>>(async () => {});
+  const nextQuestionRef = React.useRef<() => void>(() => {});
+  React.useEffect(() => { idxRef.current = idx; }, [idx]);
+  React.useEffect(() => { revealedRef.current = revealed; }, [revealed]);
+  React.useEffect(() => { submittingRef.current = submitting; }, [submitting]);
+  React.useEffect(() => { questionsRef.current = questions; }, [questions]);
+
+  // Keyboard ergonomics: 1-4 / a-d picks a choice, Enter advances after reveal.
+  // Bail when the user is typing into a form control so we don't hijack input.
+  React.useEffect(() => {
+    function isTypingInForm() {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (el.isContentEditable) return true;
+      return false;
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingInForm()) return;
+      const q = questionsRef.current[idxRef.current];
+      if (!q) return;
+      const k = e.key.toLowerCase();
+      // 1-9 / a-z map to choice index when within range.
+      let choiceIdx = -1;
+      if (k >= "1" && k <= "9") choiceIdx = Number(k) - 1;
+      else if (k >= "a" && k <= "z") choiceIdx = k.charCodeAt(0) - "a".charCodeAt(0);
+      if (choiceIdx >= 0 && choiceIdx < q.choices.length) {
+        if (!revealedRef.current && !submittingRef.current) {
+          e.preventDefault();
+          void submitRef.current(choiceIdx);
+        }
+        return;
+      }
+      if (e.key === "Enter" && revealedRef.current && !submittingRef.current) {
+        e.preventDefault();
+        nextQuestionRef.current();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const q = questions[idx];
 
-  async function submit(choice: number) {
-    if (revealed || submitting) return;
-    setSelected(choice);
-    setRevealed(true);
-    setSubmitting(true);
-    const correct = choice === q.answer;
-    const timeMs = Date.now() - startedAt;
-    try {
-      const res = await fetch("/api/quiz", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          topicSlug,
-          questionId: q.id,
-          selected: choice,
-          correct,
-          timeMs,
-        }),
-      }).then((r) => r.json());
-      if (correct) {
-        toast.success(`+${res.xpDelta} XP · streak ${res.streakCount}d`, { duration: 2200 });
-      } else {
-        toast.message("Saved for review", {
-          description: "We'll bring this back later.",
-          duration: 2200,
-        });
+  const submit = React.useCallback(
+    async (choice: number) => {
+      if (revealed || submitting) return;
+      const current = questions[idx];
+      if (!current) return;
+      setSelected(choice);
+      setRevealed(true);
+      setSubmitting(true);
+      const correct = choice === current.answer;
+      const timeMs = Date.now() - startedAt;
+      try {
+        const res = await fetch("/api/quiz", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            topicSlug,
+            questionId: current.id,
+            selected: choice,
+            correct,
+            timeMs,
+          }),
+        }).then((r) => r.json());
+        if (correct) {
+          toast.success(`+${res.xpDelta} XP · streak ${res.streakCount}d`, { duration: 2200 });
+        } else {
+          toast.message("Saved for review", {
+            description: "We'll bring this back later.",
+            duration: 2200,
+          });
+        }
+      } catch {
+        toast.error("Could not save attempt");
+      } finally {
+        setSubmitting(false);
       }
-    } catch {
-      toast.error("Could not save attempt");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    },
+    [revealed, submitting, questions, idx, startedAt, topicSlug]
+  );
 
-  function nextQuestion() {
+  const nextQuestion = React.useCallback(() => {
     if (idx + 1 < questions.length) {
       setIdx(idx + 1);
       setSelected(null);
       setRevealed(false);
       setStartedAt(Date.now());
     } else {
-      // quiz complete
       toast.success("Quiz complete", { description: "Mastery updated.", icon: <Sparkles className="h-4 w-4" /> });
     }
-  }
+  }, [idx, questions.length]);
+
+  // Keep handler refs current so the global keydown listener calls the latest closures.
+  React.useEffect(() => {
+    submitRef.current = submit;
+    nextQuestionRef.current = nextQuestion;
+  }, [submit, nextQuestion]);
+
+  if (!questions.length) return null;
 
   return (
     <section
@@ -125,6 +185,15 @@ export function QuizBlock({
           );
         })}
       </ul>
+
+      {!revealed && (
+        <div
+          className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-muted-fg)]/80 font-medium"
+          aria-hidden
+        >
+          Press 1–{q.choices.length} or A–{String.fromCharCode(64 + q.choices.length)}
+        </div>
+      )}
 
       <AnimatePresence>
         {revealed && (
