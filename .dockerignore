@@ -1,0 +1,54 @@
+# Keep the build context small. Anything below is either reproducible or
+# unnecessary inside the image.
+
+# Node + package manager caches
+node_modules
+.pnpm-store
+.yarn
+.npm
+
+# Build artifacts
+.next
+out
+build
+dist
+*.tsbuildinfo
+next-env.d.ts
+
+# Local dev databases — production should mount its own volume / point at Postgres.
+prisma/dev.db
+prisma/dev.db-journal
+dev.db
+content/.generated
+
+# VCS / CI metadata
+.git
+.gitignore
+.github
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Tests + reports
+coverage
+test-results
+playwright-report
+tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Local env files (never bake secrets into images)
+.env
+.env.*
+!.env.example
+
+# Misc
+README.md
+CLAUDE.md
+AGENTS.md
+docs
+.vercel

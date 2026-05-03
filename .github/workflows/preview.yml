@@ -1,0 +1,41 @@
+name: Preview deployment
+
+# Doc-only workflow that fires when a PR is opened/updated. The actual deploy
+# is wired up via your hosting provider's GitHub integration (Vercel, Render,
+# Fly, Railway). This file gives reviewers a single place to find the link
+# and the playbook for plugging in a new provider.
+#
+# To enable real deploys:
+#   1. Pick a provider and enable its GitHub App on this repo.
+#   2. Set provider-specific secrets in repo Settings → Secrets and variables.
+#   3. Replace the echo step below with the provider's official action, e.g.
+#        - amondnet/vercel-action@v25
+#        - superfly/flyctl-actions/setup-flyctl@master
+#        - render-actions/render-deploy@v1
+#   4. Comment a preview URL back on the PR via actions/github-script.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ["**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    name: Hint preview deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      # Pass GitHub-context strings via env, not via direct ${{ ... }} interpolation
+      # in shell commands, to avoid command-injection patterns flagged by the
+      # GitHub Actions security guide.
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Note preview status
+        run: |
+          echo "::notice title=Preview deploy::Wire up a provider in .github/workflows/preview.yml."
+          echo "Recommended: Vercel one-click, Render, or Fly.io."
+          echo "PR head SHA: $HEAD_SHA"
