@@ -1,0 +1,191 @@
+---
+slug: "03-deep-learning/01-mlp-backprop"
+part: "03-deep-learning"
+partTitle: "Deep learning core"
+partIndex: 3
+topicIndex: 1
+title: "MLPs & backpropagation"
+hook: "Compute graphs, the chain rule, and how gradients flow."
+estMinutes: 22
+difficulty: 3
+prereqs: ["01-math/03-optimization"]
+hasHeroViz: true
+vizKey: "backprop-stepper"
+researchers: ["hinton", "lecun", "bengio"]
+papers:
+  - title: "Learning representations by back-propagating errors"
+    authors: "Rumelhart, Hinton, Williams"
+    year: 1986
+    url: "https://www.nature.com/articles/323533a0"
+  - title: "Automatic differentiation in machine learning: a survey"
+    authors: "Baydin, Pearlmutter, Radul, Siskind"
+    year: 2018
+    url: "https://arxiv.org/abs/1502.05767"
+hfResources:
+  - kind: "library"
+    title: "PyTorch autograd documentation"
+    url: "https://pytorch.org/docs/stable/notes/autograd.html"
+freeResources:
+  - kind: "video"
+    title: "The spelled-out intro to neural networks and backprop"
+    source: "Andrej Karpathy"
+    url: "https://www.youtube.com/watch?v=VMj-3S1tku0"
+  - kind: "blog"
+    title: "Calculus on Computational Graphs"
+    source: "Christopher Olah"
+    url: "https://colah.github.io/posts/2015-08-Backprop/"
+  - kind: "course"
+    title: "Stanford CS231N — Backpropagation lecture"
+    url: "https://cs231n.github.io/optimization-2/"
+quiz:
+  - id: "bp-q1"
+    question: "Backpropagation is best described as:"
+    choices:
+      - "A new optimization algorithm"
+      - "A reverse-mode application of the chain rule on a computational graph"
+      - "A way to make networks deeper"
+      - "A regularization technique"
+    answer: 1
+    explanation: "Backprop is reverse-mode automatic differentiation. Forward computes outputs and caches intermediates; the backward pass walks the same graph in reverse multiplying local Jacobians by the upstream gradient. Optimization (SGD, Adam) is what consumes those gradients."
+  - id: "bp-q2"
+    question: "Why does the gradient through a deep stack of sigmoid activations vanish?"
+    choices:
+      - "Sigmoid is not differentiable everywhere."
+      - "Each sigmoid's derivative peaks at 0.25, and the product of many small numbers shrinks toward 0."
+      - "Floating-point rounding accumulates."
+      - "The bias term cancels the gradient."
+    answer: 1
+    explanation: "$\\sigma'(z) = \\sigma(z)(1-\\sigma(z)) \\le 0.25$. Stack many of those and the product is exponentially small. ReLU avoids this for active units; residual connections route gradient around the nonlinearities."
+  - id: "bp-q3"
+    question: "What is the role of the residual connection in $y = x + f(x)$?"
+    choices:
+      - "It adds extra parameters."
+      - "It guarantees the function is convex."
+      - "It provides a gradient highway: $\\partial y/\\partial x = I + \\partial f/\\partial x$, so identity gradient flows even when $\\partial f/\\partial x \\approx 0$."
+      - "It accelerates the forward pass."
+    answer: 2
+    explanation: "Residuals add the identity to whatever the layer learns. The gradient inherits a copy of the upstream signal regardless of $f$'s Jacobian, which is why ResNets train far deeper than plain stacks."
+---
+
+If you can derive backpropagation, you can read every modern deep-learning
+paper. If you can't, you'll spend a lot of debugging time confused about why
+your loss is NaN.
+
+This is the *one* algorithm to internalize.
+
+## What an MLP actually is
+
+A multilayer perceptron is a stack of linear maps with pointwise nonlinearities
+in between. For one hidden layer:
+
+$$
+h = \sigma(W_1 x + b_1), \quad \hat{y} = W_2 h + b_2
+$$
+
+The nonlinearity $\sigma$ is what makes an MLP more than a fancy linear
+regression. Without it, the composition $W_2(W_1 x + b_1) + b_2$ collapses to
+another affine map.
+
+<Callout variant="info" title="Universal approximation, soberly">
+A wide enough one-hidden-layer MLP can approximate any continuous function on a
+compact set arbitrarily well. This is mostly an *existence* result. It says
+nothing about how to *find* such a network with gradient descent on finite
+data — which is the actual hard problem.
+</Callout>
+
+## The computational graph
+
+Every neural network is a directed acyclic graph of tensor operations:
+multiplications, additions, activations, reductions. The forward pass evaluates
+the graph from inputs to loss. The backward pass evaluates the gradient of the
+loss with respect to every parameter by walking the graph in reverse.
+
+<Embed viz="backprop-stepper" />
+
+The key insight: each operation knows its **local Jacobian**. To compute the
+gradient with respect to any parameter, you don't need to know the rest of the
+graph — just multiply your local Jacobian by the gradient flowing in from
+downstream.
+
+## The chain rule, vectorized
+
+Suppose your loss is $L = g(f(x))$ where $f$ produces a vector $z = f(x)$ and
+$g$ produces a scalar $L = g(z)$. The gradient with respect to $x$ is
+
+$$
+\frac{\partial L}{\partial x} = \frac{\partial L}{\partial z} \frac{\partial z}{\partial x}
+= \nabla_z L \cdot J_f
+$$
+
+where $J_f$ is the Jacobian of $f$ at $x$. Reverse-mode autodiff computes
+$\nabla_x L$ as a series of vector–Jacobian products (VJPs), each costing about
+the same as the corresponding forward operation. The total cost of the backward
+pass is at most a constant times the cost of the forward pass.
+
+## A two-layer worked example
+
+```python
+import numpy as np
+
+# forward
+def forward(x, W1, b1, W2, b2, y):
+    z1 = x @ W1 + b1            # (B, H)
+    h  = np.maximum(0, z1)      # ReLU
+    z2 = h @ W2 + b2            # (B, C)
+    p  = np.exp(z2 - z2.max(axis=-1, keepdims=True))
+    p /= p.sum(axis=-1, keepdims=True)              # softmax
+    L  = -np.log(p[np.arange(len(y)), y]).mean()    # cross-entropy
+    cache = (x, z1, h, p, y)
+    return L, cache
+
+# backward
+def backward(cache, W1, W2):
+    x, z1, h, p, y = cache
+    B = len(y)
+    dz2 = p.copy()
+    dz2[np.arange(B), y] -= 1
+    dz2 /= B                                 # (B, C)
+    dW2 = h.T @ dz2                          # (H, C)
+    db2 = dz2.sum(axis=0)
+    dh  = dz2 @ W2.T                         # (B, H)
+    dz1 = dh * (z1 > 0)                      # ReLU derivative
+    dW1 = x.T @ dz1
+    db1 = dz1.sum(axis=0)
+    return dW1, db1, dW2, db2
+```
+
+You will rarely write this by hand again — autograd does it for you — but
+*reading* this snippet should feel like reading the gradient formulas of a
+physical system. Each line is a Jacobian multiplied by an upstream gradient.
+
+## What goes wrong, and why
+
+The two failure modes that make backprop hard:
+
+1. **Vanishing gradients.** Stacking saturating nonlinearities like sigmoid or
+   tanh causes gradients to shrink exponentially with depth. Solutions: ReLU
+   (active units pass gradient unchanged), residual connections (additive
+   identity path), better initialization (Glorot, He), normalization (BatchNorm,
+   LayerNorm).
+
+2. **Exploding gradients.** Recurrent networks and very deep stacks can amplify
+   gradients similarly. Solutions: gradient clipping, weight decay, careful
+   initialization, architectural changes (LSTM gates, attention).
+
+<Callout variant="warning" title="Practical bug-hunt checklist">
+NaN loss? In order: (1) check for $\log 0$ in cross-entropy — add `eps`; (2)
+check learning rate is not too large; (3) print min/max of activations and
+gradients per layer; (4) reduce batch to 1 and look for shape mismatches; (5)
+verify your data normalization didn't divide by zero.
+</Callout>
+
+## Why this lasts
+
+Modern architectures look very different from a 2-layer MLP — Transformers, MoE
+layers, diffusion U-Nets — but the algorithm that trains them is identical.
+Every framework you'll use (PyTorch, JAX, MLX) implements reverse-mode
+autodiff under the hood. The interface changes; the math stays.
+
+If you can hand-derive the gradient through a softmax + cross-entropy + linear
++ ReLU stack and match what PyTorch's `loss.backward()` produces, you have
+fully internalized backprop. That's the test.

@@ -1,0 +1,217 @@
+---
+slug: "03-deep-learning/04-attention"
+part: "03-deep-learning"
+partTitle: "Deep learning core"
+partIndex: 3
+topicIndex: 4
+title: "Attention is all you need"
+hook: "The single idea that ate sequence modeling."
+estMinutes: 22
+difficulty: 4
+prereqs: ["03-deep-learning/03-rnn-lstm"]
+hasHeroViz: true
+vizKey: "attention-heatmap"
+researchers: ["vaswani", "shazeer", "sutskever"]
+papers:
+  - title: "Attention is all you need"
+    authors: "Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, Polosukhin"
+    year: 2017
+    url: "https://arxiv.org/abs/1706.03762"
+  - title: "Neural machine translation by jointly learning to align and translate"
+    authors: "Bahdanau, Cho, Bengio"
+    year: 2014
+    url: "https://arxiv.org/abs/1409.0473"
+hfResources:
+  - kind: "course"
+    title: "Hugging Face NLP Course — Transformers from scratch"
+    url: "https://huggingface.co/learn/nlp-course/chapter1/4"
+  - kind: "model"
+    title: "google-bert/bert-base-uncased"
+    url: "https://huggingface.co/google-bert/bert-base-uncased"
+freeResources:
+  - kind: "blog"
+    title: "The Illustrated Transformer"
+    source: "Jay Alammar"
+    url: "https://jalammar.github.io/illustrated-transformer/"
+  - kind: "video"
+    title: "Let's build GPT: from scratch, in code, spelled out"
+    source: "Andrej Karpathy"
+    url: "https://www.youtube.com/watch?v=kCc8FmEb1nY"
+  - kind: "blog"
+    title: "Transformers from scratch"
+    source: "Brandon Rohrer"
+    url: "https://e2eml.school/transformers.html"
+quiz:
+  - id: "attn-q1"
+    question: "In scaled dot-product attention $\\mathrm{softmax}(QK^\\top / \\sqrt{d_k}) V$, why do we divide by $\\sqrt{d_k}$?"
+    choices:
+      - "It makes the scores zero-mean."
+      - "Without it, dot products grow with $d_k$ and push softmax into low-gradient regions."
+      - "It is required for differentiability."
+      - "It makes Q and K orthogonal."
+    answer: 1
+    explanation: "If $Q$ and $K$ have unit-variance entries, $Q K^\\top$ has variance $\\propto d_k$. Large logits make softmax saturate (one entry near 1, rest near 0) and gradients vanish. The scaling keeps softmax in its sensitive region."
+  - id: "attn-q2"
+    question: "Why do Transformers use multi-head attention instead of a single attention head with the full hidden dimension?"
+    choices:
+      - "It is faster on GPUs."
+      - "It lets the model attend to multiple kinds of relationships in parallel by mixing different subspaces."
+      - "It removes the need for positional encoding."
+      - "It guarantees a unique solution."
+    answer: 1
+    explanation: "Each head projects into a smaller subspace $d/h$ and learns its own attention pattern. Empirically, different heads specialize: syntactic, semantic, positional. The concatenation gives the model many simultaneous views."
+  - id: "attn-q3"
+    question: "What does causal masking do during decoder self-attention?"
+    choices:
+      - "It prevents looking at padding tokens."
+      - "It zeros out attention weights for future positions, so token $i$ can only see tokens $\\le i$."
+      - "It enforces token uniqueness."
+      - "It adds noise for regularization."
+    answer: 1
+    explanation: "Causal (or autoregressive) masking sets logits at future positions to $-\\infty$ before softmax, so future tokens get zero weight. This makes the model trainable in parallel on the whole sequence while preserving left-to-right causality."
+  - id: "attn-q4"
+    question: "Without positional encoding, what would happen to a Transformer encoder?"
+    choices:
+      - "Nothing — attention is permutation-aware."
+      - "It would be permutation-equivariant: shuffling tokens would shuffle outputs but not change the set of representations."
+      - "It would only work on numeric inputs."
+      - "It would require RNNs."
+    answer: 1
+    explanation: "Self-attention is permutation-equivariant: the function of a set of tokens is the same regardless of their order. Positional encodings (sinusoidal, learned, or rotary) inject ordering so that 'the cat sat' and 'sat the cat' produce different representations."
+---
+
+In 2017, eight Google researchers published a paper with one of the more
+audacious titles in deep learning history. They were right. Attention turned
+out to be enough — it killed RNNs for language modeling, then it killed
+purpose-built CNNs for vision, then it became the foundation of essentially
+every frontier AI system.
+
+Attention is conceptually simple. Walking through it carefully will pay back
+dividends for the rest of the curriculum.
+
+## The one idea
+
+Given a sequence of vectors $x_1, \dots, x_n$, you want each position to be
+able to *look at* every other position and pull in whatever information is
+useful, weighted by relevance.
+
+Concretely: project each token into three vectors — a **query** $q_i$ (what am
+I looking for?), a **key** $k_j$ (what am I about?), and a **value** $v_j$
+(what should I send if you pick me?). Then for each query, take a weighted sum
+of values where the weights come from query–key similarity:
+
+$$
+\text{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
+$$
+
+That's the entire mechanism. Everything downstream — Transformers, BERT, GPT,
+diffusion text-encoders, video models — is some arrangement of this primitive
+plus MLPs, residuals, and normalization.
+
+<Embed viz="attention-heatmap" />
+
+## Why query–key–value
+
+You could imagine cheaper alternatives. Why not just take a learned weighted
+average of all token vectors? Because the right weighting depends on the
+*content* of the tokens. The token "it" in *"the trophy didn't fit in the
+suitcase because it was too big"* should attend to "trophy", but a different
+sentence demands a different attendee. Static weights cannot do this.
+
+QKV factors the relevance computation into:
+
+- **Q** and **K** decide *who attends to whom* — the attention map.
+- **V** decides *what gets passed* once the routing is fixed.
+
+This separation is what lets the same architecture handle wildly different
+tasks: copy, retrieval, induction, in-context learning. Different patterns
+correspond to different attention maps.
+
+## The math, in three steps
+
+For one head with input $X \in \mathbb{R}^{n \times d}$:
+
+1. **Project**: $Q = XW_Q$, $K = XW_K$, $V = XW_V$, with $W_Q, W_K \in
+   \mathbb{R}^{d \times d_k}$ and $W_V \in \mathbb{R}^{d \times d_v}$.
+
+2. **Score and normalize**:
+
+   $$
+   A = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)
+   $$
+
+   $A_{ij}$ is the attention weight from query $i$ to key $j$.
+
+3. **Aggregate**: $\text{out} = AV$. Each row of $\text{out}$ is a convex
+   combination of the value vectors weighted by attention.
+
+The $\sqrt{d_k}$ scaling deserves attention (no pun). If $Q$ and $K$ have
+unit-variance entries, the dot product $q_i \cdot k_j$ has variance about
+$d_k$. Large logits push softmax into regions where the gradient is nearly
+zero — saturating softmax is a backprop killer. Scaling restores well-behaved
+gradients regardless of $d_k$.
+
+## Multi-head: many small attentions are better than one big one
+
+Instead of one attention head with $d_k = d$, the Transformer uses $h$ heads
+with $d_k = d/h$ in parallel. Each head has its own $W_Q, W_K, W_V$, computes
+its own attention, and the results are concatenated and re-projected:
+
+$$
+\text{MHA}(X) = [\text{head}_1; \dots; \text{head}_h] W_O
+$$
+
+```python
+import torch.nn.functional as F
+
+def attention(Q, K, V, mask=None):
+    # Q, K, V: (B, H, T, d_k)
+    scores = (Q @ K.transpose(-2, -1)) / (Q.size(-1) ** 0.5)
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, float("-inf"))
+    weights = F.softmax(scores, dim=-1)
+    return weights @ V, weights
+```
+
+Heads specialize. Empirical interpretability work has identified heads that
+track grammatical agreement, copy nearby tokens (induction heads), look up the
+previous occurrence of a token, and many more.
+
+## Causal masking and parallel training
+
+In a decoder (the GPT-style architecture you'll see most often), each token
+should be able to attend only to itself and previous tokens — never the
+future. The implementation: zero out the upper-triangular entries of the
+score matrix before the softmax. Because the mask is fixed, the entire
+sequence can be processed in parallel during training, even though the model
+is autoregressive at inference time.
+
+This is the property that made Transformers so much faster to train than RNNs:
+the recurrence is removed in *training*, even though the *generation* is
+still left-to-right.
+
+## Positional information
+
+Because attention is permutation-equivariant, the model has no built-in notion
+of order. Positional encodings inject it. The original paper used sinusoids
+of different frequencies. Modern variants (RoPE, ALiBi) encode position
+directly into the QK product, which generalizes more cleanly to longer
+contexts than were seen at training time.
+
+<Callout variant="insight" title="Reading attention with humility">
+The intuition that "head $h$ attends from token $i$ to token $j$, therefore
+$j$ caused $i$'s representation" is appealing but often wrong. Attention
+weights are necessary but not sufficient evidence of causal influence —
+information also flows through residual streams and MLPs. Mech-interp work
+(circuits, SAEs) gives a more honest picture.
+</Callout>
+
+## What to do next
+
+- Read [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) once. Then read it again with a pen.
+- Watch Karpathy's [Let's build GPT](https://www.youtube.com/watch?v=kCc8FmEb1nY). Type along — don't just watch.
+- Study how attention degenerates: pure softmax, sparse, linear, FlashAttention, MQA, GQA.
+
+If attention is comfortable, every paper that follows in the curriculum —
+GPT, BERT, scaling laws, MoE, even Mamba (which is partly defined by what it
+*replaces*) — becomes much easier.

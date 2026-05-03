@@ -1,0 +1,62 @@
+import type { ExternalResource } from "@/lib/types";
+
+/** Curated reading lists shown on /resources. Indexed by category. */
+export const RESOURCES: Record<string, ExternalResource[]> = {
+  "Foundational textbooks": [
+    { kind: "book", title: "Deep Learning", source: "Goodfellow, Bengio, Courville", url: "https://www.deeplearningbook.org/", notes: "The textbook." },
+    { kind: "book", title: "Reinforcement Learning: An Introduction", source: "Sutton & Barto", url: "http://incompleteideas.net/book/the-book-2nd.html" },
+    { kind: "book", title: "Information Theory, Inference, and Learning Algorithms", source: "MacKay", url: "https://www.inference.org.uk/mackay/itila/" },
+    { kind: "book", title: "Pattern Recognition and Machine Learning", source: "Bishop", url: "https://www.microsoft.com/en-us/research/uploads/prod/2006/01/Bishop-Pattern-Recognition-and-Machine-Learning-2006.pdf" },
+    { kind: "book", title: "Probabilistic Machine Learning (1 & 2)", source: "Kevin Murphy", url: "https://probml.github.io/pml-book/" },
+  ],
+  "Free courses": [
+    { kind: "course", title: "MIT 18.06 Linear Algebra", source: "Gilbert Strang", url: "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/" },
+    { kind: "course", title: "Stanford CS229 Machine Learning", source: "Andrew Ng", url: "https://cs229.stanford.edu/" },
+    { kind: "course", title: "Stanford CS231N Deep Learning for Vision", url: "http://cs231n.stanford.edu/" },
+    { kind: "course", title: "Stanford CS224N NLP with Deep Learning", url: "https://web.stanford.edu/class/cs224n/" },
+    { kind: "course", title: "Stanford CS336 Language Models from Scratch", url: "https://stanford-cs336.github.io/" },
+    { kind: "course", title: "fast.ai Practical Deep Learning", source: "Jeremy Howard", url: "https://course.fast.ai/" },
+    { kind: "course", title: "Karpathy Neural Networks: Zero to Hero", source: "Andrej Karpathy", url: "https://karpathy.ai/zero-to-hero.html" },
+    { kind: "course", title: "Hugging Face NLP Course", url: "https://huggingface.co/learn/nlp-course" },
+    { kind: "course", title: "Hugging Face Diffusion Models Course", url: "https://huggingface.co/learn/diffusion-course" },
+    { kind: "course", title: "DeepMind x UCL Reinforcement Learning", url: "https://www.deepmind.com/learning-resources/reinforcement-learning-lecture-series-2021" },
+  ],
+  "Essential blogs": [
+    { kind: "blog", title: "Distill.pub", url: "https://distill.pub", notes: "Interactive ML articles, gold standard." },
+    { kind: "blog", title: "Lil'Log", source: "Lilian Weng", url: "https://lilianweng.github.io/" },
+    { kind: "blog", title: "Anthropic Transformer Circuits", url: "https://transformer-circuits.pub/" },
+    { kind: "blog", title: "Jay Alammar — The Illustrated Transformer", url: "https://jalammar.github.io/illustrated-transformer/" },
+    { kind: "blog", title: "Karpathy's blog", url: "https://karpathy.github.io/" },
+    { kind: "blog", title: "Sebastian Raschka magazine", url: "https://magazine.sebastianraschka.com/" },
+    { kind: "blog", title: "Sebastian Ruder", url: "https://www.ruder.io/" },
+  ],
+  "Hugging Face starting points": [
+    { kind: "model", title: "google-bert/bert-base-uncased", url: "https://huggingface.co/google-bert/bert-base-uncased" },
+    { kind: "model", title: "openai-community/gpt2", url: "https://huggingface.co/openai-community/gpt2" },
+    { kind: "model", title: "meta-llama/Llama-3.2-1B", url: "https://huggingface.co/meta-llama/Llama-3.2-1B" },
+    { kind: "model", title: "openai/clip-vit-base-patch32", url: "https://huggingface.co/openai/clip-vit-base-patch32" },
+    { kind: "model", title: "stabilityai/stable-diffusion-3.5-medium", url: "https://huggingface.co/stabilityai/stable-diffusion-3.5-medium" },
+    { kind: "model", title: "deepseek-ai/DeepSeek-R1", url: "https://huggingface.co/deepseek-ai/DeepSeek-R1" },
+    { kind: "model", title: "state-spaces/mamba-2.8b-hf", url: "https://huggingface.co/state-spaces/mamba-2.8b-hf" },
+    { kind: "library", title: "transformers", url: "https://github.com/huggingface/transformers" },
+    { kind: "library", title: "diffusers", url: "https://github.com/huggingface/diffusers" },
+    { kind: "library", title: "peft", url: "https://github.com/huggingface/peft" },
+    { kind: "library", title: "trl", url: "https://github.com/huggingface/trl" },
+  ],
+  "Frontier papers (2024–2026)": [
+    { kind: "paper", title: "DeepSeek-R1: Incentivizing reasoning capability in LLMs via RL", url: "https://arxiv.org/abs/2501.12948" },
+    { kind: "paper", title: "DeepSeek-V3 technical report", url: "https://arxiv.org/abs/2412.19437" },
+    { kind: "paper", title: "Mamba-2: Transformers are SSMs", url: "https://arxiv.org/abs/2405.21060" },
+    { kind: "paper", title: "FlashAttention-3", url: "https://tridao.me/publications/flash3/flash3.pdf" },
+    { kind: "paper", title: "Direct Preference Optimization (DPO)", url: "https://arxiv.org/abs/2305.18290" },
+    { kind: "paper", title: "Sparse autoencoders find highly interpretable directions", url: "https://transformer-circuits.pub/2024/scaling-monosemanticity/" },
+    { kind: "paper", title: "Flow matching for generative modeling", url: "https://arxiv.org/abs/2210.02747" },
+    { kind: "paper", title: "Self-supervised learning from images with a JEPA", url: "https://arxiv.org/abs/2301.08243" },
+  ],
+  "Tools & playgrounds": [
+    { kind: "doc", title: "TensorFlow Playground", url: "https://playground.tensorflow.org/" },
+    { kind: "doc", title: "Bbycroft LLM Visualizer", url: "https://bbycroft.net/llm" },
+    { kind: "doc", title: "Neuronpedia (SAE features)", url: "https://www.neuronpedia.org/" },
+    { kind: "doc", title: "OpenAI Tokenizer", url: "https://platform.openai.com/tokenizer" },
+  ],
+};

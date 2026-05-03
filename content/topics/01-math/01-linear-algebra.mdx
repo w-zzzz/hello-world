@@ -1,0 +1,156 @@
+---
+slug: "01-math/01-linear-algebra"
+part: "01-math"
+partTitle: "Mathematical foundations"
+partIndex: 1
+topicIndex: 1
+title: "Linear algebra for ML"
+hook: "The vector spaces all of deep learning lives in."
+estMinutes: 16
+difficulty: 2
+prereqs: []
+hasHeroViz: false
+researchers: ["strang", "lecun"]
+papers:
+  - title: "An overview of gradient descent optimization algorithms"
+    authors: "Sebastian Ruder"
+    year: 2017
+    url: "https://arxiv.org/abs/1609.04747"
+freeResources:
+  - kind: "course"
+    title: "MIT 18.06 Linear Algebra"
+    source: "Gilbert Strang"
+    url: "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/"
+  - kind: "video"
+    title: "Essence of Linear Algebra"
+    source: "3Blue1Brown"
+    url: "https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab"
+  - kind: "book"
+    title: "Linear Algebra Done Right"
+    source: "Sheldon Axler"
+    url: "https://linear.axler.net/"
+quiz:
+  - id: "linalg-q1"
+    question: "If $X$ is an $n \\times d$ data matrix and $X = U\\Sigma V^\\top$ is its SVD, what does the rank of $\\Sigma$ tell you?"
+    choices:
+      - "The number of training examples"
+      - "The intrinsic (effective) dimensionality of the data"
+      - "The norm of the optimal weight vector"
+      - "Whether the loss is convex"
+    answer: 1
+    explanation: "The number of nonzero singular values is the rank, which equals the dimension of the column/row space — the data's effective dimensionality. This matters for compression, regularization, and pre-conditioning."
+  - id: "linalg-q2"
+    question: "A linear layer computes $y = Wx + b$. If $W \\in \\mathbb{R}^{m \\times n}$, what is the cost (in floating-point ops) of one forward pass for a batch of $B$ inputs?"
+    choices:
+      - "$O(Bn)$"
+      - "$O(Bmn)$"
+      - "$O(B + m + n)$"
+      - "$O(\\max(m, n))$"
+    answer: 1
+    explanation: "Multiplying a $B \\times n$ matrix by an $n \\times m$ matrix costs $O(Bmn)$. This is why people care about effective rank, low-rank adapters (LoRA), and tensor parallelism."
+---
+
+Linear algebra is the language the rest of machine learning is written in. Before
+talking about gradients or attention or diffusion, we need to be fluent in the
+nouns: **vectors, matrices, subspaces, eigenvalues**.
+
+You don't need to memorize proofs. You need a working intuition for what each
+operation does to data.
+
+## Why this matters
+
+Every operation in a neural network is a tensor operation. A linear layer is a
+matrix multiply. Self-attention is three matrix multiplies plus a softmax. A
+gradient update is a vector subtraction. Cosine similarity, PCA, contrastive
+loss, low-rank adapters — all linear algebra.
+
+When training breaks (exploding gradients, dead neurons, NaN losses) the cause
+is almost always something that linear algebra would have warned you about:
+ill-conditioned matrices, mismatched shapes, unstable inversions.
+
+<Callout variant="insight" title="The whole field in one sentence">
+Deep learning is a way to pick the parameters of a very large composition of
+linear maps and pointwise nonlinearities so that, after enough data, the
+function approximates something useful.
+</Callout>
+
+## The vocabulary you need
+
+A **vector space** is a set on which you can add and scalar-multiply. The
+vectors a network works with — token embeddings, image patches, hidden states —
+all live in real-valued vector spaces $\mathbb{R}^d$.
+
+A **linear map** $f: \mathbb{R}^n \to \mathbb{R}^m$ is one that respects
+addition and scaling: $f(\alpha x + y) = \alpha f(x) + f(y)$. Every such map is
+representable as a matrix $W \in \mathbb{R}^{m \times n}$ with $f(x) = Wx$.
+
+The **rank** of $W$ is the dimension of its column space: the size of the
+largest set of linearly independent columns. Rank tells you how much
+information the map can preserve.
+
+The **inner product** $\langle x, y \rangle = x^\top y$ measures alignment.
+Almost every notion of "similarity" or "alignment" you see in deep learning
+reduces to a normalized inner product.
+
+## Singular Value Decomposition
+
+Every real matrix factors as
+
+$$
+W = U \Sigma V^\top
+$$
+
+with $U, V$ orthogonal and $\Sigma$ diagonal with non-negative entries (the
+singular values). SVD diagonalizes the action of $W$ in two steps:
+
+1. Rotate the input by $V^\top$.
+2. Stretch each axis by the corresponding singular value.
+3. Rotate the output by $U$.
+
+This is the picture behind PCA, low-rank approximation (the basis of LoRA), and
+the spectral analysis you see in interpretability papers.
+
+```python
+import numpy as np
+
+W = np.random.randn(64, 128)
+U, S, Vt = np.linalg.svd(W, full_matrices=False)
+
+# Top-k low-rank reconstruction
+k = 8
+W_lowrank = (U[:, :k] * S[:k]) @ Vt[:k]
+print("Reconstruction error:", np.linalg.norm(W - W_lowrank, ord="fro"))
+```
+
+If most of the singular value mass is in the top few components, the matrix is
+well-approximated by a low-rank factorization — which is exactly the structural
+assumption that makes LoRA fine-tuning so effective.
+
+## Norms and conditioning
+
+The **Frobenius norm** $\|W\|_F^2 = \sum_{ij} W_{ij}^2$ is the natural notion
+of "size" for weight matrices. The **spectral norm** $\|W\|_2 = \sigma_{\max}$
+is the largest singular value and bounds how much $W$ can stretch any input.
+
+Spectral norm controls Lipschitz constants, which controls how badly small
+input perturbations explode through the network. Spectral normalization (used
+in some GAN variants) directly clips this.
+
+<Callout variant="info" title="Three things to memorize">
+1. Matrix–vector multiply: $O(mn)$.
+2. The SVD always exists, and the top-$k$ truncation is the best rank-$k$ approximation in Frobenius norm.
+3. A symmetric matrix has a full set of orthonormal eigenvectors; a covariance matrix is symmetric and PSD.
+</Callout>
+
+## How to study this
+
+You don't need to derive everything from scratch — you need an
+*operational* understanding. Practical study path:
+
+- Watch 3Blue1Brown's [Essence of Linear Algebra](https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab) (3 hours, total).
+- Skim Strang's [MIT 18.06](https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/) lectures on SVD, eigenvectors, and orthogonality.
+- Read the linear algebra appendix of Goodfellow et al.'s *Deep Learning* book.
+
+Once these are second nature, every paper you read becomes legible: that
+"$Q K^\top / \sqrt{d_k}$" in the attention formula stops being notation and
+starts being geometry.
