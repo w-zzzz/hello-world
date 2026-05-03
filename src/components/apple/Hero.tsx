@@ -7,6 +7,8 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { MagneticButton } from "@/components/apple/MagneticButton";
 import { cn } from "@/lib/utils";
 
+type HeroStats = { topics: number; interactives: number; researchers: number };
+
 // Heavy WebGL canvas — load only on the client and only after first paint so
 // it never blocks LCP. The CSS gradient below is the always-on fallback.
 const HeroBackground = dynamic(() => import("./HeroBackground"), {
@@ -14,7 +16,8 @@ const HeroBackground = dynamic(() => import("./HeroBackground"), {
   loading: () => null,
 });
 
-export function Hero() {
+export function Hero({ stats }: { stats?: HeroStats } = {}) {
+  const s: HeroStats = stats ?? { topics: 53, interactives: 12, researchers: 101 };
   const ref = React.useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -96,7 +99,7 @@ export function Hero() {
           transition={{ duration: 0.9, delay: 0.3, ease: [0.32, 0.72, 0, 1] }}
           className="mt-7 mx-auto max-w-2xl text-lg sm:text-xl text-[var(--color-muted-fg)] leading-relaxed text-pretty"
         >
-          Forty-six topics. Eleven parts. From linear algebra to{" "}
+          {s.topics} topics. Eleven parts. From linear algebra to{" "}
           <span className="text-[var(--color-fg)] font-medium">Mamba</span>,{" "}
           <span className="text-[var(--color-fg)] font-medium">DeepSeek-R1</span>, and{" "}
           <span className="text-[var(--color-fg)] font-medium">JEPA</span> — with hand-built
@@ -141,16 +144,16 @@ export function Hero() {
           className="mt-20 grid grid-cols-3 gap-x-8 sm:gap-x-16 max-w-2xl mx-auto"
         >
           {[
-            { n: 46, l: "topics" },
-            { n: 12, l: "interactives" },
-            { n: 55, l: "researchers" },
-          ].map((s) => (
-            <div key={s.l} className="text-center">
+            { n: s.topics, l: "topics" },
+            { n: s.interactives, l: "interactives" },
+            { n: s.researchers, l: "researchers" },
+          ].map((it) => (
+            <div key={it.l} className="text-center">
               <div className="text-3xl sm:text-4xl font-semibold tabular-nums tracking-tight">
-                {s.n}
+                {it.n}
               </div>
               <div className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--color-muted-fg)]">
-                {s.l}
+                {it.l}
               </div>
             </div>
           ))}

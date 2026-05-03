@@ -46,6 +46,11 @@ export type Researcher = {
   bio: string;
   links: { label: string; href: string }[];
   keyPapers: { title: string; year: number; url: string }[];
+  story?: {
+    headline: string;
+    paragraphs: string[];
+    pullQuote?: { text: string; source: string };
+  };
 };
 
 export type Paper = {

@@ -23,6 +23,7 @@ export function Footer() {
           title="Learn"
           links={[
             { href: "/map", label: "Curriculum map" },
+            { href: "/paths", label: "Guided paths" },
             { href: "/learn/01-math/01-linear-algebra", label: "Start from foundations" },
             { href: "/learn/03-deep-learning/04-attention", label: "Attention" },
             { href: "/learn/06-multimodal/03-diffusion-ddpm-sd", label: "Diffusion models" },
@@ -31,6 +32,8 @@ export function Footer() {
         <FooterCol
           title="Discover"
           links={[
+            { href: "/timeline", label: "Field timeline" },
+            { href: "/stories", label: "Stories & essays" },
             { href: "/researchers", label: "Pioneers & leaders" },
             { href: "/resources", label: "Reading lists" },
             { href: "/playground/gradient-descent", label: "Playgrounds" },

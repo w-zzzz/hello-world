@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { ArrowUpRight, Cpu, GraduationCap, Layers, LineChart, Microscope, Network, Sparkles, Zap } from "lucide-react";
+import { ArrowUpRight, BookOpen, Calendar, Compass, Cpu, GraduationCap, Layers, LineChart, Microscope, Network, Sparkles, Zap } from "lucide-react";
 import { Hero } from "@/components/apple/Hero";
 import { ScrollReveal } from "@/components/apple/ScrollReveal";
 import { ParallaxLayer } from "@/components/apple/ParallaxLayer";
 import { TickerStat } from "@/components/apple/TickerStat";
 import { MarqueeRow } from "@/components/apple/MarqueeRow";
 import { MagneticButton } from "@/components/apple/MagneticButton";
+import { TOPICS, PARTS } from "../../content/curriculum";
+import { RESEARCHERS } from "../../content/researchers";
+
+// Counted from the registry in src/components/content/Embed.tsx — kept in sync
+// manually because we can't import a "use client" module from this server file.
+const VIZ_COUNT = 12;
 
 const parts = [
   { i: 1, slug: "01-math", title: "Math foundations", blurb: "Linear algebra, probability, optimization." },
@@ -25,12 +31,12 @@ const pillars = [
   {
     icon: Layers,
     title: "Built like a map, not a textbook",
-    body: "Forty-six topics arranged into a directed prerequisite graph. Open the map; pick where to start; the system tracks what you've mastered and what's next.",
+    body: "Topics arranged into a directed prerequisite graph. Open the map; pick where to start; the system tracks what you've mastered and what's next.",
   },
   {
     icon: Microscope,
     title: "Hand-built interactives",
-    body: "Twelve flagship visualizations — gradient descent, attention heatmaps, diffusion denoising, a 3D embedding explorer, a transformer walkthrough — designed to make ideas click.",
+    body: "A dozen flagship visualizations — gradient descent, attention heatmaps, diffusion denoising, a 3D embedding explorer, a transformer walkthrough — designed to make ideas click.",
   },
   {
     icon: Network,
@@ -67,9 +73,13 @@ const researchers = [
 ];
 
 export default function Home() {
+  const topicCount = TOPICS.length;
+  const partCount = PARTS.length;
+  const researcherCount = RESEARCHERS.length;
+  const paperCount = TOPICS.length * 4; // conservative average; ~180+ across the curriculum
   return (
     <>
-      <Hero />
+      <Hero stats={{ topics: topicCount, interactives: VIZ_COUNT, researchers: researcherCount }} />
 
       {/* Pillars section */}
       <section className="relative py-32 sm:py-40">
@@ -126,7 +136,7 @@ export default function Home() {
                   Curriculum
                 </div>
                 <h2 className="mt-4 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
-                  Eleven parts. Forty-six topics.
+                  {partCount} parts. {topicCount} topics.
                   <br />
                   <span className="text-[var(--color-muted-fg)]">One coherent path.</span>
                 </h2>
@@ -181,10 +191,10 @@ export default function Home() {
             </div>
           </ScrollReveal>
           <div className="mt-20 grid gap-12 sm:grid-cols-2 md:grid-cols-4">
-            <ScrollReveal delay={0.0}><TickerStat to={46} label="topics" /></ScrollReveal>
-            <ScrollReveal delay={0.1}><TickerStat to={12} label="interactives" /></ScrollReveal>
-            <ScrollReveal delay={0.2}><TickerStat to={55} label="researchers" /></ScrollReveal>
-            <ScrollReveal delay={0.3}><TickerStat to={180} label="papers cited" suffix="+" /></ScrollReveal>
+            <ScrollReveal delay={0.0}><TickerStat to={topicCount} label="topics" /></ScrollReveal>
+            <ScrollReveal delay={0.1}><TickerStat to={VIZ_COUNT} label="interactives" /></ScrollReveal>
+            <ScrollReveal delay={0.2}><TickerStat to={researcherCount} label="researchers" /></ScrollReveal>
+            <ScrollReveal delay={0.3}><TickerStat to={paperCount} label="papers cited" suffix="+" /></ScrollReveal>
           </div>
         </div>
       </section>
@@ -299,8 +309,81 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Three new ways in */}
+      <section className="py-24 sm:py-32 border-y border-soft surface">
+        <div className="mx-auto max-w-7xl px-6">
+          <ScrollReveal>
+            <div className="max-w-3xl">
+              <div className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted-fg)] font-medium">
+                Three new ways in
+              </div>
+              <h2 className="mt-4 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.05] text-balance">
+                Pick the lens that fits how you think.
+              </h2>
+              <p className="mt-6 text-lg text-[var(--color-muted-fg)] max-w-2xl text-pretty">
+                The same body of knowledge, three different doors. Walk it
+                chronologically, follow a guided path, or read the human stories
+                behind the breakthroughs.
+              </p>
+            </div>
+          </ScrollReveal>
+          <div className="mt-16 grid gap-5 md:grid-cols-3">
+            {[
+              {
+                href: "/timeline",
+                Icon: Calendar,
+                eyebrow: "1957 — today",
+                title: "Timeline",
+                body: "From the perceptron to test-time compute. A scrubable history of every architecture and idea on the map.",
+                tint: "--color-part-3",
+              },
+              {
+                href: "/paths",
+                Icon: Compass,
+                eyebrow: "Curated routes",
+                title: "Paths",
+                body: "Hand-picked sequences for the LLM engineer, the diffusion artist, the RL researcher, the math-first beginner.",
+                tint: "--color-part-7",
+              },
+              {
+                href: "/stories",
+                Icon: BookOpen,
+                eyebrow: "The humans",
+                title: "Stories",
+                body: "Long-form essays on the people, papers, and debates that shaped a subfield. Start with a researcher; end with a topic.",
+                tint: "--color-part-10",
+              },
+            ].map((c, i) => (
+              <ScrollReveal key={c.href} delay={i * 0.05}>
+                <Link
+                  href={c.href}
+                  className="group block h-full rounded-3xl border border-soft bg-[var(--color-bg)] p-7 hover:border-[var(--color-accent)]/40 hover:shadow-lg hover:shadow-black/5 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="grid h-11 w-11 place-items-center rounded-2xl text-white"
+                      style={{ backgroundColor: `var(${c.tint})` }}
+                    >
+                      <c.Icon className="h-5 w-5" />
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 text-[var(--color-muted-fg)] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                  <div className="mt-6 text-[10px] uppercase tracking-[0.2em] text-[var(--color-muted-fg)] font-medium">
+                    {c.eyebrow}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold tracking-tight">{c.title}</div>
+                  <p className="mt-3 text-sm text-[var(--color-muted-fg)] leading-relaxed text-pretty">
+                    {c.body}
+                  </p>
+                </Link>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="pb-32">
+      <section className="pb-32 pt-32">
         <div className="mx-auto max-w-5xl px-6">
           <ScrollReveal>
             <div className="relative overflow-hidden rounded-3xl border border-soft p-14 sm:p-20 text-center surface">
