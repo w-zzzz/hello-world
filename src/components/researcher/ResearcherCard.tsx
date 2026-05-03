@@ -6,7 +6,8 @@ export function ResearcherCard({ r }: { r: Researcher }) {
   return (
     <Link
       href={`/researchers/${r.slug}`}
-      className="group block rounded-2xl border border-soft surface p-5 hover:border-[var(--color-accent)]/40 hover:shadow-md hover:shadow-black/5 transition-all"
+      aria-label={`${r.name} — ${r.affiliation}`}
+      className="group block rounded-2xl border border-soft surface p-5 hover:border-[var(--color-accent)]/40 hover:shadow-md hover:shadow-black/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
     >
       <div className="flex items-start gap-4">
         <Avatar name={r.name} />
@@ -48,12 +49,14 @@ function Avatar({ name }: { name: string }) {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
   return (
     <div
+      role="img"
+      aria-label={`Avatar for ${name}`}
       className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-sm font-semibold text-white"
       style={{
         background: `linear-gradient(135deg, oklch(0.65 0.16 ${h}), oklch(0.55 0.18 ${(h + 60) % 360}))`,
       }}
     >
-      {initials}
+      <span aria-hidden="true">{initials}</span>
     </div>
   );
 }
