@@ -1,0 +1,251 @@
+---
+slug: "10-cutting-edge/09-rsps-and-safety"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 9
+title: "Responsible scaling policies & safety"
+hook: "RSPs, Preparedness, the EU AI Act, METR — how the field tries to govern itself."
+estMinutes: 16
+difficulty: 3
+prereqs: ["04-transformers-llms/04-instruction-tuning"]
+hasHeroViz: false
+researchers: ["amodei", "madry", "bommasani", "russell", "leike"]
+papers:
+  - title: "Anthropic's Responsible Scaling Policy v2"
+    authors: "Anthropic"
+    year: 2024
+    url: "https://www.anthropic.com/news/announcing-our-updated-responsible-scaling-policy"
+  - title: "OpenAI Preparedness Framework"
+    authors: "OpenAI"
+    year: 2023
+    url: "https://openai.com/safety/preparedness/"
+  - title: "Frontier Safety Framework"
+    authors: "Google DeepMind"
+    year: 2024
+    url: "https://deepmind.google/discover/blog/introducing-the-frontier-safety-framework/"
+  - title: "Foundation Model Transparency Index"
+    authors: "Bommasani, Klyman, Longpre, Kapoor, Maslej, Xiong, Zhang, Liang"
+    year: 2024
+    url: "https://crfm.stanford.edu/fmti/"
+  - title: "Sleeper Agents: Training Deceptive LLMs that Persist Through Safety Training"
+    authors: "Hubinger, Denison, Mu, Lambert, Tong, MacDiarmid, et al. (Anthropic)"
+    year: 2024
+    url: "https://arxiv.org/abs/2401.05566"
+hfResources:
+  - kind: "doc"
+    title: "METR — model evaluation methods"
+    url: "https://metr.org/"
+  - kind: "doc"
+    title: "UK AI Safety Institute publications"
+    url: "https://www.aisi.gov.uk/"
+freeResources:
+  - kind: "doc"
+    title: "EU AI Act final text"
+    source: "European Parliament"
+    url: "https://artificialintelligenceact.eu/"
+  - kind: "blog"
+    title: "California SB-1047 — Anthropic's analysis"
+    source: "Anthropic"
+    url: "https://www.anthropic.com/news/sb-1047-a-letter-to-governor-newsom"
+  - kind: "doc"
+    title: "Apollo Research — evals on model deception"
+    source: "Apollo"
+    url: "https://www.apolloresearch.ai/research"
+quiz:
+  - id: "rsp-q1"
+    question: "What is the *core mechanism* of a Responsible Scaling Policy (RSP)?"
+    choices:
+      - "An ethics committee."
+      - "Pre-committed capability thresholds (e.g. 'autonomous self-replication') trigger pre-committed mitigations (e.g. 'do not deploy without specific evaluations and security controls') — a contract a lab makes with itself before training crosses a dangerous capability level."
+      - "An external regulator approves every model."
+      - "A blanket ban on training above some FLOPs."
+    answer: 1
+    explanation: "RSPs (Anthropic's invention, copied in different forms by OpenAI Preparedness, Google DeepMind Frontier Safety) work by pairing a *capability level* with a *required mitigation*. The lab evaluates each new model against the capability thresholds; if a threshold is crossed, deployment is gated on the corresponding controls. The promise is enforced by reputation, board oversight, and (in some cases) external auditors — not yet by law."
+  - id: "rsp-q2"
+    question: "What did the EU AI Act (final text 2024, phased entry into force through 2026) primarily regulate?"
+    choices:
+      - "Only social media."
+      - "AI applications by *risk tier* — banning some uses (social scoring, real-time biometric ID with exceptions), heavily regulating high-risk uses (employment, education, critical infrastructure), and imposing transparency + GPAI-model obligations on foundation models above a compute threshold (currently 10^25 FLOPs)."
+      - "Only autonomous weapons."
+      - "Only consumer chatbots."
+    answer: 1
+    explanation: "The EU AI Act is application-tier-based: *prohibited* uses, *high-risk* uses with extensive obligations, and *limited-risk* uses (e.g. chatbots) with transparency requirements. Layered on top is a foundation-model regime ('GPAI', general-purpose AI) with documentation and risk-assessment requirements; the compute threshold for 'systemic risk' GPAI models is 10^25 FLOPs."
+  - id: "rsp-q3"
+    question: "California SB-1047 (2024) would have required developers of frontier models to adopt safety/security plans, but it was vetoed in September 2024. What was Governor Newsom's stated reason?"
+    choices:
+      - "He thought safety was unnecessary."
+      - "He argued the bill applied uniform rules to large models regardless of deployment context, and that more targeted, context-specific regulation would better fit the technology."
+      - "Industry lobbied him."
+      - "It was unconstitutional."
+    answer: 1
+    explanation: "Newsom's veto message in September 2024 argued that SB-1047 regulated large models per se rather than risky applications, and that California should pursue more nuanced rules (some of which appeared in subsequent bills). The veto was contested — many AI safety researchers thought a per-model floor was exactly what was needed — and the debate set the template for state-level AI regulation in 2025-26."
+  - id: "rsp-q4"
+    question: "Organizations like METR, Apollo Research, and the UK AI Safety Institute (AISI) primarily do what?"
+    choices:
+      - "Train frontier models."
+      - "Independent third-party evaluations of frontier models for dangerous capabilities (autonomy, cyber, bio uplift, deception) and report findings to model developers and governments — the closest thing to external auditing the field has."
+      - "Lobby for regulation."
+      - "Build chips."
+    answer: 1
+    explanation: "METR (formerly ARC Evals) pioneered autonomy evaluations on early GPT-4 in 2023. Apollo specializes in deception/scheming evals. UK AISI (founded 2023) is the first government-backed evaluation body and has had pre-deployment access to several frontier model releases. They are the working prototype of the third-party evaluation regime that any serious safety regime will eventually need."
+---
+
+By 2026 the conversation about AI safety has split into two layers. The
+*technical* layer is interpretability, evaluations, alignment research —
+covered elsewhere in this curriculum. The *governance* layer is the rules
+and processes labs and governments adopt to constrain the technical layer.
+This module is about the governance layer: what RSPs are, how the EU AI
+Act works, what evaluators do, and where the practical state of the
+field stands.
+
+It is intentionally opinionated. There is no consensus here.
+
+## The basic problem
+
+Frontier models accumulate capabilities in fast, hard-to-predict jumps. Some
+of those capabilities — autonomous coding, persuasion, biology uplift,
+cyber offense — could matter for catastrophic outcomes if deployed without
+care. The traditional regulator-licenses-product model does not work because:
+
+1. The capabilities are emergent and hard to specify in advance.
+2. Training is the dangerous step; deployment review is too late.
+3. Models are increasingly dual-use and openly released.
+
+The field's response has been a layered one: voluntary lab policies (RSPs),
+binding regional regulation (EU AI Act, China's interim measures, growing
+state-level US activity), and an independent evaluation ecosystem (METR,
+Apollo, UK AISI, US AISI).
+
+## Responsible Scaling Policies
+
+Anthropic's RSP (introduced 2023, v2 in 2024) is the template. The structure:
+
+- **Capability levels** (AI Safety Levels, ASLs) ranked roughly by danger:
+  ASL-2 (current frontier), ASL-3 (significant uplift to non-state actors
+  on bio/cyber, or substantial autonomy), ASL-4 (...), etc.
+- **Required mitigations** at each level: red-teaming, security controls,
+  deployment limits, internal-use restrictions.
+- **Pre-deployment evaluations** to determine which level a new model has
+  reached.
+- **Public commitments**: if the lab cannot meet the mitigations for a
+  capability level, the model will not be deployed (or trained further).
+
+OpenAI's **Preparedness Framework** (2023, v2 in 2024) and Google DeepMind's
+**Frontier Safety Framework** (2024) follow the same template with different
+thresholds and naming. As of 2026 the three frontier labs all publish
+policies of this shape; smaller labs and open-source releases do not.
+
+The criticisms are real: voluntary, no external audit, capability thresholds
+defined by the labs themselves, "we will pause if needed" promises that have
+never been tested. Defenders argue that *something concrete and revisable* is
+better than nothing concrete and unrevisable; the policies are unusually
+clear about the conditions under which they would bind.
+
+## Regulation: the EU AI Act
+
+The EU AI Act, final text adopted 2024, phased in through 2026, is the
+first comprehensive AI regulation by a major economic bloc. Three layers:
+
+1. **Prohibited uses**: social scoring, manipulative subliminal techniques,
+   real-time public biometric identification (with narrow law-enforcement
+   exceptions).
+2. **High-risk uses** (most of the regulatory burden): hiring, education,
+   credit, critical infrastructure, law enforcement. Risk assessments,
+   human oversight, documentation, post-market monitoring.
+3. **General-purpose AI (GPAI) models**: documentation obligations,
+   transparency to downstream developers. Above 10^25 training FLOPs the
+   model is presumed to have *systemic risk* and additional obligations
+   apply (model evaluations, incident reporting, cybersecurity).
+
+The 10^25 FLOPs threshold is roughly where GPT-4-class models sat. By 2026
+several frontier models are clearly above it.
+
+## State of US regulation in 2026
+
+The federal picture is fragmented. The **Biden Executive Order 14110**
+(October 2023) imposed reporting requirements on training runs above 10^26
+FLOPs and required AISI evaluations, but was rescinded in January 2025. The
+**California SB-1047** would have imposed safety-plan requirements on
+developers; it was vetoed in September 2024. As of 2026 several states
+(California's SB-53, Colorado, New York) have narrower laws; there is no
+unified federal AI law.
+
+The practical effect is that frontier labs operate under their own RSPs
+plus EU rules (which have extraterritorial reach), with US enforcement
+mostly via FTC consumer-protection actions and existing sector regulation.
+
+## Independent evaluators
+
+The most interesting institutional development is the emergence of
+third-party evaluators with pre-deployment access:
+
+- **METR** (Berkeley / 501c3, formerly ARC Evals): autonomous capability
+  evaluations. Pioneered the "give the model a budget and tools, see what
+  it can accomplish" methodology that the labs all now use internally.
+- **Apollo Research** (London): specializes in deception, scheming, and
+  evaluations of how models behave when they believe they are unobserved.
+  Their findings (e.g. that frontier models can engage in "in-context
+  scheming") shaped the 2024-25 alignment conversation.
+- **UK AISI and US AISI** (government, 2023-2024): the first state
+  evaluation bodies. Have had pre-release access to several frontier
+  models; publish detailed evaluation reports.
+
+This is, in effect, the working prototype of a third-party audit regime.
+Whether it scales into a binding regulatory mechanism is the policy question
+of 2026.
+
+```markdown
+A typical RSP-trigger evaluation cycle:
+
+1. Train candidate model.
+2. Internal red-team for the relevant capability levels.
+3. Send to METR / Apollo / AISIs for external eval (pre-deployment access).
+4. Aggregate evidence; classify against ASL/Preparedness levels.
+5. If level requires controls not yet met → delay deployment.
+6. If level met → deploy with documented mitigations.
+7. Publish a high-level summary in a system card.
+```
+
+## What this looks like as a practitioner
+
+If you ship products on top of frontier models, three things are now
+practically required and worth understanding:
+
+- **Read system cards.** They are the only reliable record of what
+  evaluations were run and what they found. Anthropic, OpenAI, and Google
+  DeepMind all publish them; their quality has improved dramatically.
+- **Watch for capability-level changes.** RSPs gate deployment changes,
+  not just new model launches; an evaluation outcome can change what
+  Claude or GPT can be used for in your application.
+- **Track the EU AI Act timetable.** GPAI obligations took effect in
+  August 2025; high-risk obligations in August 2026. If you operate in
+  Europe (or serve European users), this is law.
+
+<Callout variant="insight" title="The honest summary in 2026">
+We have RSPs that are voluntary, regulation that is application-tier rather
+than capability-tier, and independent evaluation that is real but
+non-binding. The framework is more sophisticated than it was even two
+years ago, but the central question — what happens at the next capability
+jump if a lab does not pause — has never been tested. That is the policy
+work for the rest of this decade.
+</Callout>
+
+<PaperCard
+  title="Anthropic's Responsible Scaling Policy v2"
+  authors="Anthropic"
+  year={2024}
+  url="https://www.anthropic.com/news/announcing-our-updated-responsible-scaling-policy"
+  takeaway="Read it cover to cover. It is the clearest existing statement of how a frontier lab thinks about capability/mitigation pairing, and it sets the template much of the field works against."
+/>
+
+## What to do next
+
+- Read all three frontier-lab policies (Anthropic RSP, OpenAI Preparedness,
+  Google DeepMind Frontier Safety) side by side. The differences in
+  thresholds and commitments are illuminating.
+- Skim the EU AI Act — at least the GPAI articles (51-55) and the risk
+  tier definitions in Annex III.
+- Read METR's autonomy evaluation methodology paper. It is the cleanest
+  worked example of how to evaluate a frontier model for a dangerous
+  capability.

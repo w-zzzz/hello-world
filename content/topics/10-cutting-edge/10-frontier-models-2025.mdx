@@ -1,0 +1,254 @@
+---
+slug: "10-cutting-edge/10-frontier-models-2025"
+part: "10-cutting-edge"
+partTitle: "Cutting edge (2024–2026)"
+partIndex: 10
+topicIndex: 10
+title: "Frontier model landscape 2025-26"
+hook: "Claude 4, GPT-5, Gemini 2.5, DeepSeek-V3.1/R1.5, Llama 4, Qwen 3 — strengths, costs, openness."
+estMinutes: 18
+difficulty: 3
+prereqs: ["04-transformers-llms/03-scaling-laws"]
+hasHeroViz: false
+researchers: ["amodei", "brockman", "hassabis", "wenfeng", "murati"]
+papers:
+  - title: "DeepSeek-V3 Technical Report"
+    authors: "DeepSeek-AI"
+    year: 2024
+    url: "https://arxiv.org/abs/2412.19437"
+  - title: "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via RL"
+    authors: "DeepSeek-AI"
+    year: 2025
+    url: "https://arxiv.org/abs/2501.12948"
+  - title: "Claude 3.7 Sonnet"
+    authors: "Anthropic"
+    year: 2025
+    url: "https://www.anthropic.com/news/claude-3-7-sonnet"
+  - title: "Llama 4 Herd"
+    authors: "Meta AI"
+    year: 2025
+    url: "https://ai.meta.com/blog/llama-4-multimodal-intelligence/"
+  - title: "Gemini 2.5: Our most intelligent AI model"
+    authors: "Google DeepMind"
+    year: 2025
+    url: "https://blog.google/technology/google-deepmind/gemini-model-thinking-updates-march-2025/"
+hfResources:
+  - kind: "model"
+    title: "deepseek-ai/DeepSeek-V3"
+    url: "https://huggingface.co/deepseek-ai/DeepSeek-V3"
+  - kind: "model"
+    title: "deepseek-ai/DeepSeek-R1"
+    url: "https://huggingface.co/deepseek-ai/DeepSeek-R1"
+  - kind: "model"
+    title: "meta-llama/Llama-4 series"
+    url: "https://huggingface.co/meta-llama"
+  - kind: "model"
+    title: "Qwen/Qwen3 family"
+    url: "https://huggingface.co/Qwen"
+freeResources:
+  - kind: "blog"
+    title: "Artificial Analysis — model performance dashboards"
+    source: "Artificial Analysis"
+    url: "https://artificialanalysis.ai/"
+  - kind: "blog"
+    title: "Stanford AI Index Report"
+    source: "Stanford HAI"
+    url: "https://aiindex.stanford.edu/report/"
+  - kind: "blog"
+    title: "Epoch AI — frontier model trends"
+    source: "Epoch"
+    url: "https://epoch.ai/"
+quiz:
+  - id: "frontier-q1"
+    question: "DeepSeek-V3 (Dec 2024) was reported to have been pre-trained for ~$5.6M in compute. What architectural choices made this possible?"
+    choices:
+      - "Pure scale."
+      - "A 671B-parameter MoE with only 37B active per token, FP8 mixed-precision training, multi-head latent attention (MLA) to compress KV cache, and a multi-token prediction objective — every line item is a compute-efficiency choice."
+      - "Distillation from GPT-4."
+      - "Smaller training set."
+    answer: 1
+    explanation: "DeepSeek-V3's report is one of the more transparent frontier-training documents. The combination of fine-grained MoE (37B active), MLA, FP8, and a custom MoE load-balancing scheme cut both compute and memory. The $5.6M figure refers to the GPU-hour cost of the main pre-training run, not the full project — but even that figure was an order of magnitude below comparable Western efforts."
+  - id: "frontier-q2"
+    question: "What does it mean that Claude (3.5+, 3.7, 4) and GPT-5 / o3-pro support 'extended thinking' or 'reasoning effort' as a *user-controllable* dial?"
+    choices:
+      - "It is just marketing."
+      - "The model can spend variable test-time compute generating internal reasoning tokens before answering; the user (or developer) sets a budget — short-thought for quick lookups, long-thought for hard problems — trading latency and cost for accuracy."
+      - "It controls the model size."
+      - "It enables fine-tuning."
+    answer: 1
+    explanation: "The 'thinking dial' is the productized form of test-time compute scaling. Claude 3.7 / Claude 4 expose extended thinking as a parameter. OpenAI's o-series uses 'reasoning effort' (low/medium/high). The trade-off is real: more thinking tokens cost more and take longer, but for hard math/code/reasoning problems the accuracy gains are substantial. This is the single most important UX shift since chat interfaces."
+  - id: "frontier-q3"
+    question: "Llama 4 (April 2025) introduced the *Maverick* and *Scout* models with 10M-token contexts. What was the architectural unlock for 10M context at a tractable cost?"
+    choices:
+      - "Just larger GPUs."
+      - "Interleaved chunked attention plus a position-encoding scheme (iRoPE) that scales to long contexts without significant degradation, combined with mixture-of-experts to keep active compute manageable."
+      - "Compression of the input."
+      - "Truncation of inputs."
+    answer: 1
+    explanation: "Meta's Llama 4 release leaned heavily on architectural changes for ultra-long context. Scout's 10M-token context is enabled by alternating local attention layers with global ones, a NoPE-flavored position encoding for the global layers (so position generalizes far beyond training length), and MoE for compute efficiency. Whether 10M is *useful* in practice is a separate question — RULER scores fall well before 10M — but the architectural feasibility is now demonstrated."
+  - id: "frontier-q4"
+    question: "Looking at the 2025-26 landscape, what is the most defensible generalization about *open* (DeepSeek, Llama, Qwen) vs *closed* (Claude, GPT, Gemini) frontier models?"
+    choices:
+      - "Closed models are always better."
+      - "Open models trail the closed frontier on absolute peak capability by roughly six months on most benchmarks, while leading on cost, customizability, and data sovereignty — the gap has narrowed significantly since 2023 but has not closed."
+      - "Open models are now strictly better."
+      - "There is no measurable difference."
+    answer: 1
+    explanation: "The 2025-26 picture: top open models (DeepSeek-V3.1, R1.5, Qwen 3, Llama 4 Behemoth) match or exceed closed models from ~6 months prior on most benchmarks but trail the live closed frontier by a small but consistent margin on the hardest evaluations (frontier reasoning, computer use, agentic coding). The gap is roughly 6 months and seems stable; closed models have advantages in tool integration, evaluation rigor, and post-training data scale."
+---
+
+By 2026 there are roughly a dozen seriously frontier-class large language
+models, from five or six labs, with a small open-weights group close behind.
+This module is a tour of the 2025-26 landscape: who ships what, what each
+optimizes for, and where the open/closed divide actually sits.
+
+This is a snapshot. It will be wrong in eighteen months. It is included
+because the *axes* of differentiation — reasoning, multimodality, context
+length, openness, cost — are durable even as the specific products move.
+
+## The 2025-26 frontier, by lab
+
+### Anthropic
+
+Claude 3.5 Sonnet (June 2024) → Claude 3.5 Sonnet New (October 2024,
+introduced Computer Use) → Claude 3.7 Sonnet (February 2025, introduced
+extended thinking and Claude Code) → Claude 4 Sonnet/Opus (May 2025).
+Anthropic's positioning is *helpful, honest, harmless* with strong agentic
+coding and a coherent safety story (RSP). Computer Use is a defining product.
+
+### OpenAI
+
+GPT-4o (May 2024, omni-modal) → o1 (Sep 2024, dedicated reasoning) →
+o3 / o3-mini (Jan 2025) → GPT-4.1 (April 2025, long context) → GPT-5
+(Aug 2025, unified reasoning + general). The OpenAI portfolio splits
+between *general* models (GPT-N) and *reasoning* models (o-series); GPT-5
+unifies the two with a user-controllable reasoning budget. Operator and
+the Codex agent are the products built on top.
+
+### Google DeepMind
+
+Gemini 1.5 Pro (Feb 2024, 1M context) → Gemini 2.0 Flash/Pro (Dec 2024) →
+Gemini 2.5 Pro (March 2025, dedicated thinking) → Gemini 3 (late 2025).
+DeepMind's bets: long context, native multimodality (audio, video, images
+ingested natively), tight Google integration (Workspace, Search, Project
+Mariner, Project Astra). Gemini Robotics is the bet on embodied.
+
+### DeepSeek
+
+DeepSeek-V3 (Dec 2024) → DeepSeek-R1 (Jan 2025) → DeepSeek-V3.1 / R1.5
+(2025). The story is *frontier capability at fractional cost*: a 671B MoE
+with 37B active, FP8 training, MLA, custom load balancing. DeepSeek-R1's
+release on permissive license shifted the open-weights frontier overnight.
+
+### Meta
+
+Llama 3.1 (July 2024, 405B dense) → Llama 3.3 (Dec 2024) → Llama 4 herd
+(April 2025: Scout, Maverick, Behemoth). Llama 4 went MoE and ultra-long
+context (10M tokens for Scout). Meta's distinguishing bet remains *open
+weights at the frontier*; whether the latest releases keep pace with closed
+competitors is the open question.
+
+### Mistral
+
+Mistral Large 2 (July 2024) → Mistral Small 3 (Jan 2025) → Magistral
+(June 2025, reasoning model). Smaller European lab, Apache-2 weights for
+many releases, strong on European languages.
+
+### Qwen (Alibaba)
+
+Qwen2.5 (Sep 2024) → Qwen3 (April 2025). The Qwen3 family covers 0.6B
+through 235B-MoE on permissive licenses; Qwen3-Coder and Qwen3-VL hold
+state-of-the-art positions on several open-model leaderboards.
+
+## Axes of differentiation
+
+Treat the leaderboard as a noisy aggregate. The *axes* are more useful:
+
+| Axis | Strong contenders (mid-2026) |
+|---|---|
+| Frontier reasoning | GPT-5, Claude 4 Opus, Gemini 3, DeepSeek-R1.5 |
+| Long context (≥1M tokens) | Gemini 2.5/3, GPT-4.1, Llama 4 Scout, Claude 4 |
+| Agentic coding | Claude 4, GPT-5, DeepSeek-V3.1 |
+| Multimodal (image+audio+video native) | Gemini 2.5/3, GPT-4o/5 |
+| Computer use / tool use | Claude 4, GPT-5 (Operator), Gemini Mariner |
+| Cheapest serious model | DeepSeek-V3.1, Qwen3 |
+| Openness (commercial-friendly weights) | Llama 4, DeepSeek, Qwen3, Mistral |
+| On-device | Apple Intelligence (Apple Foundation), Phi-4, Gemma 3, Llama 3.2 1B/3B |
+
+A useful exercise: pick a real workload (RAG over your docs, coding agent,
+voice product) and rank the models on the axes that matter, not the
+overall MMLU number.
+
+## What changed in 2025
+
+A few structural shifts in the last 12-18 months matter for everyone:
+
+1. **Reasoning effort as a dial.** o1, R1, Claude 3.7, Gemini 2.5 Thinking,
+   GPT-5 all expose user-controllable test-time compute. The product
+   metaphor of "fast vs careful" is now standard.
+2. **MoE and KV-cache compression won.** Frontier dense scaling above
+   ~400B is rare; MoE (DeepSeek, Mixtral, Llama 4, Gemini 1.5+) plus
+   MLA / GQA dominate.
+3. **Costs collapsed.** Token costs for top-tier models dropped by 5-50x
+   from late 2023 to mid-2026. DeepSeek-V3 priced API tokens at fractions
+   of a cent, dragging closed-model prices down.
+4. **Native multimodality became table stakes.** Audio-in / audio-out,
+   image, video — Gemini-style native multimodality is the default
+   architecture for new models.
+5. **Open-weights gap stabilized at ~6 months.** Open frontier models
+   match the closed frontier from half a year ago. The gap stopped
+   narrowing in 2025; it also did not widen.
+
+## Reading the leaderboards
+
+Three useful aggregators in 2026:
+
+- **Artificial Analysis** for capability + cost + speed dashboards across
+  most production APIs.
+- **LMArena (formerly LMSYS Chatbot Arena)** for blind human preference;
+  the leaderboard is noisy but directionally useful.
+- **METR / AISI evaluations** for safety-relevant capabilities (autonomy,
+  cyber, bio uplift). The most rigorous public numbers, when available.
+
+Be skeptical of any single benchmark. A model can top MMLU and still be
+unusable for your task. Build your own evals.
+
+```python
+# A pragmatic 'pick a model' template.
+WORKLOAD = "agentic-coding"  # or "rag", "voice", "translation", ...
+CONSTRAINTS = {
+    "max_p50_latency_ms": 5000,
+    "open_weights_required": False,
+    "max_cost_per_1m_output_tokens_usd": 30,
+    "min_context_tokens": 200_000,
+}
+# Score each candidate model on the axes that matter for WORKLOAD,
+# filtered by CONSTRAINTS. Re-run quarterly. The 'best' answer changes.
+```
+
+<Callout variant="insight" title="What is durable">
+The specific model names in this module will look quaint in two years.
+What is durable: (a) the user-controllable reasoning-effort dial; (b) MoE +
+KV-cache compression as the architectural recipe; (c) open weights
+trailing the closed frontier by months but matching cost on commodity
+workloads; (d) China-based labs (DeepSeek, Qwen) at the frontier of the
+open ecosystem; (e) safety / evaluation / RSP infrastructure as a
+first-class part of every release.
+</Callout>
+
+<PaperCard
+  title="DeepSeek-V3 Technical Report"
+  authors="DeepSeek-AI"
+  year={2024}
+  url="https://arxiv.org/abs/2412.19437"
+  takeaway="The most transparent frontier-training paper of the modern era. MoE design, FP8, MLA, multi-token prediction, and the cost engineering behind the much-discussed $5.6M training run."
+/>
+
+## What to do next
+
+- Build your own evaluation harness on three workloads you care about. Run
+  it across the top models in each category. Look at cost as well as
+  accuracy.
+- Read the DeepSeek-V3 paper, then the Llama 4 release notes — together
+  they cover almost every architectural trick in current use.
+- Check Artificial Analysis quarterly. The picture moves.
