@@ -1,0 +1,36 @@
+{
+  "home": {
+    "title": "系统性学习量化交易",
+    "subtitle": "从K线基础到自主策略部署，一站式趣味教学平台",
+    "cta": {
+      "beginTrack": "开始 Track A",
+      "exploreIndicators": "探索指标"
+    }
+  },
+  "nav": {
+    "lessons": "课程",
+    "indicators": "指标",
+    "workshop": "工作坊",
+    "tutor": "AI 导师",
+    "profile": "我的"
+  },
+  "features": {
+    "kline": {
+      "title": "交互式 K 线",
+      "desc": "可调参数实时重绘"
+    },
+    "backtest": {
+      "title": "真实回测",
+      "desc": "vectorbt 驱动，含完整 tearsheet"
+    },
+    "tutor": {
+      "title": "AI 智能导师",
+      "desc": "随时解答疑惑，深度复盘策略"
+    }
+  },
+  "common": {
+    "loading": "加载中…",
+    "error": "出错了",
+    "retry": "重试"
+  }
+}

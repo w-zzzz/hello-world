@@ -1,0 +1,36 @@
+{
+  "home": {
+    "title": "Learn Quantitative Trading Systematically",
+    "subtitle": "From candlesticks to autonomous strategy deployment, an engaging end-to-end platform.",
+    "cta": {
+      "beginTrack": "Begin Track A",
+      "exploreIndicators": "Explore Indicators"
+    }
+  },
+  "nav": {
+    "lessons": "Lessons",
+    "indicators": "Indicators",
+    "workshop": "Workshop",
+    "tutor": "AI Tutor",
+    "profile": "Profile"
+  },
+  "features": {
+    "kline": {
+      "title": "Interactive K-line",
+      "desc": "Tune parameters and watch charts redraw in real time."
+    },
+    "backtest": {
+      "title": "Real backtests",
+      "desc": "Powered by vectorbt with full tearsheets."
+    },
+    "tutor": {
+      "title": "AI Tutor",
+      "desc": "Answers questions and reviews strategies on demand."
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Retry"
+  }
+}
