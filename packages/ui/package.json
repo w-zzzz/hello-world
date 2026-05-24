@@ -1,0 +1,30 @@
+{
+  "name": "@quant-academy/ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": ["**/*.css"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles": "./src/styles.css",
+    "./button": "./src/components/button.tsx",
+    "./card": "./src/components/card.tsx",
+    "./cn": "./src/lib/cn.ts"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.469.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@quant-academy/tsconfig-config": "workspace:*"
+  }
+}

@@ -1,0 +1,32 @@
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    ".venv",
+    ".turbo",
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "S", "C4", "SIM", "RUF"]
+ignore = ["S101"]
+
+[lint.per-file-ignores]
+"tests/**" = ["S", "D"]
+"**/test_*.py" = ["S", "D"]
+"**/conftest.py" = ["S", "D"]
+
+[lint.isort]
+known-first-party = ["qa_core", "qa_indicators", "qa_backtest", "qa_sandbox", "qa_api"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true

@@ -1,0 +1,12 @@
+# Default
+*       @w-zzzz
+
+# Curriculum content
+/packages/content/  @w-zzzz
+
+# Sandbox and security-sensitive
+/python/qa_sandbox/      @w-zzzz
+/apps/sandbox-runner/    @w-zzzz
+/apps/api/qa_api/dependencies.py  @w-zzzz
+/.github/                @w-zzzz
+/infra/                  @w-zzzz

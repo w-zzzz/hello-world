@@ -1,0 +1,69 @@
+# --- Node / pnpm / turbo ---
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+.next/
+.turbo/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Python / uv / tooling ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+.eggs/
+.tox/
+
+# --- Env / secrets ---
+.env
+.env.local
+.env.*.local
+*.local
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# --- Deploy / infra runtime ---
+.fly/
+.vercel/
+.wrangler/
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Data caches (Parquet etc.) ---
+.parquet-cache/
+/data/parquet/cache/
+/tmp/
+/tmp.*
+
+# --- Misc ---
+*.pid
+*.seed
+*.pid.lock
+.cache/

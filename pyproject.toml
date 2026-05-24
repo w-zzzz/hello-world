@@ -1,0 +1,26 @@
+[project]
+name = "quant-academy-workspace"
+version = "0.1.0"
+description = "Quant Academy — systematic quantitative trading education platform (Python workspace root)"
+requires-python = ">=3.12"
+readme = "README.md"
+license = { text = "MIT" }
+
+[tool.uv.workspace]
+members = [
+    "apps/api",
+    "python/qa_core",
+    "python/qa_indicators",
+    "python/qa_backtest",
+    "python/qa_sandbox",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "hypothesis>=6.115.0",
+    "pre-commit>=4.0.0",
+]

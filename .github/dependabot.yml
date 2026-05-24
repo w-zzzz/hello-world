@@ -1,0 +1,64 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+      types:
+        patterns:
+          - "@types/*"
+      biome:
+        patterns:
+          - "@biomejs/*"
+      turbo:
+        patterns:
+          - "turbo"
+          - "turbo-*"
+    labels:
+      - dependencies
+      - javascript
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+    groups:
+      python-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+      lint-and-types:
+        patterns:
+          - "ruff"
+          - "mypy"
+          - "pre-commit"
+      test-tools:
+        patterns:
+          - "pytest"
+          - "pytest-*"
+          - "hypothesis"
+    labels:
+      - dependencies
+      - python
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+      - github-actions

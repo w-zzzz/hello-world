@@ -1,0 +1,34 @@
+# wired in M5
+#
+# Fly.io app config for the Quant Academy sandbox runner.
+# This service has no public http_service — it exposes a private 6PN gRPC port
+# (50051) to the API. Activation lands in M5 alongside the sandbox runtime.
+
+app = "quant-academy-sandbox"
+primary_region = "iad"
+
+[build]
+  # M5 will add infra/docker/Dockerfile.sandbox
+  # dockerfile = "infra/docker/Dockerfile.sandbox"
+
+[env]
+  QA_ENV = "prod"
+  QA_LOG_LEVEL = "info"
+  QA_SANDBOX_GRPC_PORT = "50051"
+
+[[services]]
+  internal_port = 50051
+  protocol = "tcp"
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  # Private 6PN only — no public ports.
+  [[services.ports]]
+    port = 50051
+    handlers = []
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 2
+  memory_mb = 1024

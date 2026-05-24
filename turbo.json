@@ -1,0 +1,78 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": [".env*", "tsconfig.base.json"],
+  "globalEnv": ["NODE_ENV", "CI"],
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "app/**",
+        "pages/**",
+        "components/**",
+        "public/**",
+        "tsconfig.json",
+        "tsconfig.base.json",
+        "package.json",
+        "next.config.*",
+        "vite.config.*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**",
+        "build/**",
+        "out/**"
+      ],
+      "env": ["NEXT_PUBLIC_*"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "app/**",
+        "pages/**",
+        "components/**",
+        "biome.json",
+        "package.json"
+      ],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "app/**",
+        "pages/**",
+        "components/**",
+        "tsconfig.json",
+        "tsconfig.base.json",
+        "package.json"
+      ],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "tests/**",
+        "__tests__/**",
+        "vitest.config.*",
+        "jest.config.*"
+      ],
+      "outputs": ["coverage/**"]
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}
