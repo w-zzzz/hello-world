@@ -1,0 +1,44 @@
+# Default: normalize text to LF on checkin, keep LF on checkout
+* text=auto eol=lf
+
+# Explicit text formats
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.json      text eol=lf
+*.jsonc     text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.toml      text eol=lf
+*.md        text eol=lf
+*.mdx       text eol=lf
+*.py        text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+*.svg       text eol=lf
+Makefile    text eol=lf
+*.sh        text eol=lf
+
+# Binary
+*.parquet   binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.ico       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.tar       binary
+
+# Generated / lockfiles — treat as text but never diff
+pnpm-lock.yaml  -diff
+uv.lock         -diff

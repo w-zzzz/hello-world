@@ -1,0 +1,37 @@
+{
+  "name": "quant-academy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Quant Academy — Systematic quantitative trading education platform",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.5.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.6.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.{json,jsonc,css}": [
+      "biome format --write --no-errors-on-unmatched"
+    ]
+  }
+}
