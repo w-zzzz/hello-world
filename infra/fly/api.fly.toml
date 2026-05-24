@@ -1,0 +1,43 @@
+# wired in M12
+#
+# Fly.io app config for the Quant Academy API (FastAPI).
+# This file is a scaffold only — the real deploy pipeline is wired in M12.
+
+app = "quant-academy-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "infra/docker/Dockerfile.api"
+
+[env]
+  QA_ENV = "prod"
+  QA_LOG_LEVEL = "info"
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+[checks]
+  [checks.health]
+    type = "http"
+    port = 8000
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "get"
+    path = "/healthz"

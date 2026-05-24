@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "_comment": "wired in M12 — preview deploy + production deploy will reference this config from the apps/web project root via `vercel.json` symlink or project settings.",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter web... build",
+  "outputDirectory": "apps/web/.next"
+}

@@ -1,0 +1,45 @@
+# Preview deployment scaffold.
+#
+# This is a placeholder workflow that reserves the `preview-stub` check name
+# so branch protection rules can require it from M0 onward. The real preview
+# deploy pipeline lands in M12.
+#
+# When M12 wires this up:
+#   - Web (Next.js) deploys to Vercel as preview:
+#       pnpm dlx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+#       pnpm dlx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+#       pnpm dlx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+#   - API (FastAPI) deploys to Fly.io as a per-PR app:
+#       flyctl deploy --remote-only -a quant-academy-api-pr-${PR} \
+#         --config infra/fly/api.fly.toml
+#   - Sandbox runner (M5+) gets its own per-PR Fly app via:
+#       flyctl deploy --remote-only -a quant-academy-sandbox-pr-${PR} \
+#         --config infra/fly/sandbox-runner.fly.toml
+#   - Teardown on PR close cleans up both Vercel preview and Fly per-PR apps.
+
+name: Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  preview-stub:
+    name: preview-stub
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Preview info
+        run: |
+          echo "Preview deployment skeleton — wired to Vercel + Fly in M12"
+          exit 0

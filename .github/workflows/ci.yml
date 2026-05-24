@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "claude/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint-js:
+    name: Lint (JS/TS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Biome CI
+        run: pnpm exec biome ci .
+
+  lint-py:
+    name: Lint (Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    needs: lint-js
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Sync Python dependencies
+        run: uv sync --all-extras --dev
+      - name: TypeScript build check
+        run: pnpm exec tsc -b --noEmit
+      - name: mypy
+        run: uv run mypy python/qa_core python/qa_indicators apps/api/qa_api
+
+  test-js:
+    name: Test (JS/TS)
+    runs-on: ubuntu-latest
+    needs: lint-js
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests
+        run: pnpm test
+
+  test-py:
+    name: Test (Python)
+    runs-on: ubuntu-latest
+    needs: lint-py
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Run pytest
+        run: |
+          set +e
+          uv run pytest -q
+          code=$?
+          # Exit code 5 means "no tests collected" — tolerate in M0.
+          if [ "$code" -eq 5 ]; then
+            echo "pytest: no tests collected — tolerated in M0"
+            exit 0
+          fi
+          exit $code
+
+  build:
+    name: Build (web)
+    runs-on: ubuntu-latest
+    needs:
+      - lint-js
+      - typecheck
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build web app
+        run: pnpm exec turbo run build --filter=web
+
+  parity-check:
+    name: Parity Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Placeholder
+        run: |
+          echo "parity check placeholder — wired in M2"
+          exit 0
+
+  sandbox-negative:
+    name: Sandbox Negative Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: contains(github.event.pull_request.changed_files, 'python/qa_sandbox') || contains(github.event.pull_request.changed_files, 'apps/sandbox-runner')
+    steps:
+      - name: Placeholder
+        run: |
+          echo "sandbox-negative placeholder — wired in M5"
+          exit 0
