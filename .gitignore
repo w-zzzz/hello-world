@@ -1,3 +1,6 @@
+# --- Claude Code agent worktrees ---
+.claude/
+
 # --- Node / pnpm / turbo ---
 node_modules/
 .pnpm-store/
