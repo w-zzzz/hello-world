@@ -1,0 +1,27 @@
+[project]
+name = "qa-api"
+version = "0.1.0"
+description = "Quant Academy FastAPI backend"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+  "pydantic>=2.10.0",
+  "pydantic-settings>=2.7.0",
+  "httpx>=0.28.0",
+  "structlog>=24.4.0",
+  "python-multipart>=0.0.20",
+  "qa-core",
+  "qa-indicators",
+]
+
+[tool.uv.sources]
+qa-core = { workspace = true }
+qa-indicators = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["qa_api"]
