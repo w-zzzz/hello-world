@@ -57,7 +57,9 @@ def test_sma_rejects_invalid_source() -> None:
     period=st.integers(min_value=2, max_value=50),
     length=st.integers(min_value=2, max_value=120),
 )
-def test_property_sma_of_constant_equals_constant(constant: float, period: int, length: int) -> None:
+def test_property_sma_of_constant_equals_constant(
+    constant: float, period: int, length: int
+) -> None:
     length = max(length, period)
     df = _frame([constant] * length)
     out = compute(df, period=period)

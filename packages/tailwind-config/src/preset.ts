@@ -8,6 +8,6 @@
  * import the OKLCH tokens via `@import '@quant-academy/ui/styles'` and
  * the `@theme` block defined in the app shell.
  */
-export const preset = {} as const;
+export const preset = {} as const
 
-export default preset;
+export default preset

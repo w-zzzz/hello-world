@@ -1,5 +1,4 @@
-import { setRequestLocale } from 'next-intl/server';
-import { getTranslations } from 'next-intl/server';
+import type { Locale } from '@quant-academy/i18n'
 import {
   Button,
   Card,
@@ -7,26 +6,20 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@quant-academy/ui';
-import type { Locale } from '@quant-academy/i18n';
-import { LocaleSwitcher } from '@/components/locale-switcher';
-import { ThemeToggle } from '@/components/theme-toggle';
+} from '@quant-academy/ui'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
+import { LocaleSwitcher } from '@/components/locale-switcher'
+import { ThemeToggle } from '@/components/theme-toggle'
 
-export default async function HomePage({
-  params,
-}: {
-  params: Promise<{ locale: Locale }>;
-}) {
-  const { locale } = await params;
-  setRequestLocale(locale);
-  const t = await getTranslations();
+export default async function HomePage({ params }: { params: Promise<{ locale: Locale }> }) {
+  const { locale } = await params
+  setRequestLocale(locale)
+  const t = await getTranslations()
 
   return (
     <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col gap-16 px-6 py-12">
       <header className="flex items-center justify-between">
-        <div className="text-lg font-semibold tracking-tight">
-          Quant Academy
-        </div>
+        <div className="text-lg font-semibold tracking-tight">Quant Academy</div>
         <div className="flex items-center gap-2">
           <LocaleSwitcher />
           <ThemeToggle />
@@ -37,9 +30,7 @@ export default async function HomePage({
         <h1 className="text-balance text-5xl font-bold tracking-tight md:text-6xl">
           {t('home.title')}
         </h1>
-        <p className="max-w-2xl text-lg text-foreground/70">
-          {t('home.subtitle')}
-        </p>
+        <p className="max-w-2xl text-lg text-foreground/70">{t('home.subtitle')}</p>
         <div className="flex flex-wrap gap-3">
           <Button size="lg">{t('home.cta.beginTrack')}</Button>
           <Button size="lg" variant="outline">
@@ -78,5 +69,5 @@ export default async function HomePage({
         </Card>
       </section>
     </main>
-  );
+  )
 }

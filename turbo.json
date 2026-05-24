@@ -19,13 +19,7 @@
         "next.config.*",
         "vite.config.*"
       ],
-      "outputs": [
-        ".next/**",
-        "!.next/cache/**",
-        "dist/**",
-        "build/**",
-        "out/**"
-      ],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**", "out/**"],
       "env": ["NEXT_PUBLIC_*"]
     },
     "dev": {

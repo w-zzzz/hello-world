@@ -16,7 +16,7 @@ help:
 	@echo "  down        docker compose down (infra)"
 
 install:
-	pnpm install && uv sync
+	pnpm install && uv sync --all-packages
 
 dev:
 	pnpm dev
@@ -31,7 +31,7 @@ build:
 	pnpm build
 
 lint:
-	pnpm lint && uv run ruff check . && uv run mypy
+	pnpm exec biome ci . && uv run ruff check . && uv run ruff format --check .
 
 format:
 	pnpm format && uv run ruff format .
@@ -40,7 +40,7 @@ test:
 	pnpm test && uv run pytest
 
 typecheck:
-	pnpm typecheck && uv run mypy
+	pnpm exec tsc -b --noEmit && uv run mypy -p qa_core -p qa_indicators -p qa_api
 
 clean:
 	pnpm clean && rm -rf .venv .mypy_cache .ruff_cache .pytest_cache

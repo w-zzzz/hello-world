@@ -123,7 +123,7 @@ class Artifact(StrictModel):
     url: str
 
 
-class Warning_(StrictModel):
+class BacktestWarning(StrictModel):
     code: str
     message: str
 
@@ -149,10 +149,10 @@ class BacktestResult(StrictModel):
     trades: list[Trade]
     metrics: Metrics
     drawdown_periods: list[DrawdownPeriod]
-    benchmark: "BacktestResult | None" = None
+    benchmark: BacktestResult | None = None
     rolling: RollingStats | None = None
     artifacts: list[Artifact] = Field(default_factory=list)
-    warnings: list[Warning_] = Field(default_factory=list)
+    warnings: list[BacktestWarning] = Field(default_factory=list)
 
 
 BacktestResult.model_rebuild()

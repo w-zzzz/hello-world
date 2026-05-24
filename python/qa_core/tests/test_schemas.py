@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
 
 from qa_core.schemas import (
-    Bar,
     BacktestResult,
+    Bar,
     DateRange,
     DrawdownPeriod,
     EquityPoint,
@@ -22,7 +22,7 @@ from qa_core.schemas import (
 
 def test_bar_accepts_valid_ohlc() -> None:
     bar = Bar(
-        t=datetime(2024, 1, 2, 14, 30, tzinfo=timezone.utc),
+        t=datetime(2024, 1, 2, 14, 30, tzinfo=UTC),
         open=100.0,
         high=101.5,
         low=99.0,
@@ -36,7 +36,7 @@ def test_bar_accepts_valid_ohlc() -> None:
 def test_strict_model_rejects_extra_fields() -> None:
     with pytest.raises(ValidationError):
         Bar(  # type: ignore[call-arg]
-            t=datetime(2024, 1, 2, tzinfo=timezone.utc),
+            t=datetime(2024, 1, 2, tzinfo=UTC),
             open=1.0,
             high=1.0,
             low=1.0,
@@ -81,7 +81,7 @@ def _minimal_metrics() -> Metrics:
 
 
 def test_backtest_result_roundtrips_json() -> None:
-    ts = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    ts = datetime(2024, 1, 2, tzinfo=UTC)
     result = BacktestResult(
         config_hash="abc123",
         universe=["AAPL"],

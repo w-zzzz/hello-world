@@ -47,7 +47,7 @@ jobs:
         with:
           enable-cache: true
       - name: Sync dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-packages
       - name: Ruff check
         run: uv run ruff check .
       - name: Ruff format check
@@ -73,11 +73,11 @@ jobs:
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
       - name: Sync Python dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-packages
       - name: TypeScript build check
         run: pnpm exec tsc -b --noEmit
       - name: mypy
-        run: uv run mypy python/qa_core python/qa_indicators apps/api/qa_api
+        run: uv run mypy -p qa_core -p qa_indicators -p qa_api
 
   test-js:
     name: Test (JS/TS)
@@ -109,7 +109,7 @@ jobs:
         with:
           enable-cache: true
       - name: Sync dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-packages
       - name: Run pytest
         run: |
           set +e
