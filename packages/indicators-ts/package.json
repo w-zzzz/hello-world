@@ -1,0 +1,27 @@
+{
+  "name": "@quant-academy/indicators-ts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./src/types.ts"
+    }
+  },
+  "scripts": {
+    "lint": "biome check src",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@quant-academy/tsconfig-config": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
