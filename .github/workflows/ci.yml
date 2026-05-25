@@ -140,10 +140,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Placeholder
-        run: |
-          echo "parity check placeholder — wired in M2"
-          exit 0
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - uses: astral-sh/setup-uv@v4
+      - run: pnpm install --frozen-lockfile
+      - run: uv sync --all-extras --dev
+      - name: Regenerate goldens (verify mode)
+        run: uv run python -m qa_indicators.scripts.regenerate_golden --verify
+      - name: TS parity vs Python goldens
+        run: pnpm run check:parity
 
   sandbox-negative:
     name: Sandbox Negative Tests
