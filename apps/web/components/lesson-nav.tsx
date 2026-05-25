@@ -10,10 +10,7 @@ export async function LessonNav({ prev, next }: { prev: string | null; next: str
     <nav className="mt-10 flex items-center justify-between gap-3 border-t pt-6">
       {prev ? (
         <Button asChild variant="outline">
-          <Link
-            href={{ pathname: '/lessons/[lessonId]', params: { lessonId: prev } }}
-            className="inline-flex items-center gap-2"
-          >
+          <Link href={`/lessons/${prev}`} className="inline-flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             <span>{t('lessons.viewer.previous')}</span>
           </Link>
@@ -26,10 +23,7 @@ export async function LessonNav({ prev, next }: { prev: string | null; next: str
       )}
       {next ? (
         <Button asChild>
-          <Link
-            href={{ pathname: '/lessons/[lessonId]', params: { lessonId: next } }}
-            className="inline-flex items-center gap-2"
-          >
+          <Link href={`/lessons/${next}`} className="inline-flex items-center gap-2">
             <span>{t('lessons.viewer.next')}</span>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>

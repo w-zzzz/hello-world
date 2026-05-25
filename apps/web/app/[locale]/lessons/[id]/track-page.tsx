@@ -6,14 +6,6 @@ import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 
-const TRACK_IDS: readonly TrackId[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-
-export function generateStaticParams() {
-  return TRACK_IDS.flatMap((trackId) =>
-    (['zh', 'en'] as const).map((locale) => ({ locale, trackId })),
-  )
-}
-
 function difficultyClasses(difficulty: string): string {
   switch (difficulty) {
     case 'beginner':
@@ -57,23 +49,13 @@ function groupByModule(lessons: LessonRecord[]): Map<string, LessonRecord[]> {
   return groups
 }
 
-export default async function TrackPage({
-  params,
-}: {
-  params: Promise<{ locale: Locale; trackId: string }>
-}) {
-  const { locale, trackId } = await params
+export async function TrackPage({ locale, trackId }: { locale: Locale; trackId: TrackId }) {
   setRequestLocale(locale)
 
-  if (!TRACK_IDS.includes(trackId as TrackId)) {
-    notFound()
-  }
-
-  const typedTrackId = trackId as TrackId
-  const track = getTrack(typedTrackId)
+  const track = getTrack(trackId)
   if (!track) notFound()
 
-  const lessons = await getLessonsByTrack(typedTrackId)
+  const lessons = await getLessonsByTrack(trackId)
   const groups = groupByModule(lessons)
   const t = await getTranslations({ locale })
 
@@ -108,10 +90,7 @@ export default async function TrackPage({
                   return (
                     <li key={lesson.id}>
                       <Link
-                        href={{
-                          pathname: '/lessons/[lessonId]',
-                          params: { lessonId: lesson.id },
-                        }}
+                        href={`/lessons/${lesson.id}`}
                         className="flex items-center gap-4 px-5 py-4 transition hover:bg-muted"
                       >
                         <div className="w-10 shrink-0 font-mono text-sm text-muted-foreground tabular-nums">

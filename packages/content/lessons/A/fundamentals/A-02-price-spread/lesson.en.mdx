@@ -21,11 +21,15 @@ A small example: bid 99.98, ask 100.02. A retail app shows "Price: 100.00" (the 
 
 The **bid-ask <Glossary term="bid-ask spread">spread</Glossary>** is the gap between ask and bid:
 
-<MathBox>S = P_{\text{ask}} - P_{\text{bid}}</MathBox>
+$$
+S = P_{\text{ask}} - P_{\text{bid}}
+$$
 
 A more meaningful number is the **relative spread** as a fraction of the midpoint:
 
-<MathBox>S_{\text{rel}} = \frac{P_{\text{ask}} - P_{\text{bid}}}{(P_{\text{ask}} + P_{\text{bid}})/2}</MathBox>
+$$
+S_{\text{rel}} = \frac{P_{\text{ask}} - P_{\text{bid}}}{(P_{\text{ask}} + P_{\text{bid}})/2}
+$$
 
 You — the taker of liquidity — pay the spread. Market makers — the providers of liquidity — earn it on average, in exchange for the risk of holding inventory. If your strategy crosses the spread 100 times a day at 2 basis points each, you are paying 200 bps daily before any other costs. Many "promising" backtests die when this is added back in.
 
@@ -54,11 +58,15 @@ The shape of the book matters as much as the top quote. A book that is deep and 
 
 **Slippage** is the difference between the price you expected and the price you actually got. For a market order, a clean definition is:
 
-<MathBox>\text{Slippage} = P_{\text{fill}} - P_{\text{ref}}</MathBox>
+$$
+\text{Slippage} = P_{\text{fill}} - P_{\text{ref}}
+$$
 
 where $P_{\text{ref}}$ is usually the midpoint or the top-of-book quote at the moment you sent the order. A related metric, the **effective spread** for a buy, captures the round-trip cost relative to mid:
 
-<MathBox>S_{\text{eff}} = 2 \cdot (P_{\text{fill}} - P_{\text{mid}})</MathBox>
+$$
+S_{\text{eff}} = 2 \cdot (P_{\text{fill}} - P_{\text{mid}})
+$$
 
 Slippage grows with order size and shrinks with available liquidity. Trying to buy 100 shares of SPY at market is basically free. Trying to buy 100,000 shares of a small-cap at market can move the price several percent against you — and the moment your order finishes, the price may snap back, leaving you stuck with a poor entry.
 

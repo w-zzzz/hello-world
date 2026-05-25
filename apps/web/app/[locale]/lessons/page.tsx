@@ -48,7 +48,7 @@ export default async function TrackExplorerPage({
         {TRACKS.map((track) => (
           <li key={track.id}>
             <Link
-              href={{ pathname: '/lessons/[trackId]', params: { trackId: track.id } }}
+              href={`/lessons/${track.id}`}
               className="block rounded-xl border bg-card p-5 transition hover:bg-muted"
             >
               <div

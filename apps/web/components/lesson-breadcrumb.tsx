@@ -21,10 +21,7 @@ export async function LessonBreadcrumb({
         {t('lessons.explorer.title')}
       </Link>
       <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-      <Link
-        href={{ pathname: '/lessons/[trackId]', params: { trackId } }}
-        className="hover:text-foreground hover:underline"
-      >
+      <Link href={`/lessons/${trackId}`} className="hover:text-foreground hover:underline">
         Track {trackId}
       </Link>
       <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />

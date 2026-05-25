@@ -1,15 +1,14 @@
 import createMDX from '@next/mdx'
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
-import rehypeKatex from 'rehype-katex'
-import remarkMath from 'remark-math'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
+// Turbopack requires string-based plugin specifiers (functions aren't serializable).
 const withMDX = createMDX({
   options: {
-    remarkPlugins: [remarkMath],
-    rehypePlugins: [rehypeKatex],
+    remarkPlugins: [['remark-math']],
+    rehypePlugins: [['rehype-katex']],
   },
 })
 

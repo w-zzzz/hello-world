@@ -1,34 +1,11 @@
-import { CURRICULUM, getLesson, getNextLesson, getPreviousLesson } from '@quant-academy/content'
+import { getLesson, getNextLesson, getPreviousLesson } from '@quant-academy/content'
 import type { Locale } from '@quant-academy/i18n'
 import { BookOpen } from 'lucide-react'
-import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
 import { LessonBreadcrumb } from '@/components/lesson-breadcrumb'
 import { LessonNav } from '@/components/lesson-nav'
 import { LessonProgress } from '@/components/lesson-progress'
-
-export function generateStaticParams() {
-  return CURRICULUM.lessons.flatMap((lesson) =>
-    (['zh', 'en'] as const).map((locale) => ({
-      locale,
-      lessonId: lesson.meta.id,
-    })),
-  )
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: Locale; lessonId: string }>
-}): Promise<Metadata> {
-  const { locale, lessonId } = await params
-  // M1: use the lesson id as the title — proper extracted title arrives in M7.
-  const suffix = locale === 'zh' ? ' · Quant Academy' : ' · Quant Academy'
-  return {
-    title: `${lessonId}${suffix}`,
-  }
-}
 
 function ComingSoonPlaceholder({ meta }: { meta: { id: string; trackId: string } }) {
   return (
@@ -43,12 +20,7 @@ function ComingSoonPlaceholder({ meta }: { meta: { id: string; trackId: string }
   )
 }
 
-export default async function LessonViewer({
-  params,
-}: {
-  params: Promise<{ locale: Locale; lessonId: string }>
-}) {
-  const { locale, lessonId } = await params
+export async function LessonPage({ locale, lessonId }: { locale: Locale; lessonId: string }) {
   setRequestLocale(locale)
 
   const lesson = await getLesson(lessonId, locale)

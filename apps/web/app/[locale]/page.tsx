@@ -48,13 +48,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: L
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Link
-          href={{
-            pathname: '/lessons/[lessonId]',
-            params: { lessonId: 'A-01-what-is-market' },
-          }}
-          className="block transition hover:opacity-90"
-        >
+        <Link href="/lessons/A-01-what-is-market" className="block transition hover:opacity-90">
           <Card>
             <CardHeader>
               <CardTitle>{t('features.kline.title')}</CardTitle>

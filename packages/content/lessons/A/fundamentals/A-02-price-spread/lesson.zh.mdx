@@ -20,11 +20,15 @@
 
 价差是市场结构里最重要的一个数字之一。它的定义很直接：
 
-<MathBox>\text{Spread} = P_{\text{ask}} - P_{\text{bid}}</MathBox>
+$$
+\text{Spread} = P_{\text{ask}} - P_{\text{bid}}
+$$
 
 也可以用百分比衡量，叫**相对价差 (relative spread)**：
 
-<MathBox>\text{RelativeSpread} = \frac{P_{\text{ask}} - P_{\text{bid}}}{(P_{\text{ask}} + P_{\text{bid}}) / 2}</MathBox>
+$$
+\text{RelativeSpread} = \frac{P_{\text{ask}} - P_{\text{bid}}}{(P_{\text{ask}} + P_{\text{bid}}) / 2}
+$$
 
 谁在赚这个价差？主要是 <Glossary term="market maker">做市商 (market maker)</Glossary>。他们同时挂买单和卖单，不断地以略低的价格买入、再以略高的价格卖出，赚取价差作为提供流动性的报酬。
 
@@ -67,7 +71,9 @@
 
 如果你以"现在的最优卖价 100.07"为基准，那么每股多付了约 0.023。这就是 **滑点 (slippage)**。它的一般定义：
 
-<MathBox>\text{Slippage} = \bar{P}_{\text{fill}} - P_{\text{ref}}</MathBox>
+$$
+\text{Slippage} = \bar{P}_{\text{fill}} - P_{\text{ref}}
+$$
 
 其中 $\bar{P}_{\text{fill}}$ 是你这笔单的实际加权平均成交价，$P_{\text{ref}}$ 是参考价（常用下单瞬间的最优卖价或中间价）。
 
@@ -96,7 +102,9 @@
 
 学术上还有一个更精细的指标，叫 **有效价差 (effective spread)**，用来衡量"实际成交成本"而不是"挂单价差"。它的定义是：
 
-<MathBox>\text{EffectiveSpread} = 2 \cdot |P_{\text{trade}} - P_{\text{mid}}|</MathBox>
+$$
+\text{EffectiveSpread} = 2 \cdot |P_{\text{trade}} - P_{\text{mid}}|
+$$
 
 其中 $P_{\text{trade}}$ 是你的实际成交价，$P_{\text{mid}} = (P_{\text{bid}} + P_{\text{ask}}) / 2$ 是下单瞬间的中间价。当你吃单很多时，有效价差通常远大于"显示价差"——这部分多出来的成本就是流动性消耗的代价。
 

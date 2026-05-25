@@ -41,7 +41,7 @@ export function CommandPalette() {
 
   const goToLesson = useCallback(
     (lessonId: string) => {
-      router.push({ pathname: '/lessons/[lessonId]', params: { lessonId } })
+      router.push(`/lessons/${lessonId}`)
       close()
     },
     [router, close],
@@ -49,7 +49,7 @@ export function CommandPalette() {
 
   const goToTrack = useCallback(
     (trackId: string) => {
-      router.push({ pathname: '/lessons/[trackId]', params: { trackId } })
+      router.push(`/lessons/${trackId}`)
       close()
     },
     [router, close],
