@@ -1,0 +1,1082 @@
+import type { Difficulty, LessonMeta, TrackId } from './schema'
+import { LessonMetaSchema } from './schema'
+import { getTrack } from './tracks'
+
+export interface LessonRecord {
+  meta: LessonMeta
+  mdxReady: boolean
+}
+
+interface RawLesson {
+  id: string
+  module: string
+  difficulty: Difficulty
+  durationMin: number
+  xp: number
+  prerequisites?: string[]
+  tags?: string[]
+  mdxReady?: boolean
+}
+
+const DEFAULT_DURATION: Record<Difficulty, number> = {
+  beginner: 14,
+  intermediate: 18,
+  advanced: 22,
+}
+
+const DEFAULT_XP: Record<Difficulty, number> = {
+  beginner: 60,
+  intermediate: 100,
+  advanced: 160,
+}
+
+function lesson(trackId: TrackId, order: number, raw: RawLesson): LessonRecord {
+  const durationMin = raw.durationMin ?? DEFAULT_DURATION[raw.difficulty]
+  const xp = raw.xp ?? DEFAULT_XP[raw.difficulty]
+  const meta = LessonMetaSchema.parse({
+    id: raw.id,
+    trackId,
+    module: raw.module,
+    order,
+    difficulty: raw.difficulty,
+    durationMin,
+    xp,
+    prerequisites: raw.prerequisites ?? [],
+    tags: raw.tags ?? [],
+    contributors: ['@quant-academy'],
+  })
+  return { meta, mdxReady: raw.mdxReady ?? false }
+}
+
+// =================================================================================
+// Track A — 市场基础 (Market Fundamentals, 10 lessons, all beginner)
+// =================================================================================
+const TRACK_A: LessonRecord[] = [
+  lesson('A', 1, {
+    id: 'A-01-what-is-market',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 12,
+    xp: 50,
+    tags: ['fundamentals', 'market-structure'],
+    mdxReady: true,
+  }),
+  lesson('A', 2, {
+    id: 'A-02-price-spread',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 60,
+    prerequisites: ['A-01-what-is-market'],
+    tags: ['fundamentals', 'market-microstructure'],
+    mdxReady: true,
+  }),
+  lesson('A', 3, {
+    id: 'A-03-order-types',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 16,
+    xp: 70,
+    prerequisites: ['A-02-price-spread'],
+    tags: ['fundamentals', 'orders'],
+    mdxReady: true,
+  }),
+  lesson('A', 4, {
+    id: 'A-04-candlesticks',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 15,
+    xp: 60,
+    prerequisites: ['A-03-order-types'],
+    tags: ['fundamentals', 'candlesticks'],
+  }),
+  lesson('A', 5, {
+    id: 'A-05-volume',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 60,
+    prerequisites: ['A-04-candlesticks'],
+    tags: ['fundamentals', 'volume'],
+  }),
+  lesson('A', 6, {
+    id: 'A-06-timeframes',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 15,
+    xp: 60,
+    prerequisites: ['A-05-volume'],
+    tags: ['fundamentals', 'timeframes'],
+  }),
+  lesson('A', 7, {
+    id: 'A-07-us-vs-china',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 16,
+    xp: 70,
+    prerequisites: ['A-06-timeframes'],
+    tags: ['fundamentals', 'markets'],
+  }),
+  lesson('A', 8, {
+    id: 'A-08-trading-sessions',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 60,
+    prerequisites: ['A-07-us-vs-china'],
+    tags: ['fundamentals', 'sessions'],
+  }),
+  lesson('A', 9, {
+    id: 'A-09-fees-and-costs',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 15,
+    xp: 70,
+    prerequisites: ['A-08-trading-sessions'],
+    tags: ['fundamentals', 'costs'],
+  }),
+  lesson('A', 10, {
+    id: 'A-10-market-review',
+    module: 'fundamentals',
+    difficulty: 'beginner',
+    durationMin: 18,
+    xp: 80,
+    prerequisites: ['A-09-fees-and-costs'],
+    tags: ['fundamentals', 'review'],
+  }),
+]
+
+// =================================================================================
+// Track B — 单个指标 (Single Indicators, 30 lessons)
+// =================================================================================
+const TRACK_B: LessonRecord[] = [
+  // moving-averages cluster
+  lesson('B', 1, {
+    id: 'B-01-sma',
+    module: 'moving-averages',
+    difficulty: 'beginner',
+    durationMin: 15,
+    xp: 70,
+    tags: ['indicators', 'ma'],
+  }),
+  lesson('B', 2, {
+    id: 'B-02-ema',
+    module: 'moving-averages',
+    difficulty: 'beginner',
+    durationMin: 16,
+    xp: 70,
+    prerequisites: ['B-01-sma'],
+    tags: ['indicators', 'ma'],
+  }),
+  lesson('B', 3, {
+    id: 'B-03-wma',
+    module: 'moving-averages',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 60,
+    prerequisites: ['B-02-ema'],
+    tags: ['indicators', 'ma'],
+  }),
+  // bollinger cluster
+  lesson('B', 4, {
+    id: 'B-04-bollinger-bands',
+    module: 'bollinger',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['B-02-ema'],
+    tags: ['indicators', 'bollinger'],
+  }),
+  lesson('B', 5, {
+    id: 'B-05-bollinger-strategies',
+    module: 'bollinger',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 110,
+    prerequisites: ['B-04-bollinger-bands'],
+    tags: ['indicators', 'bollinger'],
+  }),
+  // rsi cluster
+  lesson('B', 6, {
+    id: 'B-06-rsi-intro',
+    module: 'rsi',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'rsi'],
+  }),
+  lesson('B', 7, {
+    id: 'B-07-rsi-math',
+    module: 'rsi',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['B-06-rsi-intro'],
+    tags: ['indicators', 'rsi'],
+  }),
+  lesson('B', 8, {
+    id: 'B-08-rsi-divergence',
+    module: 'rsi',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 110,
+    prerequisites: ['B-07-rsi-math'],
+    tags: ['indicators', 'rsi', 'divergence'],
+  }),
+  // macd cluster
+  lesson('B', 9, {
+    id: 'B-09-macd-intro',
+    module: 'macd',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['B-02-ema'],
+    tags: ['indicators', 'macd'],
+  }),
+  lesson('B', 10, {
+    id: 'B-10-macd-histogram',
+    module: 'macd',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['B-09-macd-intro'],
+    tags: ['indicators', 'macd'],
+  }),
+  // oscillators cluster
+  lesson('B', 11, {
+    id: 'B-11-stochastic',
+    module: 'oscillators',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['indicators', 'oscillators'],
+  }),
+  lesson('B', 12, {
+    id: 'B-12-cci',
+    module: 'oscillators',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'oscillators'],
+  }),
+  lesson('B', 13, {
+    id: 'B-13-williams-r',
+    module: 'oscillators',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'oscillators'],
+  }),
+  // momentum cluster
+  lesson('B', 14, {
+    id: 'B-14-adx-dmi',
+    module: 'momentum',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 110,
+    tags: ['indicators', 'momentum'],
+  }),
+  lesson('B', 15, {
+    id: 'B-15-parabolic-sar',
+    module: 'momentum',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['indicators', 'momentum'],
+  }),
+  lesson('B', 16, {
+    id: 'B-16-supertrend',
+    module: 'momentum',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['indicators', 'momentum'],
+  }),
+  // volatility cluster
+  lesson('B', 17, {
+    id: 'B-17-atr',
+    module: 'volatility',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'volatility'],
+  }),
+  lesson('B', 18, {
+    id: 'B-18-keltner-channels',
+    module: 'volatility',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['B-17-atr'],
+    tags: ['indicators', 'volatility'],
+  }),
+  lesson('B', 19, {
+    id: 'B-19-donchian-channels',
+    module: 'volatility',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'volatility'],
+  }),
+  // volume-flow cluster
+  lesson('B', 20, {
+    id: 'B-20-obv',
+    module: 'volume-flow',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'volume'],
+  }),
+  lesson('B', 21, {
+    id: 'B-21-vwap',
+    module: 'volume-flow',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['indicators', 'volume'],
+  }),
+  lesson('B', 22, {
+    id: 'B-22-mfi',
+    module: 'volume-flow',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'volume'],
+  }),
+  lesson('B', 23, {
+    id: 'B-23-volume-profile',
+    module: 'volume-flow',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    prerequisites: ['B-21-vwap'],
+    tags: ['indicators', 'volume'],
+  }),
+  // ichimoku cluster
+  lesson('B', 24, {
+    id: 'B-24-ichimoku-intro',
+    module: 'ichimoku',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['indicators', 'ichimoku'],
+  }),
+  lesson('B', 25, {
+    id: 'B-25-ichimoku-signals',
+    module: 'ichimoku',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    prerequisites: ['B-24-ichimoku-intro'],
+    tags: ['indicators', 'ichimoku'],
+  }),
+  // pivots cluster
+  lesson('B', 26, {
+    id: 'B-26-pivot-points',
+    module: 'pivots',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['indicators', 'pivots'],
+  }),
+  lesson('B', 27, {
+    id: 'B-27-fibonacci-pivots',
+    module: 'pivots',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['B-26-pivot-points'],
+    tags: ['indicators', 'pivots'],
+  }),
+  // composite cluster
+  lesson('B', 28, {
+    id: 'B-28-indicator-quality',
+    module: 'composite',
+    difficulty: 'advanced',
+    durationMin: 20,
+    xp: 140,
+    tags: ['indicators', 'meta'],
+  }),
+  lesson('B', 29, {
+    id: 'B-29-lookahead-traps',
+    module: 'composite',
+    difficulty: 'advanced',
+    durationMin: 20,
+    xp: 140,
+    tags: ['indicators', 'pitfalls'],
+  }),
+  lesson('B', 30, {
+    id: 'B-30-indicator-review',
+    module: 'composite',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['indicators', 'review'],
+  }),
+]
+
+// =================================================================================
+// Track C — 组合与信号构造 (Signal Composition, 10 lessons)
+// =================================================================================
+const TRACK_C: LessonRecord[] = [
+  lesson('C', 1, {
+    id: 'C-01-confluence-intro',
+    module: 'confluence',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['signals', 'confluence'],
+  }),
+  lesson('C', 2, {
+    id: 'C-02-multi-timeframe',
+    module: 'confluence',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 110,
+    prerequisites: ['C-01-confluence-intro'],
+    tags: ['signals', 'mtf'],
+  }),
+  lesson('C', 3, {
+    id: 'C-03-divergence-detection',
+    module: 'divergence',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['signals', 'divergence'],
+  }),
+  lesson('C', 4, {
+    id: 'C-04-divergence-game',
+    module: 'divergence',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    prerequisites: ['C-03-divergence-detection'],
+    tags: ['signals', 'divergence', 'game'],
+  }),
+  lesson('C', 5, {
+    id: 'C-05-regime-detection',
+    module: 'regime',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['signals', 'regime'],
+  }),
+  lesson('C', 6, {
+    id: 'C-06-signal-aggregation',
+    module: 'composite',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['signals', 'composite'],
+  }),
+  lesson('C', 7, {
+    id: 'C-07-smoothing-vs-lag',
+    module: 'composite',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['signals', 'smoothing'],
+  }),
+  lesson('C', 8, {
+    id: 'C-08-false-signal-filter',
+    module: 'composite',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['signals', 'filters'],
+  }),
+  lesson('C', 9, {
+    id: 'C-09-signal-workshop',
+    module: 'composite',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 180,
+    prerequisites: ['C-06-signal-aggregation'],
+    tags: ['signals', 'workshop'],
+  }),
+  lesson('C', 10, {
+    id: 'C-10-signal-review',
+    module: 'composite',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['signals', 'review'],
+  }),
+]
+
+// =================================================================================
+// Track D — 回测基础 (Backtesting Foundations, 15 lessons)
+// =================================================================================
+const TRACK_D: LessonRecord[] = [
+  lesson('D', 1, {
+    id: 'D-01-returns',
+    module: 'returns',
+    difficulty: 'beginner',
+    durationMin: 16,
+    xp: 70,
+    tags: ['backtest', 'returns'],
+  }),
+  lesson('D', 2, {
+    id: 'D-02-log-returns',
+    module: 'returns',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    prerequisites: ['D-01-returns'],
+    tags: ['backtest', 'returns'],
+  }),
+  lesson('D', 3, {
+    id: 'D-03-max-drawdown',
+    module: 'metrics',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['backtest', 'risk-metrics'],
+  }),
+  lesson('D', 4, {
+    id: 'D-04-sharpe-ratio',
+    module: 'metrics',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['backtest', 'risk-metrics'],
+  }),
+  lesson('D', 5, {
+    id: 'D-05-sortino-calmar',
+    module: 'metrics',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['D-04-sharpe-ratio'],
+    tags: ['backtest', 'risk-metrics'],
+  }),
+  lesson('D', 6, {
+    id: 'D-06-profit-factor',
+    module: 'metrics',
+    difficulty: 'intermediate',
+    durationMin: 16,
+    xp: 90,
+    tags: ['backtest', 'metrics'],
+  }),
+  lesson('D', 7, {
+    id: 'D-07-mae-mfe',
+    module: 'metrics',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['backtest', 'trade-analytics'],
+  }),
+  lesson('D', 8, {
+    id: 'D-08-slippage',
+    module: 'costs',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    tags: ['backtest', 'costs'],
+  }),
+  lesson('D', 9, {
+    id: 'D-09-commissions',
+    module: 'costs',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 70,
+    tags: ['backtest', 'costs'],
+  }),
+  lesson('D', 10, {
+    id: 'D-10-lookahead-bias',
+    module: 'bias',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['backtest', 'bias'],
+  }),
+  lesson('D', 11, {
+    id: 'D-11-survivorship-bias',
+    module: 'bias',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['backtest', 'bias'],
+  }),
+  lesson('D', 12, {
+    id: 'D-12-is-vs-oos',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 150,
+    tags: ['backtest', 'validation'],
+  }),
+  lesson('D', 13, {
+    id: 'D-13-walk-forward',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    prerequisites: ['D-12-is-vs-oos'],
+    tags: ['backtest', 'validation'],
+  }),
+  lesson('D', 14, {
+    id: 'D-14-monte-carlo',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    tags: ['backtest', 'validation', 'monte-carlo'],
+  }),
+  lesson('D', 15, {
+    id: 'D-15-deflated-sharpe-pbo',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 200,
+    prerequisites: ['D-13-walk-forward', 'D-14-monte-carlo'],
+    tags: ['backtest', 'validation', 'overfitting'],
+  }),
+]
+
+// =================================================================================
+// Track E — 策略原型 (Strategy Prototypes, 15 lessons)
+// =================================================================================
+const TRACK_E: LessonRecord[] = [
+  lesson('E', 1, {
+    id: 'E-01-turtle-system',
+    module: 'trend-following',
+    difficulty: 'intermediate',
+    durationMin: 22,
+    xp: 130,
+    tags: ['strategy', 'trend'],
+  }),
+  lesson('E', 2, {
+    id: 'E-02-donchian-breakout',
+    module: 'trend-following',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 110,
+    prerequisites: ['E-01-turtle-system'],
+    tags: ['strategy', 'trend'],
+  }),
+  lesson('E', 3, {
+    id: 'E-03-ma-crossover',
+    module: 'trend-following',
+    difficulty: 'beginner',
+    durationMin: 16,
+    xp: 80,
+    tags: ['strategy', 'trend'],
+  }),
+  lesson('E', 4, {
+    id: 'E-04-pairs-trading',
+    module: 'mean-reversion',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 180,
+    tags: ['strategy', 'mean-reversion'],
+  }),
+  lesson('E', 5, {
+    id: 'E-05-bollinger-reversion',
+    module: 'mean-reversion',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 120,
+    tags: ['strategy', 'mean-reversion'],
+  }),
+  lesson('E', 6, {
+    id: 'E-06-momentum-cross-section',
+    module: 'momentum',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    tags: ['strategy', 'momentum'],
+  }),
+  lesson('E', 7, {
+    id: 'E-07-momentum-time-series',
+    module: 'momentum',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    tags: ['strategy', 'momentum'],
+  }),
+  lesson('E', 8, {
+    id: 'E-08-breakout-strategy',
+    module: 'breakout',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 120,
+    tags: ['strategy', 'breakout'],
+  }),
+  lesson('E', 9, {
+    id: 'E-09-statistical-arbitrage',
+    module: 'stat-arb',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 200,
+    prerequisites: ['E-04-pairs-trading'],
+    tags: ['strategy', 'stat-arb'],
+  }),
+  lesson('E', 10, {
+    id: 'E-10-event-driven',
+    module: 'events',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    tags: ['strategy', 'events'],
+  }),
+  lesson('E', 11, {
+    id: 'E-11-seasonality',
+    module: 'events',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['strategy', 'seasonality'],
+  }),
+  lesson('E', 12, {
+    id: 'E-12-vol-carry',
+    module: 'factors',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    tags: ['strategy', 'volatility'],
+  }),
+  lesson('E', 13, {
+    id: 'E-13-factor-intro',
+    module: 'factors',
+    difficulty: 'intermediate',
+    durationMin: 22,
+    xp: 140,
+    tags: ['strategy', 'factors'],
+  }),
+  lesson('E', 14, {
+    id: 'E-14-crypto-funding-carry',
+    module: 'crypto',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    tags: ['strategy', 'crypto'],
+  }),
+  lesson('E', 15, {
+    id: 'E-15-china-t1-limits',
+    module: 'china',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    tags: ['strategy', 'china', 'microstructure'],
+  }),
+]
+
+// =================================================================================
+// Track F — 风险与仓位 (Risk & Sizing, 8 lessons)
+// =================================================================================
+const TRACK_F: LessonRecord[] = [
+  lesson('F', 1, {
+    id: 'F-01-fixed-fractional',
+    module: 'sizing',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 70,
+    tags: ['risk', 'sizing'],
+  }),
+  lesson('F', 2, {
+    id: 'F-02-vol-targeting',
+    module: 'sizing',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 120,
+    prerequisites: ['F-01-fixed-fractional'],
+    tags: ['risk', 'sizing'],
+  }),
+  lesson('F', 3, {
+    id: 'F-03-kelly-criterion',
+    module: 'sizing',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    prerequisites: ['F-01-fixed-fractional'],
+    tags: ['risk', 'sizing', 'kelly'],
+  }),
+  lesson('F', 4, {
+    id: 'F-04-stop-loss-design',
+    module: 'stops',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 110,
+    tags: ['risk', 'stops'],
+  }),
+  lesson('F', 5, {
+    id: 'F-05-take-profit-trailing',
+    module: 'stops',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 100,
+    prerequisites: ['F-04-stop-loss-design'],
+    tags: ['risk', 'stops'],
+  }),
+  lesson('F', 6, {
+    id: 'F-06-risk-of-ruin',
+    module: 'risk-mgmt',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    tags: ['risk', 'ruin'],
+  }),
+  lesson('F', 7, {
+    id: 'F-07-portfolio-heat',
+    module: 'risk-mgmt',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    tags: ['risk', 'portfolio'],
+  }),
+  lesson('F', 8, {
+    id: 'F-08-risk-review',
+    module: 'risk-mgmt',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['risk', 'review'],
+  }),
+]
+
+// =================================================================================
+// Track G — 组合构建 (Portfolio Construction, 10 lessons)
+// =================================================================================
+const TRACK_G: LessonRecord[] = [
+  lesson('G', 1, {
+    id: 'G-01-equal-weight',
+    module: 'weights',
+    difficulty: 'beginner',
+    durationMin: 14,
+    xp: 70,
+    tags: ['portfolio', 'weights'],
+  }),
+  lesson('G', 2, {
+    id: 'G-02-inverse-vol',
+    module: 'weights',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    prerequisites: ['G-01-equal-weight'],
+    tags: ['portfolio', 'weights'],
+  }),
+  lesson('G', 3, {
+    id: 'G-03-risk-parity',
+    module: 'weights',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    prerequisites: ['G-02-inverse-vol'],
+    tags: ['portfolio', 'risk-parity'],
+  }),
+  lesson('G', 4, {
+    id: 'G-04-mvo-intro',
+    module: 'optimization',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    tags: ['portfolio', 'optimization'],
+  }),
+  lesson('G', 5, {
+    id: 'G-05-ledoit-wolf',
+    module: 'optimization',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 170,
+    prerequisites: ['G-04-mvo-intro'],
+    tags: ['portfolio', 'shrinkage'],
+  }),
+  lesson('G', 6, {
+    id: 'G-06-black-litterman',
+    module: 'optimization',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 200,
+    prerequisites: ['G-04-mvo-intro'],
+    tags: ['portfolio', 'optimization', 'bayesian'],
+  }),
+  lesson('G', 7, {
+    id: 'G-07-rebalance-frequency',
+    module: 'rebalance',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['portfolio', 'rebalance'],
+  }),
+  lesson('G', 8, {
+    id: 'G-08-turnover-aware',
+    module: 'rebalance',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    prerequisites: ['G-07-rebalance-frequency'],
+    tags: ['portfolio', 'rebalance', 'costs'],
+  }),
+  lesson('G', 9, {
+    id: 'G-09-drift-rebalance-workshop',
+    module: 'rebalance',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 180,
+    prerequisites: ['G-08-turnover-aware'],
+    tags: ['portfolio', 'rebalance', 'workshop'],
+  }),
+  lesson('G', 10, {
+    id: 'G-10-portfolio-review',
+    module: 'rebalance',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['portfolio', 'review'],
+  }),
+]
+
+// =================================================================================
+// Track H — 上线你自己的策略 (Ship Your Strategy, 12 lessons)
+// =================================================================================
+const TRACK_H: LessonRecord[] = [
+  lesson('H', 1, {
+    id: 'H-01-strategy-hypothesis',
+    module: 'idea',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    tags: ['ship', 'idea'],
+  }),
+  lesson('H', 2, {
+    id: 'H-02-universe-selection',
+    module: 'idea',
+    difficulty: 'intermediate',
+    durationMin: 18,
+    xp: 110,
+    prerequisites: ['H-01-strategy-hypothesis'],
+    tags: ['ship', 'universe'],
+  }),
+  lesson('H', 3, {
+    id: 'H-03-pyodide-notebook',
+    module: 'prototype',
+    difficulty: 'intermediate',
+    durationMin: 22,
+    xp: 140,
+    tags: ['ship', 'notebook'],
+  }),
+  lesson('H', 4, {
+    id: 'H-04-vectorbt-prototype',
+    module: 'prototype',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    prerequisites: ['H-03-pyodide-notebook'],
+    tags: ['ship', 'vectorbt'],
+  }),
+  lesson('H', 5, {
+    id: 'H-05-realistic-costs',
+    module: 'prototype',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    prerequisites: ['H-04-vectorbt-prototype'],
+    tags: ['ship', 'costs'],
+  }),
+  lesson('H', 6, {
+    id: 'H-06-walk-forward-ship',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    tags: ['ship', 'validation'],
+  }),
+  lesson('H', 7, {
+    id: 'H-07-robustness-checks',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 24,
+    xp: 170,
+    prerequisites: ['H-06-walk-forward-ship'],
+    tags: ['ship', 'validation'],
+  }),
+  lesson('H', 8, {
+    id: 'H-08-stress-testing',
+    module: 'validation',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 160,
+    tags: ['ship', 'stress'],
+  }),
+  lesson('H', 9, {
+    id: 'H-09-strategy-spec',
+    module: 'submission',
+    difficulty: 'intermediate',
+    durationMin: 20,
+    xp: 130,
+    tags: ['ship', 'spec'],
+  }),
+  lesson('H', 10, {
+    id: 'H-10-ai-deep-review',
+    module: 'submission',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 170,
+    prerequisites: ['H-09-strategy-spec'],
+    tags: ['ship', 'ai'],
+  }),
+  lesson('H', 11, {
+    id: 'H-11-paper-trading',
+    module: 'submission',
+    difficulty: 'advanced',
+    durationMin: 22,
+    xp: 170,
+    prerequisites: ['H-10-ai-deep-review'],
+    tags: ['ship', 'paper-trading'],
+  }),
+  lesson('H', 12, {
+    id: 'H-12-graduation-project',
+    module: 'submission',
+    difficulty: 'advanced',
+    durationMin: 25,
+    xp: 200,
+    prerequisites: ['H-11-paper-trading'],
+    tags: ['ship', 'graduation'],
+  }),
+]
+
+export const CURRICULUM: { lessons: LessonRecord[] } = {
+  lessons: [
+    ...TRACK_A,
+    ...TRACK_B,
+    ...TRACK_C,
+    ...TRACK_D,
+    ...TRACK_E,
+    ...TRACK_F,
+    ...TRACK_G,
+    ...TRACK_H,
+  ],
+}
+
+export function getLessonRecord(id: string): LessonRecord | undefined {
+  return CURRICULUM.lessons.find((l) => l.meta.id === id)
+}
+
+export function getLessonsByTrack(trackId: TrackId): LessonRecord[] {
+  return CURRICULUM.lessons
+    .filter((l) => l.meta.trackId === trackId)
+    .sort((a, b) => a.meta.order - b.meta.order)
+}
+
+function sortKey(record: LessonRecord): number {
+  const track = getTrack(record.meta.trackId)
+  const trackOrder = track ? track.order : 999
+  return trackOrder * 1000 + record.meta.order
+}
+
+const ORDERED_LESSONS: LessonRecord[] = [...CURRICULUM.lessons].sort(
+  (a, b) => sortKey(a) - sortKey(b),
+)
+
+export function getNextLesson(currentId: string): LessonRecord | undefined {
+  const idx = ORDERED_LESSONS.findIndex((l) => l.meta.id === currentId)
+  if (idx === -1 || idx === ORDERED_LESSONS.length - 1) return undefined
+  return ORDERED_LESSONS[idx + 1]
+}
+
+export function getPreviousLesson(currentId: string): LessonRecord | undefined {
+  const idx = ORDERED_LESSONS.findIndex((l) => l.meta.id === currentId)
+  if (idx <= 0) return undefined
+  return ORDERED_LESSONS[idx - 1]
+}

@@ -1,0 +1,13 @@
+{
+  "extends": "@quant-academy/tsconfig-config/base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "outDir": "dist",
+    "rootDir": ".",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/**/*", "scripts/**/*", "lessons/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

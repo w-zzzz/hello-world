@@ -1,0 +1,53 @@
+{
+  "name": "@quant-academy/content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./src/schema.ts"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./src/components/index.tsx"
+    },
+    "./loader": {
+      "types": "./dist/loader.d.ts",
+      "import": "./src/loader.ts"
+    }
+  },
+  "scripts": {
+    "build:index": "tsx scripts/generate-lesson-index.ts",
+    "lint": "biome check src scripts",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo src/lessons.generated.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.0",
+    "@quant-academy/charts": "workspace:*",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "katex": "^0.16.11",
+    "lucide-react": "^0.469.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/katex": "^0.16.7",
+    "@quant-academy/tsconfig-config": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "tsx": "^4.19.0",
+    "glob": "^11.0.0"
+  }
+}
