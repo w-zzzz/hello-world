@@ -148,7 +148,7 @@ jobs:
           cache: "pnpm"
       - uses: astral-sh/setup-uv@v4
       - run: pnpm install --frozen-lockfile
-      - run: uv sync --all-extras --dev
+      - run: uv sync --all-packages
       - name: Regenerate goldens (verify mode)
         run: uv run python -m qa_indicators.scripts.regenerate_golden --verify
       - name: TS parity vs Python goldens
