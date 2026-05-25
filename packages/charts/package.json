@@ -1,13 +1,38 @@
 {
   "name": "@quant-academy/charts",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    },
+    "./sample-data": {
+      "types": "./dist/sample-data.d.ts",
+      "import": "./src/sample-data.ts"
+    }
+  },
+  "scripts": {
+    "lint": "biome check src",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.0.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@quant-academy/tsconfig-config": "workspace:*",
     "typescript": "^5.6.0",
-    "@quant-academy/tsconfig-config": "workspace:*"
+    "vitest": "^2.1.0"
   }
 }
