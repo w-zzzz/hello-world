@@ -31,6 +31,7 @@
   "dependencies": {
     "zod": "^3.24.0",
     "@quant-academy/charts": "workspace:*",
+    "@quant-academy/indicators-ts": "workspace:*",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
     "katex": "^0.16.11",

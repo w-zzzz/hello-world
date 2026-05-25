@@ -94,5 +94,16 @@
     "keypoint": {
       "title": "Key point"
     }
+  },
+  "indicators": {
+    "title": "Indicator Lab",
+    "subtitle": "Drag the parameters and watch the indicator breathe with the market",
+    "reset": "Reset",
+    "verifyServer": "Verify against server",
+    "maxDelta": "Max delta",
+    "serverErr": "Server error",
+    "coming": {
+      "M7": "Coming in M7"
+    }
   }
 }

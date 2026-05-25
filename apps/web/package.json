@@ -17,6 +17,7 @@
     "@quant-academy/charts": "workspace:*",
     "@quant-academy/content": "workspace:*",
     "@quant-academy/i18n": "workspace:*",
+    "@quant-academy/indicators-ts": "workspace:*",
     "@quant-academy/ui": "workspace:*",
     "@tailwindcss/postcss": "^4.0.0",
     "class-variance-authority": "^0.7.1",

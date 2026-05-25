@@ -94,5 +94,16 @@
     "keypoint": {
       "title": "关键要点"
     }
+  },
+  "indicators": {
+    "title": "技术指标实验室",
+    "subtitle": "拖动参数，实时看见指标如何随市场跳动",
+    "reset": "重置",
+    "verifyServer": "与服务端验证",
+    "maxDelta": "最大偏差",
+    "serverErr": "服务端错误",
+    "coming": {
+      "M7": "即将上线（M7）"
+    }
   }
 }
