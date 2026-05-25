@@ -1,0 +1,105 @@
+# Price isn't one number
+
+Beginners say "the price of SPY is 500." Traders know that statement is at best a polite simplification. At any moment there is a price you can buy at, a different (lower) price you can sell at, and a long list of conditional prices waiting in the order book if you want to trade size. This lesson teaches you to see those numbers — and to budget for the cost of crossing between them.
+
+Open the chart below and keep it in mind through the rest of the lesson. Every candle hides two prices — a bid and an ask — that the lone "last" price does not show.
+
+<Chart symbol="SPY" height={300} intervalLabel="D" />
+
+## Bid and ask
+
+At any instant, the market shows two prices:
+
+- The **bid** — the highest price a buyer is currently willing to pay.
+- The **ask** (or offer) — the lowest price a seller is currently willing to accept.
+
+If you place a market buy order right now, you cross the spread and pay the ask. If you market-sell, you receive the bid. The "last price" shown on most apps is just the price of the most recent trade — it tells you where action happened, not where you can act next.
+
+A small example: bid 99.98, ask 100.02. A retail app shows "Price: 100.00" (the midpoint). If you buy 100 shares at market, you pay \$100.02 × 100 = \$10,002. If you immediately sell at market, you receive \$99.98 × 100 = \$9,998. You lost \$4 to nothing but the spread.
+
+## What is the spread, and who pays for it?
+
+The **bid-ask <Glossary term="bid-ask spread">spread</Glossary>** is the gap between ask and bid:
+
+<MathBox>S = P_{\text{ask}} - P_{\text{bid}}</MathBox>
+
+A more meaningful number is the **relative spread** as a fraction of the midpoint:
+
+<MathBox>S_{\text{rel}} = \frac{P_{\text{ask}} - P_{\text{bid}}}{(P_{\text{ask}} + P_{\text{bid}})/2}</MathBox>
+
+You — the taker of liquidity — pay the spread. Market makers — the providers of liquidity — earn it on average, in exchange for the risk of holding inventory. If your strategy crosses the spread 100 times a day at 2 basis points each, you are paying 200 bps daily before any other costs. Many "promising" backtests die when this is added back in.
+
+A useful way to internalize the spread is as a tax on impatience. Patience — represented by limit orders that wait at the bid or below — collects this tax. Impatience — represented by market orders that demand immediate execution — pays it. Almost every order-routing decision you will make as a quant boils down to choosing how much of this tax you are willing to pay in exchange for certainty of fill.
+
+Relative spreads vary across asset classes. The most liquid US large-cap stocks and ETFs trade at one-to-three basis points; small caps and exotic FX can quote one full percent or more. When you sketch a new strategy, the first number to write on the napkin is the average relative spread of its universe, multiplied by your expected round trips per year.
+
+## The order book at a glance
+
+The order book is the full ladder of resting limit orders.
+
+| Side | Price  | Size  |
+|------|--------|-------|
+| Ask  | 100.05 | 1,200 |
+| Ask  | 100.03 |   800 |
+| Ask  | 100.02 |   300 |
+| Bid  |  99.98 |   500 |
+| Bid  |  99.96 |   900 |
+| Bid  |  99.93 | 1,500 |
+
+The top of book (best bid 99.98, best ask 100.02) is what most charts show. But if you want to buy 1,500 shares at market right now, you will sweep three ask levels: 300 at 100.02, 800 at 100.03, 400 at 100.05. Your average fill price is well above 100.02.
+
+The shape of the book matters as much as the top quote. A book that is deep and symmetric tells you both sides agree on a value and stand behind it. A lopsided book — say, ten times more size on the bid than on the ask — often precedes a move upward, because sellers are scarce relative to buyers. Reading this asymmetry is a skill that takes practice, and it is one reason raw candlestick charts can mislead: they hide the book entirely.
+
+## Slippage — the hidden cost of size
+
+**Slippage** is the difference between the price you expected and the price you actually got. For a market order, a clean definition is:
+
+<MathBox>\text{Slippage} = P_{\text{fill}} - P_{\text{ref}}</MathBox>
+
+where $P_{\text{ref}}$ is usually the midpoint or the top-of-book quote at the moment you sent the order. A related metric, the **effective spread** for a buy, captures the round-trip cost relative to mid:
+
+<MathBox>S_{\text{eff}} = 2 \cdot (P_{\text{fill}} - P_{\text{mid}})</MathBox>
+
+Slippage grows with order size and shrinks with available liquidity. Trying to buy 100 shares of SPY at market is basically free. Trying to buy 100,000 shares of a small-cap at market can move the price several percent against you — and the moment your order finishes, the price may snap back, leaving you stuck with a poor entry.
+
+```python
+# A toy slippage estimate against a static book.
+def market_buy_slippage(book_asks, size, mid):
+    remaining, cost = size, 0.0
+    for price, qty in sorted(book_asks):  # ascending
+        take = min(remaining, qty)
+        cost += take * price
+        remaining -= take
+        if remaining == 0:
+            break
+    avg_fill = cost / size
+    return avg_fill - mid
+```
+
+## Liquidity in one sentence
+
+**Liquidity is the ability to trade size quickly without moving the price.** That is the whole definition. Tight spreads, deep books, and high turnover are symptoms of liquidity. Wide spreads, thin books, and gappy charts are symptoms of its absence.
+
+## Observation: low-liquidity vs high-liquidity asset
+
+<Compare left={<MiniChart />} right={<MiniChart />} leftTitle="Liquid: tight spread, smooth ticks" rightTitle="Illiquid: wide spread, gaps & jumps" />
+
+In the liquid chart, prices move in small increments and the spread is a sliver. In the illiquid one, the price jumps over price levels because nobody was quoting them. As a strategy author, you must decide which world you are trading in, because the same rules behave very differently in each.
+
+## Key takeaways + pitfalls
+
+<KeyPoint title="Three numbers, not one">
+Always think of an asset as having three prices at once: bid, ask, and last. The midpoint is a convenient summary, not a tradable price.
+</KeyPoint>
+
+<Pitfall title="Backtesting at the midpoint">
+The single most common reason a "great" backtest fails live is that fills were assumed at midpoint. Re-run your test paying the ask on buys and receiving the bid on sells. If the edge disappears, the edge was never there.
+</Pitfall>
+
+## Check yourself
+
+<Quiz id="A-02-q1" question="The bid is 49.90 and the ask is 50.10. You place a market buy for 100 shares and the entire order fills at 50.10. The spread cost (round-trip, in dollars) is approximately:" options={["$0","$10","$20","$100"]} answer={2} explanation="Round-trip cost is the spread times size: (50.10 − 49.90) × 100 = $20. That is what you would lose if you bought at the ask and immediately sold at the bid." />
+
+<Quiz id="A-02-q2" question="Which of the following is the best one-line definition of liquidity?" options={["The amount of cash in a brokerage account.","The ability to trade size quickly without moving the price.","The total market capitalization of a stock.","The number of shares outstanding."]} answer={1} explanation="Liquidity is about market impact, not balance sheets. Tight spreads, deep books, and high turnover are evidence of it." />
+
+<Quiz id="A-02-q3" question="You buy at market and your average fill price is 100.08 while the midpoint at order entry was 100.00. The effective spread for this trade is:" options={["0.04","0.08","0.16","Cannot be computed without the bid."]} answer={2} explanation="Effective spread (buy) = 2 × (fill − mid) = 2 × (100.08 − 100.00) = 0.16." />

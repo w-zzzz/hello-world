@@ -1,0 +1,102 @@
+# What happens when you click "buy"?
+
+When you tap "buy" in a broker app, a lot more happens than "I now own the thing." Your broker has to translate your intent into a specific instruction the exchange understands: how many shares, at what price (if any), under what conditions, and what to do if those conditions cannot be met. That instruction is called an **order**, and the type you pick determines your fills, your costs, and your risks.
+
+This lesson walks through the four order types every quant must know, plus a quick tour of the institutional toolbox. By the end you will have a decision tree you can apply on every trade.
+
+## Market order — speed first
+
+A **market order** says: "buy (or sell) this quantity, right now, at whatever price the book offers."
+
+- Pro: virtually guaranteed to fill, immediately.
+- Con: zero control over price. You pay the ask (buy) or hit the bid (sell), and if your size is bigger than the top level you walk the book.
+
+Use market orders when speed matters more than the last cent — for example, exiting a position when your stop signal has fired and you do not want to risk missing the move.
+
+<Chart symbol="SPY" height={300} intervalLabel="D" />
+
+Imagine sending a market buy when this chart was at the top of a long green candle. You would have been filled near the high — and on a thin tape you would have paid noticeably more than the printed price.
+
+## Limit order — price first
+
+A **limit order** says: "buy at $P$ or better, sell at $P$ or better — otherwise, wait."
+
+- Pro: full control over the price you pay or receive.
+- Con: no guarantee of a fill. If the market never trades at your limit, your order sits forever (or expires at the close, depending on its **time-in-force**).
+
+A buy limit at the bid means you are joining the queue of liquidity providers. You earn the spread if filled, but you take **adverse selection** risk: you are most likely to get filled exactly when the price is about to move against you.
+
+```python
+# Pseudocode for a passive buy strategy.
+def place_passive_buy(symbol, size, best_bid):
+    return submit_limit_order(symbol, side="buy",
+                              price=best_bid, quantity=size,
+                              tif="DAY")
+```
+
+## Stop order
+
+A **stop order** is a market order armed with a trigger. "If the price trades at or through $T$, then send a market order." Until the trigger fires, the order is invisible to the exchange's matching engine.
+
+- A **buy stop** above the market is used to enter on breakout or to cover a short.
+- A **sell stop** below the market is the classic stop-loss for a long position.
+
+The danger: once the stop is triggered, the resulting market order will fill at whatever liquidity exists. In a fast move (a news gap, a flash crash) your stop-loss at \$98 can easily fill at \$94.
+
+## Stop-limit order
+
+A **stop-limit order** is the same trigger as a stop, but the resulting order is a limit, not a market.
+
+- Pro: you cap the worst price you accept.
+- Con: in a fast move the market may blow past your limit and your order never fills — leaving you with the position you tried to exit.
+
+Use stop-limit when you would rather hold the position than be filled at a runaway price. Use plain stop when getting out matters more than the exit price.
+
+## Advanced (intro only): TWAP, VWAP, Iceberg
+
+When you trade institutional size, sending one big order is a great way to move the market against yourself. Three common algorithmic orders solve different parts of this problem:
+
+- **TWAP (Time-Weighted Average Price)** — splits the parent order into small child orders spread evenly over a time window. Your average fill targets the time-weighted average price.
+- **VWAP (Volume-Weighted Average Price)** — slices the order in proportion to expected intraday volume (more at the open and close, less at lunch).
+- **Iceberg** — shows only a small slice of the order on the book at a time; as each slice fills, the next slice is revealed. Hides true size from other participants.
+
+You will not need these in Track A, but recognize the names when you see them.
+
+## Pitfalls of each order type
+
+<Pitfall title="The four classic order-type mistakes">
+1. Market orders on illiquid names — you become the slippage you feared.
+2. Limit orders at the wrong side of the spread that never fill, while the market runs away.
+3. Stop orders during overnight halts or news gaps — they fill far beyond your trigger.
+4. Stop-limit orders in a panic — they don't fill at all, and you keep the loss you tried to exit.
+</Pitfall>
+
+<KeyPoint title="Two questions before every order">
+Ask yourself: (1) Do I care more about getting in/out, or about the price? (2) How wide is the spread relative to my expected edge? The answers pick the order type for you.
+</KeyPoint>
+
+## Decision tree: which order, when?
+
+<Reveal summary="Click to expand the decision tree">
+
+- **Need to trade right now, size is small relative to the book?**
+  - Yes → market order.
+- **Have a target price and willing to wait?**
+  - Yes → limit order at that price.
+- **Holding a position and want a defined exit if it goes wrong?**
+  - Yes, and getting out matters most → stop order.
+  - Yes, and avoiding a bad fill matters most → stop-limit order.
+- **Working a large parent order over the day?**
+  - Even pacing → TWAP.
+  - Following volume profile → VWAP.
+  - Need to hide size → iceberg.
+
+</Reveal>
+
+## Check yourself
+
+<Quiz id="A-03-q1" question="You want to exit a long position the instant a clear breakdown signal triggers, and you are more worried about missing the exit than about the exact fill price. Which order is most appropriate?" options={["Limit order at the current bid.","Stop-limit order with a tight limit.","Stop (market) order at the trigger price.","Iceberg order."]} answer={2} explanation="A plain stop becomes a market order on trigger, prioritizing certainty of fill over price. A stop-limit could fail to fill in a fast move." />
+
+<Quiz id="A-03-q2" question="A passive buy limit order resting at the best bid is most exposed to which hidden cost?" options={["Exchange fees, which are highest for limit orders.","Adverse selection — you tend to get filled right before the price moves against you.","Slippage, because limit orders walk the book.","Stamp duty."]} answer={1} explanation="Adverse selection is the structural cost of providing liquidity: informed flow trades against your resting quote, so fills cluster around moments unfavorable to you." />
+
+<Quiz id="A-03-q3" question="Which algorithmic order primarily targets matching the intraday distribution of trading activity?" options={["TWAP","VWAP","Iceberg","Stop-limit"]} answer={1} explanation="VWAP slices the parent order in proportion to expected volume across the day, so the average fill price approximates the volume-weighted average price." />

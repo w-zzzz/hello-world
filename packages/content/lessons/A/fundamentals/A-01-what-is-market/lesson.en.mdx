@@ -1,0 +1,76 @@
+# What is a financial market?
+
+Before you write a single line of trading code, it helps to be honest about what a market actually is. Strip away the screens, tickers, and jargon and a market is just a place — physical or virtual — where people who want to buy meet people who want to sell, and they agree on a price. Everything else (exchanges, order books, market makers, regulators) is plumbing built around that one idea.
+
+In this lesson you will build the mental model you need for the rest of Track A. You will see who is on the other side of your trades, how prices come to exist, and how to read your first chart with a critical eye.
+
+## At its core: matching buyers and sellers
+
+A market exists whenever a buyer's willingness to pay meets a seller's willingness to accept. If you want to buy Apple shares at \$190 and someone else is ready to sell at \$190, a trade happens. If nobody will sell below \$191, your \$190 order simply sits and waits.
+
+Three properties define every market you will trade:
+
+- **What is traded** — stocks, ETFs, futures, options, FX, crypto.
+- **Where it is traded** — a regulated exchange or an over-the-counter (OTC) network.
+- **How matches happen** — continuous auction, periodic auction, or dealer quotes.
+
+As a quant, you do not need to memorize every venue, but you do need to know which of these three properties affects your strategy. A backtest that ignores where and how a security trades is a backtest that lies to you.
+
+## Exchange vs OTC
+
+On an **exchange** (NYSE, Nasdaq, CME, HKEX), all orders flow into a central order book and are matched by transparent rules — usually price-time priority. You can see (some of) the resting orders, and trade prints are published immediately. This is the world most retail traders live in.
+
+On an **OTC** market (most FX, most corporate bonds, most swaps), there is no central book. You ask a dealer for a quote, the dealer answers with a bid and an ask, and you trade against that dealer. Prices are less transparent, but customization is easier.
+
+For Track A we focus on exchange-traded equities and ETFs, because the data is clean and the rules are public.
+
+## Who's actually here? Market makers, institutions, retail, quants
+
+When your order hits the book, who is on the other side?
+
+- **Market makers** continuously quote both a bid and an ask. They earn the spread in exchange for providing liquidity.
+- **Institutions** (mutual funds, pensions, hedge funds) move large size, often slowly, to avoid pushing prices against themselves.
+- **Retail** traders are individuals like you, typically small in size but large in number.
+- **Quants** — algorithmic traders ranging from high-frequency market makers to slower statistical arbitrage funds.
+
+You are almost never trading against "the market." You are trading against a specific counterparty whose incentives differ from yours. Knowing this changes how you interpret price moves.
+
+## How prices get "discovered"
+
+Price discovery is the process by which the market converts everyone's private information and opinions into a single public number: the last trade price. It works by aggregation. Each order — limit, market, cancel — is a tiny vote about value. The order book continuously sums those votes.
+
+A useful identity to keep in mind, where $V$ is total traded volume over a window and $v_i$ is the size of the $i$-th trade:
+
+<MathBox>V = \sum_{i=1}^{N} v_i</MathBox>
+
+Volume is not noise. It is the weight behind each price. A price that moves on huge volume carries more information than the same move on a quiet tape.
+
+## A concrete example: read a real candlestick chart
+
+Open the chart below. Each candle summarizes one day: open, high, low, close.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Try to answer three questions as you look at it:
+
+1. Which days had wide ranges (long wicks) and which were tight?
+2. Where did price stall, and was volume rising or falling there?
+3. If you had bought at the high of a long red candle, how long until you would have been back to even?
+
+Charts are compressed history. They are useful, but they are not the whole story — they do not show the order book, the spread, or who was on the other side.
+
+## Common pitfalls
+
+<Pitfall title="Mistaking price for value">
+A quoted price is the result of the last trade between two specific people. It is not a statement about what the asset is "worth." Two minutes from now, with no news, the price can move several percent simply because liquidity dried up.
+</Pitfall>
+
+<KeyPoint title="Mental model to carry forward">
+A market is a continuous auction. Prices are produced by orders, not handed down from above. Volume is the weight of evidence behind each price.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-01-q1" question="Which statement best describes how prices are formed on an exchange?" options={["A central committee sets a fair price each morning.","Prices emerge from the continuous matching of buy and sell orders under transparent rules.","Market makers vote on the closing price.","The exchange averages all analyst targets."]} answer={1} explanation="Exchanges match orders continuously by price-time priority. Each fill becomes the next 'last price' — nobody decrees it." />
+
+<Quiz id="A-01-q2" question="You see a stock jump 3% in one minute on volume that is 10x its 30-day average. Compared to a 3% move on average volume, this move is:" options={["Less informative — high volume is usually noise.","Equally informative — price is price.","More informative — heavy volume means more participants are revising their views.","Impossible without a news catalyst."]} answer={2} explanation="Volume is the weight behind a price change. A move on heavy volume reflects broader agreement and is harder to reverse than the same move on thin volume." />
