@@ -11,13 +11,25 @@ The PRNG / OHLCV generation here is a byte-identical Python port of
 ``packages/charts/src/sample-data.ts``. To sanity-check, the first bar of
 the default 252-bar series (seed=42, end=2024-12-31) is::
 
-    {"t": "2024-01-15", "open": 400.0, "high": 400.55, "low": 391.91,
-     "close": 395.56, "volume": 56812821}
+    {
+        "t": "2024-01-15",
+        "open": 400.0,
+        "high": 400.55,
+        "low": 391.91,
+        "close": 395.56,
+        "volume": 56812821,
+    }
 
 and the last bar is::
 
-    {"t": "2024-12-31", "open": 467.96, "high": 469.99, "low": 459.76,
-     "close": 460.6, "volume": 111887506}
+    {
+        "t": "2024-12-31",
+        "open": 467.96,
+        "high": 469.99,
+        "low": 459.76,
+        "close": 460.6,
+        "volume": 111887506,
+    }
 
 If you change anything in the PRNG or bar formulas here, the TS parity test
 in ``packages/indicators-ts`` will start failing — bump both sides in lock-step.

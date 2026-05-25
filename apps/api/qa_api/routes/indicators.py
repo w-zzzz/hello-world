@@ -47,17 +47,11 @@ async def compute_indicator(
             try:
                 params[name] = int(value)
             except (TypeError, ValueError) as err:
-                raise HTTPException(
-                    status_code=422, detail=f"Param '{name}' must be int"
-                ) from err
+                raise HTTPException(status_code=422, detail=f"Param '{name}' must be int") from err
             if spec.min is not None and params[name] < spec.min:
-                raise HTTPException(
-                    status_code=422, detail=f"Param '{name}' below min {spec.min}"
-                )
+                raise HTTPException(status_code=422, detail=f"Param '{name}' below min {spec.min}")
             if spec.max is not None and params[name] > spec.max:
-                raise HTTPException(
-                    status_code=422, detail=f"Param '{name}' above max {spec.max}"
-                )
+                raise HTTPException(status_code=422, detail=f"Param '{name}' above max {spec.max}")
         elif spec.kind.value == "float":
             try:
                 params[name] = float(value)
@@ -66,13 +60,9 @@ async def compute_indicator(
                     status_code=422, detail=f"Param '{name}' must be float"
                 ) from err
             if spec.min is not None and params[name] < spec.min:
-                raise HTTPException(
-                    status_code=422, detail=f"Param '{name}' below min {spec.min}"
-                )
+                raise HTTPException(status_code=422, detail=f"Param '{name}' below min {spec.min}")
             if spec.max is not None and params[name] > spec.max:
-                raise HTTPException(
-                    status_code=422, detail=f"Param '{name}' above max {spec.max}"
-                )
+                raise HTTPException(status_code=422, detail=f"Param '{name}' above max {spec.max}")
         elif spec.kind.value == "enum":
             if spec.options is not None and str(value) not in spec.options:
                 raise HTTPException(

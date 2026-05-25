@@ -1,6 +1,7 @@
 """API-level tests that also act as a third independent witness in the parity contract.
 If these tests pass, the server-computed indicator outputs match the committed golden JSON.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,11 +15,7 @@ from qa_api.main import app
 client = TestClient(app)
 
 FIXTURES = (
-    Path(__file__).resolve().parents[3]
-    / "python"
-    / "qa_indicators"
-    / "qa_indicators"
-    / "fixtures"
+    Path(__file__).resolve().parents[3] / "python" / "qa_indicators" / "qa_indicators" / "fixtures"
 )
 
 
