@@ -6,5 +6,11 @@
   "description": "Cross-package maintenance scripts (parity check, etc.) for Quant Academy. Run from repo root via `pnpm run check:parity`.",
   "scripts": {
     "check:parity": "tsx check-indicator-parity.ts"
+  },
+  "dependencies": {
+    "@quant-academy/indicators-ts": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
   }
 }

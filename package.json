@@ -16,7 +16,7 @@
     "test": "turbo run test",
     "format": "biome format --write .",
     "check": "biome check --write .",
-    "check:parity": "tsx scripts/check-indicator-parity.ts",
+    "check:parity": "pnpm --filter @quant-academy/scripts run check:parity",
     "clean": "turbo run clean && rm -rf node_modules",
     "prepare": "husky"
   },

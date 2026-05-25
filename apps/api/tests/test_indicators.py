@@ -14,7 +14,7 @@ from qa_api.main import app
 client = TestClient(app)
 
 FIXTURES = (
-    Path(__file__).resolve().parents[2]
+    Path(__file__).resolve().parents[3]
     / "python"
     / "qa_indicators"
     / "qa_indicators"

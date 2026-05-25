@@ -30,7 +30,11 @@ function defaultParams(meta: ClientIndicatorMeta): ParamState {
   return out
 }
 
-const OVERLAY_COLORS = ['#3b82f6', '#a855f7', '#f59e0b', '#10b981', '#ec4899']
+const OVERLAY_COLORS: readonly string[] = ['#3b82f6', '#a855f7', '#f59e0b', '#10b981', '#ec4899']
+
+function colorForIndex(i: number): string {
+  return OVERLAY_COLORS[i % OVERLAY_COLORS.length] ?? '#3b82f6'
+}
 
 export function IndicatorPlayground({
   indicator,
@@ -49,7 +53,7 @@ export function IndicatorPlayground({
     <PlaygroundBody
       meta={meta}
       indicator={indicator}
-      initialParams={initialParams}
+      initialParams={initialParams ?? {}}
       height={height}
     />
   )
@@ -63,7 +67,7 @@ function PlaygroundBody({
 }: {
   meta: ClientIndicatorMeta
   indicator: string
-  initialParams?: Record<string, string | number>
+  initialParams: Record<string, string | number>
   height: number
 }) {
   const locale = useLocale()
@@ -97,7 +101,7 @@ function PlaygroundBody({
       data: (result[o.name] ?? [])
         .map((v, idx) => ({ t: bars[idx]?.t ?? '', v: v ?? Number.NaN }))
         .filter((p) => p.t !== '' && Number.isFinite(p.v)),
-      color: OVERLAY_COLORS[i % OVERLAY_COLORS.length],
+      color: colorForIndex(i),
       lineWidth: 2,
       title: o.name,
     }))
@@ -177,7 +181,7 @@ function PlaygroundBody({
         ))}
       </fieldset>
       {isPanelIndicator ? (
-        <PanelChart name={meta.outputs[0].name} result={result} height={height} />
+        <PanelChart name={meta.outputs[0]?.name ?? ''} result={result} height={height} />
       ) : (
         <Chart data={bars} overlays={overlays} height={height} intervalLabel="D" />
       )}
