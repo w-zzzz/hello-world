@@ -156,3 +156,17 @@ class BacktestResult(StrictModel):
 
 
 BacktestResult.model_rebuild()
+
+
+# --- indicator compute API ---
+
+
+class ComputeIndicatorRequest(StrictModel):
+    bars: list[Bar]
+    params: dict[str, str | int | float]
+
+
+class ComputeIndicatorResponse(StrictModel):
+    indicator: str
+    params: dict[str, str | int | float]
+    outputs: dict[str, list[float | None]]
