@@ -32,5 +32,67 @@
     "loading": "Loading…",
     "error": "Something went wrong",
     "retry": "Retry"
+  },
+  "tracks": {
+    "A": {
+      "title": "Market Fundamentals",
+      "desc": "Learn how markets work, what a candlestick really shows, and how prices form."
+    },
+    "B": {
+      "title": "Technical Indicators",
+      "desc": "Build intuition for moving averages, RSI, MACD, Bollinger bands, and more."
+    },
+    "C": {
+      "title": "Signal Construction",
+      "desc": "Turn raw indicators into actionable buy and sell signals you can test."
+    },
+    "D": {
+      "title": "Backtesting",
+      "desc": "Measure strategy performance honestly with vectorbt-powered tearsheets."
+    },
+    "E": {
+      "title": "Strategy Archetypes",
+      "desc": "Master trend following, mean reversion, breakout, and pairs trading patterns."
+    },
+    "F": {
+      "title": "Risk & Sizing",
+      "desc": "Size positions, control drawdowns, and survive long enough to win."
+    },
+    "G": {
+      "title": "Portfolio Construction",
+      "desc": "Combine strategies and assets into a coherent, diversified book."
+    },
+    "H": {
+      "title": "Ship Your Strategy",
+      "desc": "Move from notebook to production with reproducible deploys and monitoring."
+    }
+  },
+  "lessons": {
+    "explorer": {
+      "title": "Lesson Tracks",
+      "subtitle": "From candlesticks to your own systematic strategy"
+    },
+    "viewer": {
+      "complete": "Mark complete",
+      "next": "Next",
+      "previous": "Previous",
+      "askTutor": "Ask AI tutor"
+    }
+  },
+  "cmdk": {
+    "placeholder": "Search lessons, switch locale, toggle theme…",
+    "groups": {
+      "tracks": "Tracks",
+      "lessons": "Lessons",
+      "actions": "Actions"
+    }
+  },
+  "mdx": {
+    "pitfall": {
+      "title": "Common pitfall"
+    },
+    "keypoint": {
+      "title": "Key point"
+    }
   }
 }

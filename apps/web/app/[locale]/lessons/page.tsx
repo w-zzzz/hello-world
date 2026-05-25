@@ -1,44 +1,70 @@
+import { TRACKS } from '@quant-academy/content'
 import type { Locale } from '@quant-academy/i18n'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@quant-academy/ui'
-import { setRequestLocale } from 'next-intl/server'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 
-const TRACKS = [
-  { id: 'A', titleZh: '基础K线与价格行为', titleEn: 'Candlesticks & Price Action' },
-  { id: 'B', titleZh: '技术指标入门', titleEn: 'Technical Indicators 101' },
-  { id: 'C', titleZh: '量化基础', titleEn: 'Quant Foundations' },
-  { id: 'D', titleZh: '策略开发', titleEn: 'Strategy Development' },
-  { id: 'E', titleZh: '回测与风险', titleEn: 'Backtesting & Risk' },
-  { id: 'F', titleZh: '投资组合', titleEn: 'Portfolio Construction' },
-  { id: 'G', titleZh: '机器学习应用', titleEn: 'ML for Trading' },
-  { id: 'H', titleZh: '生产部署', titleEn: 'Production Deployment' },
-] as const
+/**
+ * Map the track `color` value (a Tailwind palette name like 'sky') to literal
+ * class strings so the JIT compiler can pick them up. Dynamic class names
+ * built via template literals are not detected by Tailwind.
+ */
+function trackColorClasses(color: string): string {
+  switch (color) {
+    case 'sky':
+      return 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
+    case 'violet':
+      return 'bg-violet-500/10 text-violet-600 dark:text-violet-400'
+    case 'fuchsia':
+      return 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400'
+    case 'amber':
+      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+    case 'emerald':
+      return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+    case 'rose':
+      return 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+    case 'cyan':
+      return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+    case 'indigo':
+      return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+    default:
+      return 'bg-muted text-foreground'
+  }
+}
 
-export default async function LessonsPage({ params }: { params: Promise<{ locale: Locale }> }) {
+export default async function TrackExplorerPage({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>
+}) {
   const { locale } = await params
   setRequestLocale(locale)
-  const isZh = locale === 'zh'
+  const t = await getTranslations({ locale })
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight">{isZh ? '课程地图' : 'Lesson Tracks'}</h1>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <main className="mx-auto max-w-5xl px-4 py-10">
+      <h1 className="mb-2 text-3xl font-bold tracking-tight">{t('lessons.explorer.title')}</h1>
+      <p className="mb-8 text-muted-foreground">{t('lessons.explorer.subtitle')}</p>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {TRACKS.map((track) => (
-          <Card key={track.id}>
-            <CardHeader>
-              <CardTitle>Track {track.id}</CardTitle>
-              <CardDescription>{isZh ? track.titleZh : track.titleEn}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full bg-brand-500" style={{ width: '0%' }} />
-                </div>
-                <span className="text-sm tabular-nums text-foreground/60">0%</span>
+          <li key={track.id}>
+            <Link
+              href={{ pathname: '/lessons/[trackId]', params: { trackId: track.id } }}
+              className="block rounded-xl border bg-card p-5 transition hover:bg-muted"
+            >
+              <div
+                className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono font-bold ${trackColorClasses(track.color)}`}
+              >
+                {track.id}
               </div>
-            </CardContent>
-          </Card>
+              <div className="font-semibold">{t(track.titleKey)}</div>
+              <div className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                {t(track.descriptionKey)}
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">0% • Beginner-friendly</div>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
     </main>
   )
 }

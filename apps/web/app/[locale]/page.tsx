@@ -1,3 +1,4 @@
+import { MiniChart } from '@quant-academy/charts'
 import type { Locale } from '@quant-academy/i18n'
 import {
   Button,
@@ -10,6 +11,7 @@ import {
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { Link } from '@/i18n/navigation'
 
 export default async function HomePage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -32,41 +34,53 @@ export default async function HomePage({ params }: { params: Promise<{ locale: L
         </h1>
         <p className="max-w-2xl text-lg text-foreground/70">{t('home.subtitle')}</p>
         <div className="flex flex-wrap gap-3">
-          <Button size="lg">{t('home.cta.beginTrack')}</Button>
-          <Button size="lg" variant="outline">
-            {t('home.cta.exploreIndicators')}
+          <Button asChild size="lg">
+            <Link href="/lessons">{t('home.cta.beginTrack')}</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/lessons">{t('home.cta.exploreIndicators')}</Link>
           </Button>
         </div>
       </section>
 
       <section>
-        <div className="flex aspect-video items-center justify-center rounded-xl border bg-card text-foreground/60">
-          Chart preview (M1)
-        </div>
+        <MiniChart height={280} className="my-8" />
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('features.kline.title')}</CardTitle>
-            <CardDescription>{t('features.kline.desc')}</CardDescription>
-          </CardHeader>
-          <CardContent />
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('features.backtest.title')}</CardTitle>
-            <CardDescription>{t('features.backtest.desc')}</CardDescription>
-          </CardHeader>
-          <CardContent />
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('features.tutor.title')}</CardTitle>
-            <CardDescription>{t('features.tutor.desc')}</CardDescription>
-          </CardHeader>
-          <CardContent />
-        </Card>
+        <Link
+          href={{
+            pathname: '/lessons/[lessonId]',
+            params: { lessonId: 'A-01-what-is-market' },
+          }}
+          className="block transition hover:opacity-90"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('features.kline.title')}</CardTitle>
+              <CardDescription>{t('features.kline.desc')}</CardDescription>
+            </CardHeader>
+            <CardContent />
+          </Card>
+        </Link>
+        <Link href="/lessons" className="block transition hover:opacity-90">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('features.backtest.title')}</CardTitle>
+              <CardDescription>{t('features.backtest.desc')}</CardDescription>
+            </CardHeader>
+            <CardContent />
+          </Card>
+        </Link>
+        <Link href="/tutor" className="block transition hover:opacity-90">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('features.tutor.title')}</CardTitle>
+              <CardDescription>{t('features.tutor.desc')}</CardDescription>
+            </CardHeader>
+            <CardContent />
+          </Card>
+        </Link>
       </section>
     </main>
   )

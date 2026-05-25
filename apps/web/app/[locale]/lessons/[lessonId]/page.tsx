@@ -1,0 +1,71 @@
+import { CURRICULUM, getLesson, getNextLesson, getPreviousLesson } from '@quant-academy/content'
+import type { Locale } from '@quant-academy/i18n'
+import { BookOpen } from 'lucide-react'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { setRequestLocale } from 'next-intl/server'
+import { LessonBreadcrumb } from '@/components/lesson-breadcrumb'
+import { LessonNav } from '@/components/lesson-nav'
+import { LessonProgress } from '@/components/lesson-progress'
+
+export function generateStaticParams() {
+  return CURRICULUM.lessons.flatMap((lesson) =>
+    (['zh', 'en'] as const).map((locale) => ({
+      locale,
+      lessonId: lesson.meta.id,
+    })),
+  )
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale; lessonId: string }>
+}): Promise<Metadata> {
+  const { locale, lessonId } = await params
+  // M1: use the lesson id as the title — proper extracted title arrives in M7.
+  const suffix = locale === 'zh' ? ' · Quant Academy' : ' · Quant Academy'
+  return {
+    title: `${lessonId}${suffix}`,
+  }
+}
+
+function ComingSoonPlaceholder({ meta }: { meta: { id: string; trackId: string } }) {
+  return (
+    <div className="not-prose rounded-xl border border-dashed p-12 text-center">
+      <BookOpen className="mx-auto mb-3 h-8 w-8 text-muted-foreground" aria-hidden="true" />
+      <p className="text-lg font-semibold">Coming soon</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Lesson <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{meta.id}</code>{' '}
+        is scaffolded and will be authored in a later milestone.
+      </p>
+    </div>
+  )
+}
+
+export default async function LessonViewer({
+  params,
+}: {
+  params: Promise<{ locale: Locale; lessonId: string }>
+}) {
+  const { locale, lessonId } = await params
+  setRequestLocale(locale)
+
+  const lesson = await getLesson(lessonId, locale)
+  if (!lesson) notFound()
+
+  const next = getNextLesson(lessonId)
+  const prev = getPreviousLesson(lessonId)
+  const { meta, Mdx, ready } = lesson
+
+  return (
+    <main className="mx-auto max-w-5xl px-4 py-6">
+      <LessonBreadcrumb trackId={meta.trackId} lessonId={meta.id} />
+      <LessonProgress lessonId={meta.id} />
+      <article className="prose prose-slate dark:prose-invert max-w-none mt-6">
+        {ready ? <Mdx /> : <ComingSoonPlaceholder meta={meta} />}
+      </article>
+      <LessonNav prev={prev?.meta.id ?? null} next={next?.meta.id ?? null} />
+    </main>
+  )
+}

@@ -5,6 +5,8 @@ import { Inter, Noto_Sans_SC } from 'next/font/google'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
+import { CommandPalette } from '@/components/command-palette'
+import 'katex/dist/katex.min.css'
 import '../globals.css'
 
 const inter = Inter({
@@ -67,6 +69,7 @@ export default async function LocaleLayout({
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
+          <CommandPalette />
         </NextIntlClientProvider>
       </body>
     </html>
