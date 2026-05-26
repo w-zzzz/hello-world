@@ -18,6 +18,8 @@
     "@quant-academy/auth": "workspace:*",
     "@quant-academy/charts": "workspace:*",
     "@quant-academy/content": "workspace:*",
+    "@quant-academy/db": "workspace:*",
+    "@quant-academy/gamification": "workspace:*",
     "@quant-academy/i18n": "workspace:*",
     "@quant-academy/indicators-ts": "workspace:*",
     "@quant-academy/ui": "workspace:*",
