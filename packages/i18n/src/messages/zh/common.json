@@ -111,7 +111,23 @@
     "signUp": "注册",
     "signOut": "退出登录",
     "signedInAs": "已登录为",
-    "devTestUser": "开发模式：使用测试用户即可继续，无需真实账号",
+    "devTestUser": "开发模式：使用测试用户即可继续,无需真实账号",
     "requiredToTrack": "登录以保存学习进度"
+  },
+  "profile": {
+    "title": "我的",
+    "totalXp": "总经验",
+    "level": "等级",
+    "streak": "连续学习",
+    "lessonsCompleted": "已完成课程",
+    "recentLessons": "最近完成的课程",
+    "empty": "还没有完成任何课程。开始学习吧！"
+  },
+  "lesson": {
+    "markComplete": "标记完成",
+    "completed": "已完成",
+    "xpAwarded": "+{xp} XP",
+    "levelUp": "升到 Lv{level}!",
+    "signInPrompt": "登录以保存进度并累积经验"
   }
 }

@@ -5,7 +5,10 @@ import { Inter, Noto_Sans_SC } from 'next/font/google'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
+import { Suspense } from 'react'
 import { CommandPalette } from '@/components/command-palette'
+import { UserMenu } from '@/components/user-menu'
+import { Link } from '@/i18n/navigation'
 import 'katex/dist/katex.min.css'
 import '../globals.css'
 
@@ -68,6 +71,14 @@ export default async function LocaleLayout({
         )}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur">
+            <Link href="/" className="font-semibold tracking-tight">
+              Quant Academy
+            </Link>
+            <Suspense fallback={null}>
+              <UserMenu />
+            </Suspense>
+          </header>
           {children}
           <CommandPalette />
         </NextIntlClientProvider>

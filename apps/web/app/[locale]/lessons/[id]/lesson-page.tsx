@@ -3,9 +3,12 @@ import type { Locale } from '@quant-academy/i18n'
 import { BookOpen } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
+import { getCompletedLessons } from '@/app/actions/progress'
 import { LessonBreadcrumb } from '@/components/lesson-breadcrumb'
 import { LessonNav } from '@/components/lesson-nav'
 import { LessonProgress } from '@/components/lesson-progress'
+import { MarkCompleteButton } from '@/components/mark-complete-button'
+import { getCurrentUser } from '@/lib/auth'
 
 function ComingSoonPlaceholder({ meta }: { meta: { id: string; trackId: string } }) {
   return (
@@ -30,6 +33,10 @@ export async function LessonPage({ locale, lessonId }: { locale: Locale; lessonI
   const prev = getPreviousLesson(lessonId)
   const { meta, Mdx, ready } = lesson
 
+  const user = await getCurrentUser()
+  const completed = user ? await getCompletedLessons() : null
+  const alreadyCompleted = completed?.lessons.some((l) => l.lessonId === meta.id) ?? false
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
       <LessonBreadcrumb trackId={meta.trackId} lessonId={meta.id} />
@@ -37,6 +44,13 @@ export async function LessonPage({ locale, lessonId }: { locale: Locale; lessonI
       <article className="prose prose-slate dark:prose-invert max-w-none mt-6">
         {ready ? <Mdx /> : <ComingSoonPlaceholder meta={meta} />}
       </article>
+      {ready && (
+        <MarkCompleteButton
+          lessonId={meta.id}
+          isSignedIn={!!user}
+          alreadyCompleted={alreadyCompleted}
+        />
+      )}
       <LessonNav prev={prev?.meta.id ?? null} next={next?.meta.id ?? null} />
     </main>
   )
