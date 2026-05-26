@@ -105,5 +105,13 @@
     "coming": {
       "M7": "即将上线（M7）"
     }
+  },
+  "auth": {
+    "signIn": "登录",
+    "signUp": "注册",
+    "signOut": "退出登录",
+    "signedInAs": "已登录为",
+    "devTestUser": "开发模式：使用测试用户即可继续，无需真实账号",
+    "requiredToTrack": "登录以保存学习进度"
   }
 }

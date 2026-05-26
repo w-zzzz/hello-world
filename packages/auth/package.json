@@ -1,0 +1,45 @@
+{
+  "name": "@quant-academy/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./src/server.ts"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./src/client.ts"
+    }
+  },
+  "scripts": {
+    "lint": "biome check src",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@quant-academy/db": "workspace:*",
+    "server-only": "^0.0.1"
+  },
+  "peerDependencies": {
+    "@clerk/nextjs": "^6.18.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@clerk/nextjs": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@clerk/nextjs": "^6.18.0",
+    "@quant-academy/tsconfig-config": "workspace:*",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "next": "^16.2.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -105,5 +105,13 @@
     "coming": {
       "M7": "Coming in M7"
     }
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "signedInAs": "Signed in as",
+    "devTestUser": "Dev mode: continue as a test user — no real account required",
+    "requiredToTrack": "Sign in to save your progress"
   }
 }

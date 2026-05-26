@@ -1,0 +1,10 @@
+{
+  "extends": "@quant-academy/tsconfig-config/base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "outDir": "dist",
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
