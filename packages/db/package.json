@@ -1,0 +1,39 @@
+{
+  "name": "@quant-academy/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./src/schema/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "biome check src",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/seed.ts",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.5",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@quant-academy/tsconfig-config": "workspace:*",
+    "@types/node": "^22",
+    "drizzle-kit": "^0.30.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
