@@ -4,10 +4,22 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./src/index.ts" },
-    "./xp": { "types": "./dist/xp.d.ts", "import": "./src/xp.ts" },
-    "./levels": { "types": "./dist/levels.d.ts", "import": "./src/levels.ts" },
-    "./streak": { "types": "./dist/streak.d.ts", "import": "./src/streak.ts" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    },
+    "./xp": {
+      "types": "./dist/xp.d.ts",
+      "import": "./src/xp.ts"
+    },
+    "./levels": {
+      "types": "./dist/levels.d.ts",
+      "import": "./src/levels.ts"
+    },
+    "./streak": {
+      "types": "./dist/streak.d.ts",
+      "import": "./src/streak.ts"
+    }
   },
   "scripts": {
     "lint": "biome check src",

@@ -6,6 +6,8 @@ import { cookies } from 'next/headers'
 import { getAuthMode } from './config'
 import type { AuthUser } from './types'
 
+export type { AuthUser } from './types'
+
 const DEV_COOKIE = 'qa-session'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
 

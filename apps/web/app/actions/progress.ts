@@ -81,13 +81,20 @@ export async function markLessonComplete(
       : initialStreak(today)
 
     // 4. Compute XP.
-    const award = computeXpAward({
-      lesson: { xp: lesson.xp, difficulty: lesson.difficulty },
-      quiz:
-        input.score !== undefined ? { correct: Math.round(input.score), total: 100 } : undefined,
-      attempts: newAttempts,
-      currentStreak: nextStreak.current,
-    })
+    const award = computeXpAward(
+      input.score !== undefined
+        ? {
+            lesson: { xp: lesson.xp, difficulty: lesson.difficulty },
+            quiz: { correct: Math.round(input.score), total: 100 },
+            attempts: newAttempts,
+            currentStreak: nextStreak.current,
+          }
+        : {
+            lesson: { xp: lesson.xp, difficulty: lesson.difficulty },
+            attempts: newAttempts,
+            currentStreak: nextStreak.current,
+          },
+    )
 
     // 5. Upsert lesson_completions.
     if (priorRow[0]) {
@@ -95,7 +102,7 @@ export async function markLessonComplete(
         .update(lessonCompletions)
         .set({
           attempts: newAttempts,
-          score: input.score ?? null,
+          score: input.score !== undefined ? String(input.score) : null,
           timeSpentS: input.timeSpentS ?? 0,
           completedAt: new Date(),
         })
@@ -110,7 +117,7 @@ export async function markLessonComplete(
         userId: user.id,
         lessonId: input.lessonId,
         attempts: 1,
-        score: input.score ?? null,
+        score: input.score !== undefined ? String(input.score) : null,
         timeSpentS: input.timeSpentS ?? 0,
       })
     }
