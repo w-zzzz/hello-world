@@ -80,6 +80,23 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint-js
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: qa
+          POSTGRES_DB: qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U qa"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      QA_DATABASE_URL: postgres://qa:qa@localhost:5432/qa
+      QA_AUTH_MODE: dev
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -89,6 +106,10 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Run database migrations
+        run: pnpm --filter @quant-academy/db run db:migrate
+        env:
+          QA_DATABASE_URL: postgres://qa:qa@localhost:5432/qa
       - name: Run tests
         run: pnpm test
 
@@ -123,6 +144,9 @@ jobs:
       - lint-js
       - typecheck
     timeout-minutes: 15
+    env:
+      QA_AUTH_MODE: dev
+      QA_DATABASE_URL: postgres://qa:qa@localhost:5432/qa
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
