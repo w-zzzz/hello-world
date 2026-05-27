@@ -47,16 +47,19 @@ export async function getLessonContext(
 }
 
 function stripMdx(src: string): string {
-  // Remove all JSX elements (<Tag ...>...</Tag> and self-closing <Tag />).
-  // This is approximate; enough for context extraction.
   let s = src
-  // Strip front-matter if any
   s = s.replace(/^---[\s\S]*?---\n/, '')
-  // Remove import / export lines
   s = s.replace(/^(import|export) .+$/gm, '')
-  // Remove JSX-style component tags, keeping inner content for components that are mostly text
-  s = s.replace(/<\/?\w+[^>]*\/?>/g, '')
-  // Collapse blank lines
+  // Iteratively strip script/style blocks and remaining JSX/HTML tags until
+  // stable; a single pass leaves crafted inputs like `<scr<script>ipt>` half-
+  // sanitized (the inner match becomes a valid outer tag).
+  let prev: string
+  do {
+    prev = s
+    s = s.replace(/<script[\s\S]*?<\/script>/gi, '')
+    s = s.replace(/<style[\s\S]*?<\/style>/gi, '')
+    s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '')
+  } while (s !== prev)
   s = s.replace(/\n{3,}/g, '\n\n').trim()
   return s
 }
