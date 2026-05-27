@@ -1534,8 +1534,10 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
+    { name = "qa-backtest" },
     { name = "qa-core" },
     { name = "qa-indicators" },
+    { name = "qa-sandbox" },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1547,8 +1549,10 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pydantic-settings", specifier = ">=2.7.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
+    { name = "qa-backtest", editable = "python/qa_backtest" },
     { name = "qa-core", editable = "python/qa_core" },
     { name = "qa-indicators", editable = "python/qa_indicators" },
+    { name = "qa-sandbox", editable = "python/qa_sandbox" },
     { name = "structlog", specifier = ">=24.4.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]

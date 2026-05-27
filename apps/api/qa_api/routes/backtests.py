@@ -73,7 +73,9 @@ class RunBacktestResponse(StrictModel):
 def _load_bundled_bars() -> list[dict[str, Any]]:
     if not PARITY_FIXTURE.exists():
         return []
-    return json.loads(PARITY_FIXTURE.read_text())["bars"]
+    payload = json.loads(PARITY_FIXTURE.read_text())
+    bars: list[dict[str, Any]] = payload["bars"]
+    return bars
 
 
 def _serialize_preset(p: Any) -> PresetOut:
@@ -122,12 +124,12 @@ def _validate_params(preset_meta: Any, params: dict[str, str | int | float]) -> 
             coerced[name] = v
         elif kind == "float":
             try:
-                v = float(raw)
+                vf = float(raw)
             except (TypeError, ValueError) as err:
                 raise HTTPException(
                     status_code=422, detail=f"Param '{name}' must be float"
                 ) from err
-            coerced[name] = v
+            coerced[name] = vf
         else:  # enum
             s = str(raw)
             if spec.options is not None and s not in spec.options:
