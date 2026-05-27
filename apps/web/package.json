@@ -15,6 +15,7 @@
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^16.2.0",
+    "@quant-academy/ai-tutor": "workspace:*",
     "@quant-academy/auth": "workspace:*",
     "@quant-academy/charts": "workspace:*",
     "@quant-academy/content": "workspace:*",

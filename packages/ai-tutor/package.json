@@ -1,0 +1,31 @@
+{
+  "name": "@quant-academy/ai-tutor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "biome check src",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "@quant-academy/content": "workspace:*",
+    "@quant-academy/db": "workspace:*",
+    "drizzle-orm": "^0.36.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@quant-academy/tsconfig-config": "workspace:*",
+    "@types/node": "^22",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
