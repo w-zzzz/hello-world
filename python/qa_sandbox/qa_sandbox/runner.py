@@ -6,15 +6,15 @@ Invocation::
 
 Lifecycle (order matters):
 
-1. **Pre-import** all trusted modules (qa_core, qa_backtest, vectorbt, …)
-   so the import hook does not see them — vectorbt's transitive graph
-   touches many otherwise-denied stdlib modules (``socket``, ``pickle``, …)
-   that we cannot reasonably allowlist for user code.
-2. Install the import hook (:func:`qa_sandbox.import_hook.install`).
-3. Install resource limits + SIGALRM (:func:`qa_sandbox.limits.install_limits`).
-4. Read the JSON job spec from stdin.
+1. Read + parse JSON job spec. Fail fast on malformed input (exit 2) or
+   missing/unknown preset (exit 1) — these paths never need vectorbt.
+2. **Pre-warm** vectorbt + numba so their lazy imports happen before the
+   sandbox hook is installed (deferred until step 1 succeeded so failed
+   jobs never pay the JIT cost).
+3. Install the import hook.
+4. Install resource limits + SIGALRM wall-clock.
 5. Dispatch to the named preset runner.
-6. Write the BacktestResult JSON to stdout.
+6. Emit BacktestResult JSON.
 
 Exit codes:
     0  — success
@@ -28,52 +28,34 @@ import json
 import sys
 import traceback
 
-# ---- step 1: pre-import the trusted graph before any hook is installed ----
-# Touching the registry pulls in vectorbt + numba. We then run a tiny
-# warm-up backtest so vectorbt's lazy compile/entry-point imports happen
-# *before* the import hook is installed.
-import pandas as _pd
-
-from qa_backtest.engine import run_backtest as _warmup_run
-from qa_backtest.presets.registry import get_runner
-from qa_core.schemas import Bar
-from qa_sandbox.import_hook import install as install_import_hook
-from qa_sandbox.limits import install_limits
-
-
-def _prewarm_vectorbt() -> None:
-    """Force vectorbt to perform its lazy initialisations now.
-
-    vectorbt + numba defer some imports (notably ``importlib_metadata``
-    entry points and numba's compilation chain) until the first call.
-    Triggering them here means the sandbox hook never sees them.
-    """
-    idx = _pd.date_range("2024-01-01", periods=10, freq="D")
-    closes = [100.0, 101.0, 102.0, 101.5, 100.5, 99.5, 100.0, 101.0, 102.0, 103.0]
-    bars = [
-        Bar(t=ts.to_pydatetime(), open=c, high=c, low=c, close=c, volume=1.0)
-        for ts, c in zip(idx, closes, strict=True)
-    ]
-    signal = _pd.Series(0, index=idx, dtype=int)
-    signal.iloc[1] = 1
-    signal.iloc[5] = -1
-    _warmup_run(bars=bars, signal=signal)
-
 
 def _parse_job(raw: bytes) -> dict[str, object]:
     parsed: dict[str, object] = json.loads(raw)
     return parsed
 
 
+def _prewarm_vectorbt() -> None:
+    """Force vectorbt + numba to perform lazy initialisations now, before
+    the import hook is installed."""
+    import pandas as pd
+
+    from qa_backtest.engine import run_backtest
+    from qa_core.schemas import Bar
+
+    idx = pd.date_range("2024-01-01", periods=10, freq="D")
+    closes = [100.0, 101.0, 102.0, 101.5, 100.5, 99.5, 100.0, 101.0, 102.0, 103.0]
+    bars = [
+        Bar(t=ts.to_pydatetime(), open=c, high=c, low=c, close=c, volume=1.0)
+        for ts, c in zip(idx, closes, strict=True)
+    ]
+    signal = pd.Series(0, index=idx, dtype=int)
+    signal.iloc[1] = 1
+    signal.iloc[5] = -1
+    run_backtest(bars=bars, signal=signal)
+
+
 def main() -> int:
-    # ---- step 1b: warm vectorbt so all lazy imports happen pre-hook -----
-    _prewarm_vectorbt()
-
-    # ---- step 2/3: install hook + limits (order: hook then limits) -------
-    install_import_hook()
-    install_limits()
-
-    # ---- step 4: read job spec --------------------------------------------
+    # ---- step 1: read + parse job spec (fail-fast, no vectorbt yet) -----
     try:
         raw = sys.stdin.buffer.read()
         job = _parse_job(raw)
@@ -81,30 +63,48 @@ def main() -> int:
         sys.stderr.write(f"sandbox: invalid job spec: {e}\n")
         return 2
 
-    # ---- step 5: dispatch -------------------------------------------------
-    try:
-        preset = job.get("preset")
-        params = job.get("params", {}) or {}
-        bars_raw = job.get("data", []) or []
-        if not isinstance(preset, str) or not preset:
-            raise ValueError("missing or non-string 'preset' field")
-        if not isinstance(params, dict):
-            raise TypeError("'params' must be an object")
-        if not isinstance(bars_raw, list):
-            raise TypeError("'data' must be an array")
+    preset = job.get("preset")
+    if not isinstance(preset, str) or not preset:
+        sys.stderr.write("sandbox: error: missing or non-string 'preset' field\n")
+        return 1
 
-        runner = get_runner(preset)
-        if runner is None:
-            raise ValueError(f"unknown preset: {preset}")
+    # Lookup preset before warmup — unknown presets fail in milliseconds
+    # instead of paying the 20-40s vectorbt JIT cost.
+    from qa_backtest.presets.registry import get_runner
+
+    runner = get_runner(preset)
+    if runner is None:
+        sys.stderr.write(f"sandbox: error: unknown preset: {preset}\n")
+        return 1
+
+    params = job.get("params", {}) or {}
+    bars_raw = job.get("data", []) or []
+    if not isinstance(params, dict):
+        sys.stderr.write("sandbox: error: 'params' must be an object\n")
+        return 1
+    if not isinstance(bars_raw, list):
+        sys.stderr.write("sandbox: error: 'data' must be an array\n")
+        return 1
+
+    # ---- step 2/3/4: warm vectorbt then install hook + limits -----------
+    _prewarm_vectorbt()
+
+    from qa_sandbox.import_hook import install as install_import_hook
+    from qa_sandbox.limits import install_limits
+
+    install_import_hook()
+    install_limits()
+
+    # ---- step 5/6: dispatch + emit --------------------------------------
+    try:
+        from qa_core.schemas import Bar
 
         bars = [Bar(**b) for b in bars_raw]
         result = runner(bars=bars, **params)
-
-        # ---- step 6: emit -------------------------------------------------
         sys.stdout.write(result.model_dump_json())
         sys.stdout.flush()
         return 0
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         sys.stderr.write(f"sandbox: error: {e}\n")
         sys.stderr.write(traceback.format_exc())
         return 1
