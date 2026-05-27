@@ -73,7 +73,7 @@ jobs:
       - name: TypeScript build check
         run: pnpm exec tsc -b --noEmit
       - name: mypy
-        run: uv run mypy -p qa_core -p qa_indicators -p qa_api
+        run: uv run mypy -p qa_core -p qa_indicators -p qa_api -p qa_backtest -p qa_sandbox
 
   test-js:
     name: Test (JS/TS)
@@ -136,6 +136,8 @@ jobs:
             exit 0
           fi
           exit $code
+      - name: Backtest determinism check
+        run: uv run pytest python/qa_backtest/tests/test_determinism.py -v
 
   build:
     name: Build (web)
@@ -181,10 +183,15 @@ jobs:
   sandbox-negative:
     name: Sandbox Negative Tests
     runs-on: ubuntu-latest
+    needs: lint-py
     timeout-minutes: 15
-    if: contains(github.event.pull_request.changed_files, 'python/qa_sandbox') || contains(github.event.pull_request.changed_files, 'apps/sandbox-runner')
+    if: always()  # run on every PR + push so the security gate is enforced
     steps:
-      - name: Placeholder
-        run: |
-          echo "sandbox-negative placeholder — wired in M5"
-          exit 0
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --all-packages
+      - name: Sandbox negative tests
+        run: uv run pytest python/qa_sandbox/tests/test_negative.py -v
