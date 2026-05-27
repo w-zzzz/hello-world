@@ -104,7 +104,7 @@ def main() -> int:
         sys.stdout.write(result.model_dump_json())
         sys.stdout.flush()
         return 0
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         sys.stderr.write(f"sandbox: error: {e}\n")
         sys.stderr.write(traceback.format_exc())
         return 1
