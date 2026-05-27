@@ -2,8 +2,11 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import * as schema from '../schema'
 import {
   aiUsage,
+  backtestResults,
+  backtestRuns,
   lessonCompletions,
   type NewAiUsage,
+  type NewBacktestResult,
   type NewTutorMessage,
   type NewUser,
   streaks,
@@ -24,6 +27,8 @@ describe('schema', () => {
     expect(xpEventKind).toBeDefined()
     expect(tutorMessages).toBeDefined()
     expect(aiUsage).toBeDefined()
+    expect(backtestRuns).toBeDefined()
+    expect(backtestResults).toBeDefined()
   })
 
   it('exposes the expected xp event kinds', () => {
@@ -60,5 +65,18 @@ describe('schema', () => {
     expectTypeOf<NewAiUsage>().toHaveProperty('userId').toEqualTypeOf<string>()
     // date columns in Drizzle pg-core surface as string in TS.
     expectTypeOf<NewAiUsage>().toHaveProperty('day').toEqualTypeOf<string>()
+  })
+
+  it('exposes the backtest_runs status column', () => {
+    expect(backtestRuns.status).toBeDefined()
+    expect(backtestRuns.status.name).toBe('status')
+    // status on insert is a string narrowed by the DB-level CHECK constraint.
+    expectTypeOf<NewBacktestResult>().toHaveProperty('runId').toEqualTypeOf<string>()
+  })
+
+  it('marks backtest_results.runId as required at the type level', () => {
+    expect(backtestResults.runId).toBeDefined()
+    expect(backtestResults.runId.name).toBe('run_id')
+    expectTypeOf<NewBacktestResult>().toHaveProperty('runId').toEqualTypeOf<string>()
   })
 })

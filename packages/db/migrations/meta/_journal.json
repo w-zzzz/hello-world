@@ -15,6 +15,13 @@
       "when": 1779872378573,
       "tag": "0001_ai_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779901100408,
+      "tag": "0002_backtest_tables",
+      "breakpoints": true
     }
   ]
 }

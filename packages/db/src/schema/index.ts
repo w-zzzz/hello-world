@@ -1,4 +1,6 @@
 export * from './aiUsage'
+export * from './backtestResults'
+export * from './backtestRuns'
 export * from './lessonCompletions'
 export * from './streaks'
 export * from './tutorMessages'
