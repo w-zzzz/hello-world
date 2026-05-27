@@ -138,5 +138,33 @@
     "reset": "新对话",
     "quotaExceeded": "今日额度已用尽 ({used}/{cap} tokens)。明天再来吧!",
     "fullPageHint": "在这里自由提问；如果想要针对某一课的讲解，请打开对应课程页面"
+  },
+  "workshop": {
+    "title": "回测工作坊",
+    "subtitle": "用经典预设跑一次完整回测,看看策略在 SPY 上的表现",
+    "pickPreset": "选择预设",
+    "run": "运行",
+    "running": "运行中...",
+    "recent": "最近运行",
+    "signInPrompt": "登录后即可运行回测",
+    "params": "参数"
+  },
+  "tearsheet": {
+    "metrics": {
+      "sharpe": "夏普比率",
+      "sortino": "Sortino",
+      "calmar": "Calmar",
+      "mdd": "最大回撤",
+      "profitFactor": "盈亏比",
+      "winRate": "胜率",
+      "expectancy": "期望",
+      "exposure": "持仓占比",
+      "tradeCount": "交易笔数"
+    },
+    "equity": "资金曲线",
+    "drawdown": "回撤",
+    "trades": "交易记录",
+    "notAvailable": "结果暂不可用",
+    "rerun": "重新运行"
   }
 }

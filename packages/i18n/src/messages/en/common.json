@@ -138,5 +138,33 @@
     "reset": "New chat",
     "quotaExceeded": "Daily quota exhausted ({used}/{cap} tokens). Back tomorrow!",
     "fullPageHint": "Ask anything here; for lesson-grounded questions, open the relevant lesson page"
+  },
+  "workshop": {
+    "title": "Backtest Workshop",
+    "subtitle": "Run a full backtest with a classic preset and see how the strategy performs on SPY",
+    "pickPreset": "Pick a preset",
+    "run": "Run",
+    "running": "Running…",
+    "recent": "Recent runs",
+    "signInPrompt": "Sign in to run backtests",
+    "params": "Params"
+  },
+  "tearsheet": {
+    "metrics": {
+      "sharpe": "Sharpe",
+      "sortino": "Sortino",
+      "calmar": "Calmar",
+      "mdd": "Max Drawdown",
+      "profitFactor": "Profit Factor",
+      "winRate": "Win Rate",
+      "expectancy": "Expectancy",
+      "exposure": "Exposure",
+      "tradeCount": "Trade Count"
+    },
+    "equity": "Equity Curve",
+    "drawdown": "Drawdown",
+    "trades": "Trades",
+    "notAvailable": "Result not available",
+    "rerun": "Re-run"
   }
 }

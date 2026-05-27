@@ -57,7 +57,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: L
             <CardContent />
           </Card>
         </Link>
-        <Link href="/lessons" className="block transition hover:opacity-90">
+        <Link href="/workshop" className="block transition hover:opacity-90">
           <Card>
             <CardHeader>
               <CardTitle>{t('features.backtest.title')}</CardTitle>
