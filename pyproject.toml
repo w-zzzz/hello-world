@@ -27,7 +27,13 @@ dev-dependencies = [
 
 [tool.pytest.ini_options]
 minversion = "8.3"
-testpaths = ["apps/api/tests", "python/qa_core/tests", "python/qa_indicators/tests"]
+testpaths = [
+    "apps/api/tests",
+    "python/qa_core/tests",
+    "python/qa_indicators/tests",
+    "python/qa_backtest/tests",
+    "python/qa_sandbox/tests",
+]
 python_files = ["test_*.py"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 asyncio_mode = "auto"

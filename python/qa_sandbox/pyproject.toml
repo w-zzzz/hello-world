@@ -1,12 +1,13 @@
 [project]
 name = "qa-sandbox"
 version = "0.1.0"
-description = "Quant Academy strategy sandbox runtime (M5)"
+description = "Quant Academy hardened subprocess sandbox for executing backtest presets"
 requires-python = ">=3.12"
-dependencies = ["qa-core"]
+dependencies = ["qa-core", "qa-backtest"]
 
 [tool.uv.sources]
 qa-core = { workspace = true }
+qa-backtest = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
