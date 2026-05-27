@@ -1,4 +1,6 @@
+export * from './aiUsage'
 export * from './lessonCompletions'
 export * from './streaks'
+export * from './tutorMessages'
 export * from './users'
 export * from './xpEvents'
