@@ -35,5 +35,8 @@ testpaths = [
     "python/qa_sandbox/tests",
 ]
 python_files = ["test_*.py"]
-addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib", "-m", "not slow"]
 asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselected by default via -m 'not slow')",
+]
