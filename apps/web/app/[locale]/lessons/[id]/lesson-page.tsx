@@ -8,6 +8,7 @@ import { LessonBreadcrumb } from '@/components/lesson-breadcrumb'
 import { LessonNav } from '@/components/lesson-nav'
 import { LessonProgress } from '@/components/lesson-progress'
 import { MarkCompleteButton } from '@/components/mark-complete-button'
+import { TutorPanel } from '@/components/tutor-panel'
 import { getCurrentUser } from '@/lib/auth'
 
 function ComingSoonPlaceholder({ meta }: { meta: { id: string; trackId: string } }) {
@@ -50,6 +51,11 @@ export async function LessonPage({ locale, lessonId }: { locale: Locale; lessonI
           isSignedIn={!!user}
           alreadyCompleted={alreadyCompleted}
         />
+      )}
+      {ready && (
+        <div className="mt-6">
+          <TutorPanel lessonId={meta.id} isSignedIn={!!user} />
+        </div>
       )}
       <LessonNav prev={prev?.meta.id ?? null} next={next?.meta.id ?? null} />
     </main>

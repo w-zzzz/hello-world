@@ -129,5 +129,14 @@
     "xpAwarded": "+{xp} XP",
     "levelUp": "升到 Lv{level}!",
     "signInPrompt": "登录以保存进度并累积经验"
+  },
+  "tutor": {
+    "title": "AI 导师",
+    "signInPrompt": "登录以与 AI 导师交流",
+    "placeholder": "针对当前课程提问，例如：「为什么 RSI 在 30 以下被视为超卖？」",
+    "inputPlaceholder": "提问...",
+    "reset": "新对话",
+    "quotaExceeded": "今日额度已用尽 ({used}/{cap} tokens)。明天再来吧!",
+    "fullPageHint": "在这里自由提问；如果想要针对某一课的讲解，请打开对应课程页面"
   }
 }

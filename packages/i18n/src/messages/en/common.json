@@ -129,5 +129,14 @@
     "xpAwarded": "+{xp} XP",
     "levelUp": "Leveled up to Lv{level}!",
     "signInPrompt": "Sign in to save progress and earn XP"
+  },
+  "tutor": {
+    "title": "AI Tutor",
+    "signInPrompt": "Sign in to chat with the AI tutor",
+    "placeholder": "Ask about the current lesson, e.g. \"Why is RSI below 30 considered oversold?\"",
+    "inputPlaceholder": "Ask anything...",
+    "reset": "New chat",
+    "quotaExceeded": "Daily quota exhausted ({used}/{cap} tokens). Back tomorrow!",
+    "fullPageHint": "Ask anything here; for lesson-grounded questions, open the relevant lesson page"
   }
 }
