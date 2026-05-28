@@ -118,25 +118,39 @@ For M5 the API does NOT shell out to Docker (would complicate dev/CI). It direct
 
 ### 8. Negative tests (the milestone gate)
 
-`python/qa_sandbox/tests/test_negative.py` — pytest suite asserting that each attack vector fails with the expected exception or non-zero exit code:
+> **M5 ships the sandbox in trusted-preset mode**: the import hook + rlimits + SIGALRM are the M5 protections. `eval` / `exec` / `compile` / `open` are **NOT** restricted in M5; that hardening lands in M6 when user-supplied code is admitted. Until then, only first-party presets reach the runner. The negative tests below cover only the M5-shipped protections.
+
+`python/qa_sandbox/tests/test_negative.py` — pytest suite asserting that each attack vector fails with the expected exception or non-zero exit code.
+
+#### M5-enforced protections (covered by CI)
 
 | Attack | Expected |
 |---|---|
 | `import socket` | `ImportError` |
 | `import os; os.system('ls')` | `ImportError` on os (the sandbox import-hook blocks bare `os`) |
-| `open('/etc/passwd')` | `PermissionError` (sandbox replaces `open` with a no-FS-write wrapper that allows only reads under the data dir) |
 | `while True: pass` | killed by `SIGALRM` within wall-clock 30s |
 | Memory bomb (`x = [0] * 10**9`) | `MemoryError` (rlimit RSS) |
 | Fork bomb (`os.fork()`) | `OSError` (rlimit nproc=1) — note os is blocked anyway, double defense |
 | Network access (`urllib.request.urlopen(...)`) | `ImportError` on `urllib` |
-| `eval('__import__("socket")')` | `NameError`/blocked: `eval` not in restricted globals |
-| `compile('print(1)', '<x>', 'exec')` | blocked: `compile` removed from restricted globals |
 | Subprocess (`subprocess.run('ls')`) | `ImportError` |
 | Pickle unpickle hostile payload | blocked: `pickle` not allowlisted |
 | `ctypes` to dlopen libc | `ImportError` |
-| `sys.setrecursionlimit(10**9)` then deep recurse | clamped or fails harmlessly |
+| `import threading` / `multiprocessing` / `asyncio` / `inspect` / `signal` / `resource` | `ImportError` (denied by import allowlist) |
 
 All assertions in CI. The job is wired to run on **any** PR that touches `python/qa_sandbox/**` or `apps/sandbox-runner/**` — already declared as `Sandbox Negative Tests` in M0 CI; M5 flips it from placeholder to real.
+
+#### Deferred to M6 (NOT enforced in M5)
+
+The following were aspirationally listed in earlier drafts of this ADR but are **not** actually blocked by the M5 runner. They are acceptable risk for M5 because only trusted first-party presets execute; they become hard requirements when M6 opens the runner to user-supplied code.
+
+| Attack | Current M5 reality | M6 plan |
+|---|---|---|
+| ~~`open('/etc/passwd')` → `PermissionError`~~ | `open` is unrestricted | `restrict_builtins` removes/wraps `open` to deny FS reads outside data dir |
+| ~~`eval('__import__("socket")')` → `NameError`~~ | `eval` is unrestricted | `eval` removed from restricted globals |
+| ~~`compile('print(1)', '<x>', 'exec')` → blocked~~ | `compile` is unrestricted | `compile` removed from restricted globals |
+| ~~`sys.setrecursionlimit(10**9)` → clamped~~ | succeeds; deep recurse falls back on stack-size rlimit | wrap `sys` facade to clamp `setrecursionlimit` ≤ 5000 |
+
+M6 entry criteria — including the full builtin-restriction wiring tracked above — are captured in `docs/reviews/ultra-review-m5.md`.
 
 ### 9. Determinism contract
 
@@ -174,7 +188,7 @@ After integration of the 5 agents, run `/ultrareview` on the merged result befor
 1. `pnpm install && uv sync --all-packages && pnpm --filter @quant-academy/db run db:migrate` succeed.
 2. POST `/backtests` with `{preset: 'sma_crossover', params: {fast: 20, slow: 50}}` returns a complete `BacktestResult` in < 30s.
 3. Visit `/zh/workshop` → pick SMA crossover → click Run → tearsheet renders with equity curve, drawdown, metrics grid, trades.
-4. Negative tests pass: every attack in §8 fails closed.
+4. Negative tests pass: every attack in §8's **M5-enforced protections** table fails closed. (Deferred-to-M6 rows are explicitly not gated in M5.)
 5. Determinism test: same config 5× produces identical JSON hash.
 6. CI green: lint + typecheck + tests + build + parity + **sandbox-negative** (newly real) + **backtest-determinism**.
 7. `apps/sandbox-runner/README.md` documents the prod Docker run + optional gVisor.
