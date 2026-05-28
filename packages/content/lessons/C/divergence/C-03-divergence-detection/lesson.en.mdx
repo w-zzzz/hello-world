@@ -1,0 +1,97 @@
+# Detecting divergences algorithmically
+
+A **divergence** is when price and an indicator disagree on direction. Price is making a higher high, but RSI is making a lower high — the price move is happening on weakening momentum. To the eye, drawn after the fact, divergences look magical: "every reversal was foreshadowed!" To a backtest committing to swing points as they form, most divergences fail. This lesson is about turning a chart-pattern eye-test into a precise algorithm that doesn't lie to you.
+
+## The four flavors
+
+Divergence comes in four named varieties, parameterized by two binary choices: which way price is moving, and whether it predicts reversal or continuation.
+
+| Name | Price | Indicator | Interpretation |
+|---|---|---|---|
+| Regular bearish | Higher high (HH) | Lower high (LH) | Reversal down |
+| Regular bullish | Lower low (LL) | Higher low (HL) | Reversal up |
+| Hidden bearish | Lower high (LH) | Higher high (HH) | Continuation down |
+| Hidden bullish | Higher low (HL) | Lower low (LL) | Continuation up |
+
+**Regular** divergences predict reversals — price is making a new extreme but momentum isn't, so the extreme is suspect. **Hidden** divergences predict continuations — price is consolidating but the underlying momentum is still pushing, so the prevailing trend should resume.
+
+Open the RSI playground and look for these patterns yourself:
+
+<IndicatorPlayground indicator="rsi" />
+
+You will notice quickly that divergences are easy to see at the right edge of a finished chart, and very hard to see at the right edge of a live one.
+
+## Swing detection — the underlying primitive
+
+A divergence is a comparison between two **swing points**: a swing high (a local maximum) and another swing high, or a swing low and another swing low. So before you detect divergence, you must detect swings.
+
+The classical algorithm uses a $k$-bar window:
+
+$$
+\text{SwingHigh}(t) = \begin{cases} \text{true} & \text{if } h_t \geq h_i \text{ for all } i \in [t-k, t+k] \\ \text{false} & \text{otherwise} \end{cases}
+$$
+
+That is: a swing high at time $t$ is a bar whose high is greater than or equal to the highs of the $k$ bars before it and the $k$ bars after it.
+
+The "and after it" part is the catch. To confirm a swing high at time $t$, you have to wait until time $t+k$. **A live algorithm cannot detect swing $t$ before bar $t+k$ exists.** Pretending otherwise — drawing the swing at bar $t$ as soon as you have it on a finished chart — is lookahead bias in disguise.
+
+So the honest pseudocode looks like this:
+
+```python
+def swing_high(highs, k):
+    """Mark swing highs at index t, confirmed as of index t+k."""
+    n = len(highs)
+    swings = [None] * n  # confirmed-at index, or None
+    for t in range(k, n - k):
+        window = highs[t - k : t + k + 1]
+        if highs[t] == max(window):
+            swings[t + k] = t  # confirmed at t+k
+    return swings
+
+def detect_regular_bearish(price_swings, indicator, t):
+    """At time t, look at the two most recently confirmed swing highs."""
+    confirmed = [s for s in price_swings[: t + 1] if s is not None]
+    if len(confirmed) < 2:
+        return False
+    s1, s2 = confirmed[-2], confirmed[-1]
+    price_hh = price[s2] > price[s1]
+    indicator_lh = indicator[s2] < indicator[s1]
+    return price_hh and indicator_lh
+```
+
+Two things to notice. First, `t` ranges over confirmation times, not swing times — the swing at bar $s$ is only usable starting at bar $s+k$. Second, the divergence signal fires at most $k$ bars after the swing actually formed. That latency is the cost of not cheating.
+
+## The asymmetry between hindsight and reality
+
+Here is the sentence everyone trading divergences eventually learns the hard way:
+
+> Drawn divergences on finished charts have a 100% success rate, because you only draw the ones that worked.
+
+Your eye selects swings that, in hindsight, marked turning points. Your eye ignores the equally pronounced "swings" that didn't turn — they don't look like swings anymore because price kept going. Confirmation bias is structural to the chart-pattern aesthetic.
+
+A real algorithmic detector commits to a swing the moment its $k$-bar window closes. It cannot un-commit if price keeps trending. So it logs every swing, including the ones that turn out to be just bumps on the way up. The result is that algorithmic divergence detection has dramatically more signals than your eye picks out — and a hit rate much lower than "every divergence on every textbook chart worked".
+
+A useful framing: divergences are a **prior**, not a conclusion. They make a reversal slightly more likely than the unconditional base rate, in some markets, sometimes. Combine them with confluence (last lesson) and a regime filter before betting on them.
+
+## Choosing $k$
+
+The window size $k$ controls how noisy your swings are:
+
+- **Small $k$ (e.g. 2-3 bars):** lots of swings, lots of noise, low latency. You'll detect "divergences" between adjacent micro-bumps that don't mean anything.
+- **Large $k$ (e.g. 10-20 bars):** few swings, more meaningful structure, high latency. Your divergence signal fires 10-20 bars after the swing — possibly too late.
+
+A reasonable default on daily bars is $k = 5$. On intraday bars, scale down to keep the typical "structure" you care about visible. There is no clean theory here, just empirical choice. Sweep $k$ on out-of-sample data and verify the result is not knife-edge sensitive to the exact value.
+
+<Pitfall title="The hindsight divergence">
+Every divergence on a finished textbook chart "worked" because someone drew it after the fact. A real-time algorithm has to commit to a swing point as the $k$-bar confirmation window closes — and once you commit, you have to count the swings that didn't lead to reversals too. Most algorithmically-detected divergences fail. If your strategy assumes the textbook hit rate, it will underperform spectacularly. Backtest with honest swing confirmation, never with swings located by visual inspection on the historical chart.
+</Pitfall>
+
+<KeyPoint title="Swing detection is the hard part">
+Divergence is just "compare two swings of price to two swings of indicator." The work is honest swing detection — which requires waiting $k$ bars to confirm. Any divergence "detected" without that wait was found by reading the future, and its backtest is a fantasy.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="C-03-divergence-detection-q1" question="Price prints a higher high while RSI prints a lower high. This is:" options={["Regular bullish divergence (predicts reversal up)","Regular bearish divergence (predicts reversal down)","Hidden bullish divergence (predicts continuation up)","Hidden bearish divergence (predicts continuation down)"]} answer={1} explanation="Price higher high + indicator lower high = regular bearish divergence. The price extreme isn't confirmed by momentum, suggesting a possible reversal down. Hidden divergences flip the relationship: price LH + indicator HH would be hidden bearish (continuation)." />
+
+<Quiz id="C-03-divergence-detection-q2" question="You're detecting swing highs with a 5-bar lookback/lookforward window. A swing high at bar t can be CONFIRMED no earlier than:" options={["Bar t (the same bar)","Bar t - 5","Bar t + 5","Bar t + 10"]} answer={2} explanation="A swing high at t requires all 5 bars before AND all 5 bars after to have lower highs. The 5 bars after exist only at bar t+5. Using the swing earlier is lookahead — you'd be reading future prices. The cost of honesty is a 5-bar confirmation lag." />

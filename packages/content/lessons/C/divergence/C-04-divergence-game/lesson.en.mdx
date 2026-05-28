@@ -1,0 +1,82 @@
+# Spot the divergence
+
+Time to test your eye. The previous lesson taught you what divergence is and the four flavors it comes in. This lesson is a practice arena: five short scenarios, each describing a price-and-indicator setup, and you have to call it. Regular bullish, regular bearish, hidden bullish, hidden bearish, or no divergence at all.
+
+A reminder of the cheat sheet you should be holding in your head:
+
+| Type | Price | Indicator |
+|---|---|---|
+| Regular bullish | LL | HL |
+| Regular bearish | HH | LH |
+| Hidden bullish | HL | LL |
+| Hidden bearish | LH | HH |
+
+Anything that doesn't match one of these rows is "no divergence" — including the very common case where price and indicator simply agree (both higher highs, or both lower lows). That is **confirmation**, not divergence.
+
+Use the RSI playground if you want to warm up before the scenarios:
+
+<IndicatorPlayground indicator="rsi" />
+
+The trick to this game is to identify the **two swing points** first, then check their relation, then check the indicator's relation at those same two points. Don't try to glance and guess.
+
+## Scenarios 1-3 — recognize the pattern
+
+Read each scenario carefully. Each one describes a confirmed swing structure (assume the $k$-bar confirmation window has already closed for both swings).
+
+<Reveal title="Scenario 1">
+SPY traded down to 480, bounced to 495, then traded down to 472. At swing 1 (the 480 low), RSI was 28. At swing 2 (the 472 low), RSI was 33. What kind of divergence, if any?
+</Reveal>
+
+<Chart symbol="SPY" height={260} intervalLabel="D" />
+
+<Reveal title="Scenario 2">
+QQQ rallied to 410, pulled back to 400, then rallied to 418. At swing 1 (the 410 high), MACD histogram peaked at +1.4. At swing 2 (the 418 high), MACD histogram peaked at +0.6. What kind of divergence, if any?
+</Reveal>
+
+<Chart symbol="QQQ" height={260} intervalLabel="D" />
+
+<Reveal title="Scenario 3">
+A stock in an established downtrend bounces to 50, pulls back to 47, then bounces again to 48 (a lower high). At swing 1 (the 50 high), RSI was 55. At swing 2 (the 48 high), RSI was 62. What kind of divergence, if any?
+</Reveal>
+
+<Chart symbol="SPY" height={260} intervalLabel="D" />
+
+<Quiz id="C-04-divergence-game-q1" question="What are the correct calls for Scenarios 1, 2, and 3 respectively?" options={["Regular bearish / Regular bullish / Hidden bearish","Regular bullish / Regular bearish / Hidden bearish","Hidden bullish / Hidden bearish / Regular bearish","No divergence / Regular bearish / No divergence"]} answer={1} explanation="Scenario 1: price LL (480 → 472) with indicator HL (28 → 33) = regular bullish. Scenario 2: price HH (410 → 418) with indicator LH (1.4 → 0.6) = regular bearish. Scenario 3: in a downtrend, price LH (50 → 48) with indicator HH (55 → 62) = hidden bearish, signaling continuation of the downtrend." />
+
+## Scenarios 4-5 — the tricky cases
+
+<Reveal title="Scenario 4">
+A stock has been ranging. Price at swing 1 is 100, RSI is 65. Price pulls back to 96. Price rallies to a new swing 2 at 102, RSI at swing 2 is 72. What kind of divergence, if any?
+</Reveal>
+
+<Chart symbol="SPY" height={260} intervalLabel="D" />
+
+<Reveal title="Scenario 5">
+An uptrend has been printing higher highs and higher lows. Swing 1 is a low at 80, swing 2 is a low at 84 (higher low — pullback held above the previous low). At swing 1, RSI was 40. At swing 2, RSI was 32. What kind of divergence, if any?
+</Reveal>
+
+<Chart symbol="QQQ" height={260} intervalLabel="D" />
+
+<Quiz id="C-04-divergence-game-q2" question="What are the correct calls for Scenarios 4 and 5?" options={["Regular bearish / Hidden bearish","No divergence (confirmation) / Hidden bullish","Hidden bullish / Regular bullish","Regular bullish / No divergence"]} answer={1} explanation="Scenario 4: price HH (100 → 102) AND indicator HH (65 → 72) — both confirming, not diverging. This is confirmation, not divergence. Scenario 5: price HL (80 → 84) with indicator LL (40 → 32) — that is hidden bullish divergence, signaling the uptrend should continue." />
+
+## What this practice doesn't teach you
+
+You just got the right answers on a chart that has already happened. The hard part — the part this game cannot simulate — is committing to a swing structure **as it forms**, before you know how the next 5-20 bars will resolve. When you have to decide in real time, you also have to count every "almost-divergence" that turned out to be nothing — and most of them do.
+
+<Pitfall title="The hindsight pattern recognition trap">
+This game gave you scenarios where the two swings were already labeled. In real trading, you have to decide whether bar $t$ is a swing point, and then whether it forms a divergence with the previous swing point — all before bar $t+k$ has been printed. The divergence that looks obvious in hindsight wasn't obvious during its formation. Confirmation lag is part of the trade; if you can't accept the latency, you can't honestly trade divergences.
+</Pitfall>
+
+<KeyPoint title="Build the muscle, then check yourself">
+Recognizing the four flavors quickly is necessary but not sufficient. After this game you know what a divergence looks like; before you can trade them, you also need a swing-confirmation algorithm and the discipline to log every divergence — including the ones that don't pay.
+</KeyPoint>
+
+## Where to go next
+
+In real strategies, divergence is rarely a standalone signal. It is one input into a confluence stack (Lesson C-01) combined with a regime filter (next module: C-05). The math beneath looks like:
+
+$$
+\text{Score}_t = w_1 \cdot \mathbb{1}[\text{regime ok}] + w_2 \cdot \mathbb{1}[\text{divergence}] + w_3 \cdot \mathbb{1}[\text{confluence ok}]
+$$
+
+Enter when $\text{Score}_t$ exceeds a threshold. The divergence is one term; never the whole sum.

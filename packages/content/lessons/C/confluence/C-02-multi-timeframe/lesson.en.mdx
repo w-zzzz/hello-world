@@ -1,0 +1,87 @@
+# Multi-timeframe alignment
+
+A single timeframe gives you a single window onto the market. The 1-minute chart is full of noise; the daily chart is full of lag. Neither, alone, is great. **Multi-timeframe (MTF) analysis** is the discipline of using more than one timeframe at once — a slow one to set context, a fast one to act.
+
+In this lesson you will learn the canonical three-screen layout, the math of resampling lower-timeframe bars into higher ones, and the single most important rule for avoiding the lookahead trap that quietly destroys most MTF backtests.
+
+## The three-screen layout
+
+Alexander Elder's *Triple Screen* is the classical reference, and a simplified version works well in code:
+
+1. **Strategic — daily or weekly.** Identify regime. Are we in an uptrend, a downtrend, or a range? This screen decides which side you are allowed to take.
+2. **Tactical — hourly.** Identify entry direction within the regime. Are we pulling back into support, or breaking out?
+3. **Execution — minute.** Time the actual fill. Get on a clean tick, not in the middle of a spike.
+
+The trick is that decisions only flow **downward**. The daily screen vetoes the hourly screen. The hourly screen vetoes the minute screen. The minute screen never overrides the daily one — that is just over-trading wearing a costume.
+
+<Chart symbol="SPY" height={300} intervalLabel="D" />
+
+Look at the daily SPY chart above. Imagine a strategy that says: "Only consider long entries when the daily close is above the 50-day SMA." That single gate, applied to a noisy hourly mean-reversion strategy, often turns a marginally profitable system into a meaningfully profitable one — not because the entries got better, but because the half of them that were fighting the trend are now disallowed.
+
+## Aggregating bars: the resampling math
+
+A timeframe is an aggregation of a finer one. To turn $N$ lower-timeframe bars into one higher-timeframe bar, OHLCV combines like this:
+
+$$
+\begin{aligned}
+O &= \text{first}(o_1, o_2, \ldots, o_N) \\
+H &= \max(h_1, h_2, \ldots, h_N) \\
+L &= \min(l_1, l_2, \ldots, l_N) \\
+C &= \text{last}(c_1, c_2, \ldots, c_N) \\
+V &= \sum_{i=1}^{N} v_i
+\end{aligned}
+$$
+
+This is what `pandas.resample("1H").agg(...)` does under the hood. Note three things:
+
+- **Open** is the first bar's open, not the average.
+- **Close** is the last bar's close. This is the one that matters most for signal logic.
+- **Volume** is summed. Don't accidentally average it.
+
+If your timeframes don't align to clean boundaries — say you want a "rolling daily" window on an hourly chart — you can compute the same formulas over a sliding window of $N$ bars. The math is identical; the indexing is different.
+
+## The lookahead trap at the timeframe boundary
+
+Here is the single mistake that ruins most MTF backtests, and it is subtle enough to slip past careful coders.
+
+Suppose your strategy says "go long if today's daily RSI is below 30 and the hourly stochastic just crossed up." You run a backtest. At 10:00 AM you check the daily RSI. **Whose value are you reading?**
+
+If you naively pull "today's RSI", you get the value as of right now — which depends on prices that have not yet happened by 10:00 AM, because the day is not over. That is **lookahead**. The system you backtested is using information from the future.
+
+The fix is a single rule: **always lag the higher-timeframe signal by one of its own bars before applying it on the lower timeframe.**
+
+In code terms:
+
+```python
+# WRONG: uses today's not-yet-closed daily RSI inside the hourly loop
+hourly['daily_rsi'] = daily['rsi'].reindex(hourly.index, method='ffill')
+
+# RIGHT: forward-fill the previous fully-closed daily bar
+hourly['daily_rsi'] = daily['rsi'].shift(1).reindex(hourly.index, method='ffill')
+```
+
+The `shift(1)` is doing all the work. It says "the value of today's daily RSI is unknown until tomorrow; until then, use yesterday's." Yes, you lose one day of timeliness. That is the price of not lying to yourself.
+
+## Putting it together
+
+A clean MTF setup, ready to backtest:
+
+- **Daily filter:** allow longs only if `daily_close > daily_sma_50` (lagged by 1 day).
+- **Hourly trigger:** enter long when `hourly_rsi` crosses above 30.
+- **Minute execution:** wait for the next bar's open, do not fill at the trigger bar's close.
+
+Each screen lives at its own timeframe. The daily screen's value is forward-filled into the hourly data, but always shifted by one daily bar. The hourly trigger fires inside the hourly loop. The execution rule lives at the minute level. No screen looks into its own future.
+
+<Pitfall title="The closing-bar peek">
+The most insidious MTF bug is using the higher-timeframe bar's close *while that bar is still forming*. At 2 PM today, "today's daily close" does not exist yet — but `daily.rsi.iloc[-1]` happily returns a value, because your DataFrame was built with the current (partial) day. Always lag the higher-timeframe signal by one full bar before applying it on the lower timeframe. Lose one bar of speed, gain a backtest you can trust.
+</Pitfall>
+
+<KeyPoint title="The MTF contract">
+Higher timeframe sets context, lower timeframe acts. Decisions only flow downward. And every higher-timeframe value used by a lower-timeframe rule must be lagged by at least one of its own bars — otherwise you are reading the future.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="C-02-multi-timeframe-q1" question="When aggregating five 1-hour bars into a single 5-hour bar, how should volume be computed?" options={["Take the maximum volume across the five bars","Take the average volume","Sum the five bars' volumes","Take the volume of the bar with the highest range"]} answer={2} explanation="Volume is additive — total volume in a window is the sum of volumes in each sub-bar. Averaging or maxing would silently understate the activity in that window." />
+
+<Quiz id="C-02-multi-timeframe-q2" question="You're using a daily RSI filter inside an hourly backtest. To avoid lookahead, you should:" options={["Use today's daily RSI value, since it's the most recent","Lag the daily RSI by one daily bar before forward-filling it onto the hourly index","Recompute the daily RSI from the hourly data on the fly","Use the average of yesterday's and today's daily RSI"]} answer={1} explanation="Today's daily RSI depends on prices that haven't happened yet during the trading day. Lagging by one full daily bar (shift(1)) ensures the hourly loop only sees fully-closed daily values — the cost is one day of timeliness, the gain is a non-lying backtest." />

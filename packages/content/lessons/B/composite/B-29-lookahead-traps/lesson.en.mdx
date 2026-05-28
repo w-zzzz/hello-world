@@ -1,0 +1,78 @@
+# Look-ahead bias in indicator computation
+
+If your backtest equity curve looks gorgeous, the first thing to check is not the indicator — it's whether the signal at time $t$ accidentally used information from after $t$. That bug is called **look-ahead bias**, and it is the most common reason "great" strategies stop working the moment you take them live. This lesson catalogs the four shapes it takes in real codebases.
+
+## The discipline: time-respecting indicators
+
+A signal $s_t$ is only honest if it satisfies the **causality constraint**:
+
+$$
+s_t = g\bigl(\mathcal{F}_t\bigr), \quad \mathcal{F}_t = \sigma\bigl(P_u, V_u : u \leq t\bigr)
+$$
+
+where $\mathcal{F}_t$ is the information set available **at or before** time $t$. The moment $g$ touches anything dated $> t$, your backtest is fiction. Each trap below is a flavor of that one rule being broken.
+
+## Trap 1: Same-bar execution of a same-bar signal
+
+The textbook version. You compute a signal on bar $t$'s close, then assume you can act on bar $t$'s close at the same instant.
+
+<Compare
+  leftTitle="Wrong"
+  rightTitle="Right"
+  left={`# WRONG — uses today's close to act today\nsignal = close > sma20      # known only at t's close\nposition = signal           # executes at t's close: impossible`}
+  right={`# RIGHT — act at next bar's open\nsignal = close > sma20\nposition = signal.shift(1)  # execution lag of 1 bar`}
+/>
+
+If your fill engine has no concept of "next bar," at minimum lag the signal by one bar. The "obvious" version inflates returns because every trade enters at the same close it predicted.
+
+## Trap 2: Centered rolling windows
+
+Pandas will happily compute `rolling(window=21, center=True).mean()`. The window is centered on $t$, which means it uses bars from $t-10$ to $t+10$. Visually the line tracks price beautifully. In production it is a fantasy.
+
+$$
+\widehat{\mu}_t^{\mathrm{centered}} = \frac{1}{21} \sum_{k=-10}^{10} P_{t+k}
+$$
+
+Every $k > 0$ term is in the future. Never use `center=True` outside of exploratory data analysis, and never let a centered series leak into a strategy.
+
+## Trap 3: Restated data
+
+You pull yfinance daily bars. Six weeks later you pull the same range again — and yesterday's close is slightly different. Dividends, splits, and late corrections all change historical data after the fact. A backtest run today includes restatements that a strategy running in 2023 could not have known.
+
+The mitigation is **point-in-time data**: store the snapshot you would have had at $t$, and replay backtests against that snapshot, not the latest one.
+
+## Trap 4: Survivorship bias
+
+Backtesting "the current S&P 500" on data from 2010 is a look-ahead too. The current index does not contain Lehman, WaMu, Bear Stearns, or General Motors. By selecting your universe **with knowledge of who survived**, you have peeked at the future.
+
+A symbol-set $U_t$ is honest only if its membership at time $t$ depends solely on $\mathcal{F}_t$:
+
+$$
+U_t = h\bigl(\mathcal{F}_t\bigr)
+$$
+
+A 15-year backtest on today's QQQ list dramatically overstates returns. The right universe is the list as it stood at $t$, including the names that later got delisted.
+
+## The chart smell test
+
+Look at one period of your equity curve.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+If your strategy has a Sharpe over 5 on a low-frequency price-only signal, that is not skill — it's almost certainly a leak. Real long-only equity strategies on liquid US stocks live in the 0.3–1.0 Sharpe range. Look-ahead is the only thing that reliably manufactures Sharpe 5.
+
+## Pitfall
+
+<Pitfall title="Beautiful backtests are guilty until proven innocent">
+Look-ahead bias produces equity curves so clean they feel like a reward for hard work. They are not. Before celebrating, run this checklist: did the signal at $t$ touch any $P_u$ with $u > t$? Did any rolling window use `center=True`? Was the universe selected with hindsight? Was the data restated after the fact? If even one answer is yes, the result is invalid.
+</Pitfall>
+
+<KeyPoint title="The lag-by-one habit">
+For every signal you build, default to lagging it by one bar before computing returns: `position = signal.shift(1)`. This single line eliminates the most common form of look-ahead. If your strategy stops being profitable when you do this, you never had a strategy — you had a measurement of yesterday's prices on tomorrow's positions.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="B-29-lookahead-traps-q1" question="Your code computes `signal = close > sma20` and then `returns = signal * close.pct_change()`. What is wrong?" options={["Nothing — this is the standard form.","`signal` is unknown until t's close, but you are multiplying by the return computed using t's close — you are paying yourself for predicting the same price you used.","`pct_change()` should be `.diff()` for indicators.","SMA(20) is too short a window."]} answer={1} explanation="The signal becomes knowable only at t's close, yet the return formula assumes you opened the position before that close. The fix is `signal.shift(1) * close.pct_change()` so the position is held into the next bar." />
+
+<Quiz id="B-29-lookahead-traps-q2" question="A teammate proposes backtesting a momentum strategy on 'the top 100 US stocks by market cap as of today' from 2005 onward. What is the main objection?" options={["100 stocks is too small a universe.","Top-100 by market cap changes too rarely to matter.","Survivorship bias — the universe was selected with knowledge of who survived to today, so failed names are missing from the backtest.","Market cap is the wrong filter; you should use sector weights."]} answer={2} explanation="The 2005 universe should be the top 100 *as of 2005*, including names that later collapsed. Using today's list silently removes the losers and inflates returns." />

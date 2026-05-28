@@ -1,0 +1,76 @@
+# Track B review: a taxonomy of indicators
+
+You have finished 27 lessons on specific indicators. Without a map, that pile feels like trivia. This review gives you the map. Every indicator on the planet sits in one of six categories defined by **what it measures**. Pick a category before you pick an indicator, and most of your "should I use X or Y?" arguments evaporate.
+
+## The six categories
+
+Each category answers a different question about the same price series:
+
+| Category | Indicators in Track B | What it measures | Typical lag |
+|---|---|---|---|
+| Trend / smoothing | SMA, EMA, WMA, Ichimoku, SuperTrend | central tendency over a window | medium–high |
+| Momentum oscillators | RSI, MACD, Stochastic, CCI, Williams %R | rate of change of price | medium |
+| Volatility | ATR, Bollinger Bands, Keltner, Donchian | dispersion of price | low–medium |
+| Trend strength | ADX/DMI, Parabolic SAR | persistence of direction | medium |
+| Volume / flow | OBV, VWAP, MFI, Volume Profile | conviction behind price | varies |
+| Levels / structure | Pivot Points, Fibonacci Pivots | static support / resistance | none (recomputed daily) |
+
+Notice the lag column. Smoothers are slow on purpose. Volatility and pivot-based indicators react faster because they describe the bar, not a long history.
+
+## What each category does, and does not, do
+
+**Trend / smoothing** answers "where is the average level?" Smoothers tell you the regime, not the turn. Their lag is a feature for trend-followers and a bug for mean-reverters.
+
+**Momentum oscillators** answer "how fast is price changing?" They are bounded, which makes them easy to threshold (RSI > 70) but mediocre as primary signals — a market can stay overbought for weeks.
+
+**Volatility** answers "how dispersed is price?" These indicators measure scale, not direction. They size positions, set stops, and detect breakouts — they do not pick sides.
+
+**Trend strength** answers "is the trend real?" ADX above 25 says "the direction, whatever it is, is persistent." This tells you when **not** to use mean reversion.
+
+**Volume / flow** answers "is the move backed by participation?" A 1% move on 3× normal volume is more informative than on quiet volume. This category is used to **confirm** signals from the others.
+
+**Levels / structure** answers "where are the lines the market remembers?" Pivots and Fibonacci levels are static within a session and produce binary cross events.
+
+## The compression identity
+
+Almost every indicator above is a linear or piecewise-linear functional of the price series:
+
+$$
+I_t = \sum_{k=0}^{N-1} w_k \, \phi(P_{t-k})
+$$
+
+where $w_k$ are weights and $\phi$ is a per-bar transform (identity for SMA, $\ln$ for log-returns, $\max-\min$ for ranges). SMA has $w_k = 1/N$ flat; EMA decays geometrically; WMA decays linearly. The **weight profile** $w_k$ tells you almost everything about lag and noise.
+
+## Confluence: combine across categories, not within
+
+Open the playground and try stacking a smoother with a momentum oscillator:
+
+<IndicatorPlayground indicator="macd" />
+
+A trend filter (price above SMA(200)) combined with a momentum trigger (RSI crossing back above 30) gives you confluence. The two indicators measure **different things**, so agreement is two independent pieces of evidence.
+
+Contrast: stacking RSI + Stochastic + Williams %R is **not** three pieces of evidence. They are correlated cousins answering the same question with slightly different parameters. You are double-counting noise and calling it confidence.
+
+A useful diagnostic before combining two indicators $X$ and $Y$:
+
+$$
+\mathrm{corr}\bigl(s_X, s_Y\bigr) \ll 1
+$$
+
+Signals correlated at 0.8 barely add information. At 0.1, with edge on each side, combining roughly multiplies your effective sample size.
+
+## Pitfall
+
+<Pitfall title="Stacking momentum oscillators and calling it confluence">
+RSI, Stochastic, and Williams %R are all momentum oscillators normalized to a bounded range. They all turn at roughly the same time. Putting three of them on one chart and waiting for all three to agree is **double- and triple-counting the same signal** — not raising your confidence. Real confluence requires indicators from **different categories** in the taxonomy.
+</Pitfall>
+
+<KeyPoint title="Category first, parameter second">
+When evaluating a new indicator, ask which of the six categories it lives in before tuning its parameters. If you already have an indicator from that category in your strategy, you usually do not need another one — you need an indicator from a category you are missing.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="B-30-indicator-review-q1" question="You are building a multi-indicator signal and want true confluence. Which combination provides the most independent evidence?" options={["RSI(14) + Stochastic(14) + Williams %R(14)","SMA(50) + EMA(50) + WMA(50)","Price > SMA(200) (trend) + RSI(14) reversal (momentum) + ATR-based stop (volatility)","Bollinger Bands + Keltner Channels + Donchian Channels"]} answer={2} explanation="Confluence works across categories. Option C combines trend, momentum, and volatility — three different axes. The other options stack indicators from a single category, which just re-measures the same thing." />
+
+<Quiz id="B-30-indicator-review-q2" question="A new indicator is described as 'a smoothed version of the rate of change of price.' Before you backtest it, which existing category does it most likely belong to?" options={["Volatility — because rate of change has a magnitude.","Momentum oscillators — rate of change of price is the definition of momentum.","Levels / structure — because smoothing creates support lines.","Volume / flow — because it includes a derivative."]} answer={1} explanation="Rate of change of price is literally what momentum oscillators measure. Knowing the category up front tells you it will correlate with RSI, MACD, Stochastic, etc., so it is unlikely to add new information in a strategy that already uses one of those." />

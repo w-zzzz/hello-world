@@ -1,0 +1,68 @@
+# What makes an indicator "good"?
+
+By now you have met two dozen indicators. They all start from the same raw material — past prices, sometimes volume — and squeeze it through a different formula. So: **why prefer one over another?** "It looks good on the chart" is not an answer a quant can defend. This lesson gives you three axes that decide whether an indicator deserves a slot in your strategy: information ratio, lag, and robustness.
+
+## An indicator is a function of the past
+
+Strip away the marketing. An indicator $I_t$ is a deterministic function of bars up to time $t$:
+
+$$
+I_t = f(P_{t}, P_{t-1}, \ldots, P_{t-k}, V_{t}, \ldots)
+$$
+
+It cannot create information that is not already in the price series. The best it can do is **compress** the past into a number that correlates with the future. An indicator is "good" exactly when the signal it produces has measurable predictive content — not when its curve looks elegant.
+
+## Axis 1: Information ratio of the signal
+
+The honest test is: turn the indicator into a signal $s_t$ (long if $s_t = +1$, flat if $0$, short if $-1$), and measure the **information ratio** of the forward return conditional on the signal:
+
+$$
+\mathrm{IR} = \frac{\mathbb{E}[r_{t+1} \mid s_t]}{\sigma[r_{t+1} \mid s_t]}
+$$
+
+The numerator is the edge per trade. The denominator is the noise. A 5 bp edge with 20 bp of noise is much weaker than a 3 bp edge with 4 bp of noise. Crucially, the IR must survive **out-of-sample**: split your data, fit nothing on the test window, and recompute. If in-sample IR was 1.2 and out-of-sample is 0.1, the indicator was memorizing, not measuring.
+
+## Axis 2: Lag
+
+Every smoothing operator is a delay line. A simple moving average of length $N$ has a mean lag of $(N-1)/2$ bars. So SMA(50) is on average **24.5 bars** behind the price. That is not a small number when bars are days.
+
+Lag matters because regimes change suddenly. The faster your indicator reflects the change, the more of the new regime you get to trade. But there is no free lunch: cutting lag almost always raises noise. EMA reduces lag versus SMA at the cost of a heavier tail of false signals. The right question is not "what is the lag?" but "**at this lag, is the IR still positive?**"
+
+## Axis 3: Robustness
+
+Take an indicator that backtests well. Now perturb its parameter by ±10%. RSI(14) becomes RSI(13) and RSI(15). SMA(50) becomes SMA(45) and SMA(55). If the strategy still works, you have something real. If only RSI(14) works and RSI(13) and RSI(15) both lose money, you have **overfit a single number to history**. Real signals live on plateaus in parameter space, not on isolated peaks.
+
+A simple robustness check:
+
+$$
+\rho = \frac{\min_{\theta \in \Theta_\epsilon} \mathrm{IR}(\theta)}{\mathrm{IR}(\theta^\star)}
+$$
+
+where $\Theta_\epsilon$ is a small neighborhood around the chosen parameter $\theta^\star$. Aim for $\rho \geq 0.7$. Anything close to 0 is a warning.
+
+## A concrete contrast: SMA(50) vs RSI(14)
+
+Open the playground below and switch between them on the same symbol.
+
+<IndicatorPlayground indicator="rsi" />
+
+- **SMA(50)** is smooth and intuitive but has high lag. Used alone as a directional signal it produces a low single-digit IR.
+- **RSI(14)** has much lower lag and visibly reacts to short-term swings, but its signals are noisier — many of its 70/30 crossings reverse within a few bars.
+
+Neither one "wins" in the abstract. They sit at different points on the **lag–noise frontier**, and the right choice depends on the holding period your strategy is built for.
+
+## Pitfall
+
+<Pitfall title="Judging an indicator by its chart shape">
+Eye-pleasing curves are not evidence. A heavily smoothed indicator looks beautiful precisely because it has thrown away information — which usually destroys IR. Always compute the IR of the **signal** the indicator produces, never of the indicator itself, and always on data the parameters did not see.
+</Pitfall>
+
+<KeyPoint title="The three-axis test">
+Before you adopt an indicator, write down its out-of-sample signal IR, its mean lag in bars, and the IR floor in a ±10% parameter neighborhood. Two out of three is not enough — a high-IR, low-lag indicator that collapses under tiny parameter changes is overfit, not predictive.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="B-28-indicator-quality-q1" question="Your candidate indicator has in-sample signal IR of 1.4 but out-of-sample IR of 0.05. What is the most likely explanation?" options={["The indicator is correctly tuned; you just need more out-of-sample data.","The parameters were overfit to in-sample noise and the indicator has no real predictive content.","Out-of-sample data is always noisier and the IR difference is expected.","The market regime changed between the two periods, so the result is invalid."]} answer={1} explanation="A collapse from 1.4 to 0.05 is the classic signature of overfitting. A genuine signal degrades modestly out of sample, not by 95%." />
+
+<Quiz id="B-28-indicator-quality-q2" question="You have RSI(14) with backtest IR 0.9. RSI(13) gives IR 0.15 and RSI(15) gives IR 0.20. What should you conclude?" options={["RSI(14) is the optimal parameter and you should use it.","The indicator is robust enough; the neighbors are within tolerance.","The signal is not robust — IR is sitting on a narrow peak in parameter space and is likely overfit.","You should average the three IRs to get a fairer estimate."]} answer={2} explanation="Real signals live on plateaus. When ±1 in the parameter destroys the IR, you have fit a single number to historical noise rather than measured a real effect." />

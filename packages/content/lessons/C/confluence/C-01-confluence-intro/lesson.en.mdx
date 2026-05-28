@@ -1,0 +1,87 @@
+# What is confluence?
+
+A single indicator is a single opinion. RSI tells you about momentum. A moving average tells you about trend. Volume tells you about flow. Each one is right sometimes and wrong sometimes, and over a long enough horizon its information ratio is bounded by how much non-redundant information it actually carries.
+
+**Confluence** is the practice of stacking signals that point the same way at the same time. When done correctly, it lets you stand on more than one piece of evidence at once. When done incorrectly, it lets you fool yourself into thinking you have five opinions when you really have one opinion expressed five ways.
+
+In this lesson you will learn the precise definition of confluence, why **independence** is the load-bearing word, and how to think about combining signals without falling into the trap of over-filtering yourself into zero trades.
+
+## A working definition
+
+Confluence is when **multiple independent signals agree on the same direction at the same time**. Three words matter:
+
+- **Multiple** — at least two; in practice two to four is the sweet spot.
+- **Independent** — measuring different things, not different repackagings of the same thing.
+- **Agree** — pointing the same way, ideally with comparable confidence.
+
+The independence requirement is the one that beginners skip. Stacking RSI and Stochastic and calling it confluence is like asking the same friend the same question twice and counting the answers as two votes. Both are bounded oscillators built from recent price extrema. They will be highly correlated by construction.
+
+## Independent vs redundant: a checklist
+
+A useful test before adding a signal: does it look at a **different axis** of market behavior than the signals you already have?
+
+| Axis | Examples |
+|---|---|
+| Momentum / oscillator | RSI, Stochastic, Williams %R, CCI |
+| Trend / direction | SMA, EMA slope, ADX, SuperTrend |
+| Volatility / range | Bollinger width, ATR, Keltner |
+| Volume / flow | OBV, VWAP distance, MFI |
+| Structure / level | Pivots, prior highs/lows, Fibonacci |
+
+A confluence setup picks **one from each of several rows**, not several from the same row. "RSI oversold **and** price above the 200-day SMA **and** volume above its 20-day average" is genuine confluence — an oscillator, a trend filter, and a flow filter. "RSI oversold **and** Stochastic oversold **and** Williams %R oversold" is the same momentum opinion in three fonts.
+
+## Two-axis demo
+
+Look at the RSI playground. RSI is one axis — momentum.
+
+<IndicatorPlayground indicator="rsi" />
+
+Now look at Bollinger bands. Bollinger gives you a different axis — volatility-adjusted price location.
+
+<IndicatorPlayground indicator="bollinger" />
+
+A simple confluence rule using both:
+
+- **Long signal** = `RSI < 30` AND `price <= lower Bollinger band`.
+- **Short signal** = `RSI > 70` AND `price >= upper Bollinger band`.
+
+Each condition alone fires often and is often wrong. The AND of the two fires less often but is, in many markets, meaningfully more selective. You can also experiment with OR rules — wider entry, more noise — depending on whether your strategy is hungry for trades or for precision.
+
+## The frequency math
+
+There is one piece of math you must keep in your pocket. If $n$ truly independent conditions each fire with probability $p_i$, the joint signal fires with probability
+
+$$
+P_{\text{joint}} = \prod_{i=1}^{n} p_i
+$$
+
+Concretely: five independent filters each true 20% of the time produce a joint signal true
+
+$$
+0.2^5 = 0.00032 = 0.032\%
+$$
+
+of the time. On a daily-bar backtest covering 10 years (~2,500 bars), that is **less than one signal**. You cannot backtest a strategy that fires once a decade. You also cannot run it live with any confidence — the sample is too small to distinguish edge from luck.
+
+## How to use confluence in practice
+
+A few rules of thumb that survive contact with real data:
+
+1. **Start with two conditions, not five.** Two well-chosen independent signals usually capture most of the available edge.
+2. **Use OR for direction, AND for confirmation.** OR is for "any of these tell me there's something here"; AND is for "all of these confirm before I commit size".
+3. **Score, don't gate.** Instead of a hard AND, compute a confluence score (sum of binary signals or weighted average) and trade when the score exceeds a threshold. This degrades gracefully when one indicator is briefly noisy.
+4. **Check correlation between your signal sources** on out-of-sample data. If two "independent" indicators agree 90% of the time, they are not independent.
+
+<Pitfall title="Stacking yourself into zero trades">
+Each additional condition multiplies your selectivity but divides your trade count. With 5 independent conditions at 20% base rate, your joint signal fires about $0.2^5 \approx 0.032\%$ of the time — far too rare to backtest meaningfully or trade with confidence. More filters does not mean better — past two or three independent dimensions, you are mostly trading away sample size for the comforting illusion of certainty.
+</Pitfall>
+
+<KeyPoint title="The one word: independent">
+Confluence only stacks edge when the signals are independent. Three oscillators agreeing is one opinion, not three. One oscillator plus one trend filter plus one volume filter is genuine confluence, because each signal is measuring a different dimension of the market.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="C-01-confluence-intro-q1" question="Which combination is closest to genuine confluence?" options={["RSI < 30 AND Stochastic < 20 AND Williams %R < -80","RSI < 30 AND price above the 200-day SMA AND volume above its 20-day average","Three different RSI lookback lengths all below 30","Bollinger %B < 0 AND CCI < -100 AND RSI < 30"]} answer={1} explanation="Genuine confluence requires signals on different axes. Option 2 combines an oscillator (RSI), a trend filter (200-day SMA), and a flow filter (volume) — three independent dimensions. The other options stack near-duplicates: all oscillators measuring the same momentum dimension." />
+
+<Quiz id="C-01-confluence-intro-q2" question="You build a strategy with 5 independent conditions, each true ~20% of the time. Roughly what fraction of bars will fire a joint signal?" options={["About 20%","About 5%","About 1%","About 0.03%"]} answer={3} explanation="For independent conditions, joint probability is the product: 0.2^5 ≈ 0.00032, or about 0.03%. On 2,500 daily bars that is less than one signal — too rare to backtest or trade meaningfully." />
