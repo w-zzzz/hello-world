@@ -1,5 +1,6 @@
 'use server'
 
+import { checkRateLimit } from '@quant-academy/db'
 import { and, desc, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth'
@@ -7,6 +8,12 @@ import { backtestResults, backtestRuns, db } from '@/lib/backtests'
 import type { BacktestResultJson } from './backtests-types'
 
 const API_BASE = process.env.QA_API_BASE ?? 'http://localhost:8000'
+
+const RATE_LIMIT_RUN_BACKTEST = {
+  action: 'runBacktest',
+  max: 10,
+  windowSeconds: 60,
+} as const
 
 export interface PresetMeta {
   id: string
@@ -53,6 +60,13 @@ export async function runBacktest(input: {
 }): Promise<RunOk | RunErr> {
   const user = await getCurrentUser()
   if (!user) return { ok: false, error: 'unauthenticated' }
+
+  // H-RATELIMIT-1: per-user 10/min cap so the runner can't be flooded
+  // (vectorbt is expensive) and a single user can't farm queue capacity.
+  const gate = await checkRateLimit(user.id, RATE_LIMIT_RUN_BACKTEST)
+  if (!gate.ok) {
+    return { ok: false, error: `rate_limited: retry in ${gate.retryAfterSeconds}s` }
+  }
 
   // Insert pending run.
   const inserted = await db

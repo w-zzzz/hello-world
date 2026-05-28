@@ -7,8 +7,10 @@ import {
   lessonCompletions,
   type NewAiUsage,
   type NewBacktestResult,
+  type NewRateLimitHit,
   type NewTutorMessage,
   type NewUser,
+  rateLimits,
   streaks,
   tutorMessages,
   users,
@@ -29,6 +31,7 @@ describe('schema', () => {
     expect(aiUsage).toBeDefined()
     expect(backtestRuns).toBeDefined()
     expect(backtestResults).toBeDefined()
+    expect(rateLimits).toBeDefined()
   })
 
   it('exposes the expected xp event kinds', () => {
@@ -40,6 +43,20 @@ describe('schema', () => {
       'achievement',
     ])
     expect(XP_EVENT_KINDS).toHaveLength(5)
+    // Idempotency (C-XP-1) hinges on the lesson_complete kind continuing
+    // to exist alongside its partial-unique index xp_events_lesson_complete_unique.
+    expect(XP_EVENT_KINDS).toContain('lesson_complete')
+  })
+
+  it('exposes the rate_limits table with the expected columns', () => {
+    expect(rateLimits.userId).toBeDefined()
+    expect(rateLimits.userId.name).toBe('user_id')
+    expect(rateLimits.action).toBeDefined()
+    expect(rateLimits.action.name).toBe('action')
+    expect(rateLimits.hitAt).toBeDefined()
+    expect(rateLimits.hitAt.name).toBe('hit_at')
+    expectTypeOf<NewRateLimitHit>().toHaveProperty('userId').toEqualTypeOf<string>()
+    expectTypeOf<NewRateLimitHit>().toHaveProperty('action').toEqualTypeOf<string>()
   })
 
   it('marks users.handle as required at the type level', () => {

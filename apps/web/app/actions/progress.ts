@@ -1,6 +1,7 @@
 'use server'
 
 import { getLessonRecord } from '@quant-academy/content'
+import { checkRateLimit } from '@quant-academy/db'
 import {
   computeXpAward,
   initialStreak,
@@ -8,7 +9,7 @@ import {
   nextStreakState,
   type StreakState,
 } from '@quant-academy/gamification'
-import { and, count, desc, eq, sum } from 'drizzle-orm'
+import { and, count, desc, eq, sql, sum } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth'
 import { db, lessonCompletions, streaks, xpEvents } from '@/lib/db'
@@ -22,6 +23,12 @@ const VALID_KINDS = [
 ] as const
 type XpKind = (typeof VALID_KINDS)[number]
 
+const RATE_LIMIT_LESSON_COMPLETE = {
+  action: 'markLessonComplete',
+  max: 30,
+  windowSeconds: 60,
+} as const
+
 export interface MarkLessonCompleteInput {
   lessonId: string
   /** 0..100 if a quiz was attached; omit if no quiz. */
@@ -34,13 +41,20 @@ export interface MarkLessonCompleteResult {
   xpTotal: number
   newLevel: number
   leveledUp: boolean
+  /** True when the lesson had already been XP-credited; xpAwarded will be 0. */
+  alreadyCompleted?: boolean
 }
 
 export async function markLessonComplete(
   input: MarkLessonCompleteInput,
-): Promise<MarkLessonCompleteResult | { error: 'unauthenticated' | 'unknown_lesson' }> {
+): Promise<
+  MarkLessonCompleteResult | { error: 'unauthenticated' | 'unknown_lesson' | 'rate_limited' }
+> {
   const user = await getCurrentUser()
   if (!user) return { error: 'unauthenticated' }
+
+  const gate = await checkRateLimit(user.id, RATE_LIMIT_LESSON_COMPLETE)
+  if (!gate.ok) return { error: 'rate_limited' }
 
   const record = getLessonRecord(input.lessonId)
   if (!record) return { error: 'unknown_lesson' }
@@ -122,14 +136,25 @@ export async function markLessonComplete(
       })
     }
 
-    // 6. Record xp event.
+    // 6. Record xp event — idempotent per (user_id, ref_id) via partial
+    //    unique index xp_events_lesson_complete_unique (C-XP-1). Replays of
+    //    the same lesson by the same user collide at the DB level and no
+    //    new XP is awarded.
     const xpKind: XpKind = 'lesson_complete'
-    await tx.insert(xpEvents).values({
-      userId: user.id,
-      kind: xpKind,
-      amount: award.total,
-      refId: input.lessonId,
-    })
+    const inserted = await tx
+      .insert(xpEvents)
+      .values({
+        userId: user.id,
+        kind: xpKind,
+        amount: award.total,
+        refId: input.lessonId,
+      })
+      .onConflictDoNothing({
+        target: [xpEvents.userId, xpEvents.refId],
+        where: sql`${xpEvents.kind} = 'lesson_complete'`,
+      })
+      .returning({ id: xpEvents.id })
+    const xpWasAwarded = inserted.length > 0
 
     // 7. Upsert streak.
     if (streakRow[0]) {
@@ -150,13 +175,16 @@ export async function markLessonComplete(
       })
     }
 
-    // 8. Recompute XP total + level.
+    // 8. Recompute XP total + level. When the xp_events insert collided on
+    //    the partial unique index, no XP was added this call, so priorXpTotal
+    //    matches xpTotal and leveledUp is false.
     const totalRow = await tx
       .select({ total: sum(xpEvents.amount).mapWith(Number) })
       .from(xpEvents)
       .where(eq(xpEvents.userId, user.id))
     const xpTotal = totalRow[0]?.total ?? 0
-    const priorXpTotal = xpTotal - award.total
+    const xpAwarded = xpWasAwarded ? award.total : 0
+    const priorXpTotal = xpTotal - xpAwarded
     const newLevel = levelForXp(xpTotal).level
     const priorLevel = levelForXp(priorXpTotal).level
 
@@ -164,10 +192,11 @@ export async function markLessonComplete(
     revalidatePath('/[locale]/lessons/[id]', 'page')
 
     return {
-      xpAwarded: award.total,
+      xpAwarded,
       xpTotal,
       newLevel,
       leveledUp: newLevel > priorLevel,
+      alreadyCompleted: !xpWasAwarded,
     }
   })
 }
