@@ -63,6 +63,30 @@ export async function recordSonnetUsage(
     })
 }
 
+const CJK_BASE = 0x2e80 // CJK Radicals Supplement and above (covers han, hiragana, katakana, hangul)
+const CJK_TOP = 0x9fff // Up through CJK Unified Ideographs — close enough for budgeting
+const HANGUL_TOP = 0xd7af // Plus Hangul Jamo / Syllables
+
 export function estimateInputTokens(text: string): number {
-  return Math.ceil(text.length / 3.5)
+  // Cheap, code-point-aware approximation:
+  //   - Non-CJK: 1 token per ~3.5 chars (English-heavy)
+  //   - CJK (Han, kana, hangul, halfwidth-fullwidth):
+  //       conservatively 1.5 tokens per char (closer to Anthropic's
+  //       observed ratio than the 0.286 the old formula implied)
+  let nonCjkChars = 0
+  let cjkChars = 0
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0
+    if (
+      (cp >= CJK_BASE && cp <= CJK_TOP) ||
+      (cp >= 0xac00 && cp <= HANGUL_TOP) ||
+      (cp >= 0xff00 && cp <= 0xffef) ||
+      (cp >= 0x3000 && cp <= 0x303f)
+    ) {
+      cjkChars += 1
+    } else {
+      nonCjkChars += 1
+    }
+  }
+  return Math.ceil(nonCjkChars / 3.5 + cjkChars * 1.5)
 }
