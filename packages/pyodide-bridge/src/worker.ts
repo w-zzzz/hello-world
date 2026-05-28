@@ -15,9 +15,17 @@ interface PyodideAPI {
 
 let pyodide: PyodideAPI | null = null
 
+// The Pyodide module is loaded from the CDN at runtime. Wrapping `import()` in
+// `new Function` keeps bundlers (Turbopack, webpack, Vite) from trying to
+// statically resolve the URL — which would fail because it's only known at
+// runtime.
+const dynamicImport = new Function('u', 'return import(u)') as (
+  u: string,
+) => Promise<{ loadPyodide: (cfg: { indexURL: string }) => Promise<PyodideAPI> }>
+
 async function loadPyodide(): Promise<PyodideAPI> {
   if (pyodide) return pyodide
-  const mod = await import(/* @vite-ignore */ PYODIDE_CDN_URL)
+  const mod = await dynamicImport(PYODIDE_CDN_URL)
   // pyodide.mjs exports `loadPyodide` factory
   const py = (await mod.loadPyodide({
     indexURL: PYODIDE_CDN_URL.replace(/pyodide\.mjs$/, ''),

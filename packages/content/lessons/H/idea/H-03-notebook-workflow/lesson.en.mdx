@@ -1,0 +1,81 @@
+# Notebook workflow: write your first strategy in the browser
+
+Up to now you have been a reader of charts. This lesson flips the role: you will write a strategy and run it. No Python install, no pandas wheel, no waiting on a server. Everything happens inside the browser tab you already have open.
+
+## Why start in a notebook?
+
+Turning a trading idea into a result you trust normally takes ten or twenty rounds of "change a line, run it, look at it". The shorter that loop, the more hypotheses you can try before you run out of patience.
+
+A full backtest — with fees, slippage, equity curve, Sharpe — is non-negotiable, but running it on every keystroke is slow and often hides a simple question: **what does the signal itself even look like?**
+
+The notebook workflow compresses the loop to a few seconds: tweak two lines, see exactly where the signal flips, fix the bug, run again. Once the idea looks alive, promote it to the server for the full tearsheet.
+
+<KeyPoint title="Iteration speed is the ceiling">Most professional quants iterate signals in a notebook first, then move to a full backtest only when the shape looks promising.</KeyPoint>
+
+## A strategy is just a function
+
+The Quant Academy contract is deliberately narrow. You write one function, called `run`, that takes a list of closing prices and returns a dictionary containing at least a `signal` key.
+
+```python
+def run(close: list[float]) -> dict:
+    # close is ordered oldest-to-newest
+    # signal must be the same length as close
+    return {'signal': signals, 'note': 'optional debug string'}
+```
+
+Each entry in `signal` is exactly one of three integers: $+1$ for "hold long", $-1$ for "hold short", $0$ for "stay flat".
+
+The minimal example is a moving-average crossover. With short SMA $\mathrm{SMA}_s$ and long SMA $\mathrm{SMA}_l$, the raw signal at time $t$ is:
+
+$$
+\text{signal}_t = \begin{cases} +1, & \mathrm{SMA}_s(t) > \mathrm{SMA}_l(t) \\ -1, & \mathrm{SMA}_s(t) < \mathrm{SMA}_l(t) \\ 0, & \text{otherwise} \end{cases}
+$$
+
+Translated to numpy, that is essentially the body of the default sample shipped with the editor.
+
+## Inside the editor
+
+Open the editor, run the default sample once, then start editing.
+
+<KeyPoint title="Try it">[Open the editor](/en/editor)</KeyPoint>
+
+Three things to notice on the page:
+
+- **Sample dropdown** — three starting points: `sma_crossover` (trend), `mean_reversion` (Bollinger pullback), `momentum` (price-rate-of-change). Pick one, run it as-is, then mutate it.
+- **Run button** — fires Pyodide in a Web Worker. The first run loads the wheel; subsequent runs are near-instant. The chart underneath shows where the signal flipped.
+- **Promote to server** — sends the same code to the server-side sandbox, runs the full vectorbt backtest, and drops you into the Workshop tearsheet.
+
+A good first experiment: take `sma_crossover`, change the window lengths from 20/50 to 10/30, and watch the signal density change.
+
+## Browser vs server
+
+The two tiers are not redundant — they own different jobs.
+
+**Tier 1, browser (Pyodide):** zero install, sub-second feedback, restricted package set (`numpy`, `pandas`, `math`, no network, no filesystem). Cheap to run; great for iterating on signal shape.
+
+**Tier 2, server (qa_sandbox):** full vectorbt backtest with fees, slippage, Sharpe, drawdown. Runs inside a hardened sandbox. Slower, but its numbers are the ones that belong in a strategy report.
+
+Treat the browser as your scratch pad and the server as the grading session.
+
+## Common mistakes
+
+Two pitfalls show up almost every time on a first `run`. Both are in the return value.
+
+<Pitfall title="No signal key, or wrong length">
+The returned dict **must** contain a key called `signal`, or the backend rejects it with `MissingSignal`. The list **must** be exactly the same length as `close` — off-by-one breaks the contract. If you use a rolling indicator (SMA, EMA), pad the first N-1 positions with `0`, not `NaN`, and do not slice them off.
+</Pitfall>
+
+Two smaller traps worth knowing about now:
+
+- Each element of `signal` must be a plain Python `int`. A numpy `int64` will fail JSON serialization in the browser bridge — wrap with `int(x)`.
+- `run` cannot do I/O. No file writes, no `import requests`, no network. Both tiers will refuse.
+
+## Check yourself
+
+<Quiz
+  id="H-03-q1"
+  question="What key must the dictionary returned by `run(close)` contain?"
+  options={['signal', 'result', 'output', 'data']}
+  answer={0}
+  explanation="The contract only hard-requires signal: a list of integers in {-1, 0, +1} with the same length as close. Other keys (note, debug, etc.) are optional."
+/>

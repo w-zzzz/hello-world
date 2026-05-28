@@ -949,12 +949,13 @@ const TRACK_H: LessonRecord[] = [
     tags: ['ship', 'universe'],
   }),
   lesson('H', 3, {
-    id: 'H-03-pyodide-notebook',
-    module: 'prototype',
+    id: 'H-03-notebook-workflow',
+    module: 'idea',
     difficulty: 'intermediate',
-    durationMin: 22,
-    xp: 140,
-    tags: ['ship', 'notebook'],
+    durationMin: 14,
+    xp: 80,
+    tags: ['ship', 'notebook', 'pyodide'],
+    mdxReady: true,
   }),
   lesson('H', 4, {
     id: 'H-04-vectorbt-prototype',
@@ -962,7 +963,7 @@ const TRACK_H: LessonRecord[] = [
     difficulty: 'advanced',
     durationMin: 24,
     xp: 170,
-    prerequisites: ['H-03-pyodide-notebook'],
+    prerequisites: ['H-03-notebook-workflow'],
     tags: ['ship', 'vectorbt'],
   }),
   lesson('H', 5, {

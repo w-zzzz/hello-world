@@ -78,9 +78,14 @@ describe('CURRICULUM', () => {
     expect(getLessonsByTrack('H')).toHaveLength(12)
   })
 
-  it('marks only Track A first three lessons as mdxReady', () => {
+  it('marks the expected lessons as mdxReady', () => {
     const ready = CURRICULUM.lessons.filter((l) => l.mdxReady).map((l) => l.meta.id)
-    expect(ready).toEqual(['A-01-what-is-market', 'A-02-price-spread', 'A-03-order-types'])
+    expect(ready).toEqual([
+      'A-01-what-is-market',
+      'A-02-price-spread',
+      'A-03-order-types',
+      'H-03-notebook-workflow',
+    ])
   })
 
   it('has unique lesson ids', () => {
