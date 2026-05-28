@@ -166,5 +166,19 @@
     "trades": "交易记录",
     "notAvailable": "结果暂不可用",
     "rerun": "重新运行"
+  },
+  "editor": {
+    "title": "策略编辑器",
+    "subtitle": "用 Python 写一段策略，先在浏览器里跑通，再提交到服务器跑完整回测",
+    "signInPrompt": "登录以使用策略编辑器",
+    "sample": "示例",
+    "run": "运行",
+    "running": "运行中...",
+    "promote": "提交到服务器",
+    "promoting": "提交中...",
+    "empty": "点击「运行」执行策略",
+    "completedIn": "完成耗时 {ms} ms",
+    "rawReturn": "返回值",
+    "serverError": "服务器错误"
   }
 }

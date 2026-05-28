@@ -166,5 +166,19 @@
     "trades": "Trades",
     "notAvailable": "Result not available",
     "rerun": "Re-run"
+  },
+  "editor": {
+    "title": "Strategy Editor",
+    "subtitle": "Write a Python strategy, run it in the browser first, then promote to a full server backtest",
+    "signInPrompt": "Sign in to use the Strategy Editor",
+    "sample": "Sample",
+    "run": "Run",
+    "running": "Running…",
+    "promote": "Promote to server",
+    "promoting": "Promoting…",
+    "empty": "Click Run to execute",
+    "completedIn": "Completed in {ms} ms",
+    "rawReturn": "Return value",
+    "serverError": "Server error"
   }
 }
