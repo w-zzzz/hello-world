@@ -1,0 +1,85 @@
+# Detecting market regimes
+
+A strategy that prints money in a calm trending tape can lose every penny back in a choppy, volatile one. The same RSI cross, the same moving-average rule — different *regime*, different outcome. This lesson is about how to tell which world you are in, and how to use that knowledge as a filter rather than a crystal ball.
+
+By the end you will be able to define what a regime is, name the three taxonomies practitioners actually use, and explain why regime indicators are themselves lagging.
+
+## What is a regime?
+
+A **regime** is a window of relatively stable market behavior — stable enough that statistical properties (drift, volatility, autocorrelation) look roughly constant. Regimes don't have crisp edges. They blur into one another, and you only really know a regime ended after it has ended. The point is not to predict the next regime; it is to recognize the current one well enough to avoid running a mean-reverting bot inside a runaway trend.
+
+## Taxonomy 1: trend vs range
+
+The most useful split for systematic traders is **trending vs ranging**. ADX is the classical measurement.
+
+- **ADX > 25** is conventionally read as a trending regime.
+- **ADX < 20** is read as a ranging regime.
+- The zone between is ambiguous — treat it as "unknown" rather than forcing a label.
+
+A model-free alternative is realized-vol of returns combined with autocorrelation: trends have positive return autocorrelation at short lags; ranges have negative.
+
+## Taxonomy 2: high vs low volatility
+
+Volatility regimes change strategy expectations. A breakout system needs vol; a carry system hates it. The simplest measure is annualized realized volatility over the last $N$ bars:
+
+$$
+\mathrm{RV}_t \;=\; \sqrt{\,\frac{252}{N}\sum_{i=t-N+1}^{t} r_i^{\,2}\,}
+$$
+
+A rolling median of $\mathrm{RV}$ over a long window (e.g. one year) is your threshold. Above median is "high vol"; below median is "low vol". Crude — and very hard to beat without overfitting.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## Taxonomy 3: risk-on vs risk-off
+
+Macro practitioners watch cross-asset relationships. When stocks rally and bonds sell off together, capital is moving out of safety — risk-on. When the SPY/TLT ratio compresses, dollar firms up against EM, and credit spreads widen, capital is hiding — risk-off. These aren't precise rules; they are dashboards. You combine them into a single discretionary or rules-based "risk gauge".
+
+## Probabilistic regime models
+
+A more rigorous approach is a **Hidden Markov Model (HMM)** with, say, two latent states $\{R_1, R_2\}$ and observed returns. The model learns transition probabilities $P(R_{t+1} \mid R_t)$ and emits a posterior $P(R_t \mid \text{data}_{\le t})$. You act when the posterior of one state is high.
+
+HMMs are mathematically elegant and operationally fragile. They overfit short samples, they reassign labels between fits, and the "regimes" they find don't always match anything tradable. Use them as a research tool, not a production switch — at least until you've walked them forward across multiple years.
+
+## How to use regime: as a filter, not a forecast
+
+The temptation is to treat regime as a predictor: "we're in low-vol mean reversion, so I'll go long mean reversion now." That confuses *current* regime with *future* regime. A safer framing:
+
+- Every strategy has a **preferred regime**. Mean reversion likes range + low vol. Trend following likes momentum + high vol.
+- A regime filter **keeps you out of obviously wrong regimes** for your strategy. It does not tell you the right regime is coming.
+- When two strategies with opposite regime preferences are combined honestly, you get a portfolio whose total exposure is regulated by the filter.
+
+<Pitfall title="Regime indicators are themselves lagging">
+By the time ADX confirms a trend, you have already paid the cost of the entire range that preceded it — and the trend may be near exhaustion. Treat regime as a filter that removes the worst environments, not as a signal that calls the next one. If your strategy needs a regime forecast to be profitable, it is probably not robust.
+</Pitfall>
+
+<KeyPoint title="The honest use of regime">
+Don't ask "what regime is next?" Ask "is the current regime hostile to my strategy?" A regime filter shrinks your exposure when the answer is yes.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="C-05-regime-detection-q1"
+  question="Which framing of regime detection is most defensible for a systematic trader?"
+  options={[
+    'A precise classifier that predicts the next regime so we can position ahead.',
+    'A filter that removes obviously hostile environments for the current strategy.',
+    'A discretionary call made daily after reading market news.',
+    'An HMM with two states retrained every morning on the last 30 days.',
+  ]}
+  answer={1}
+  explanation="Regime indicators lag. The honest use is to suppress trades in environments that are clearly wrong for the strategy, not to time the next regime change."
+/>
+
+<Quiz
+  id="C-05-regime-detection-q2"
+  question="A mean reversion strategy is most at home in which regime?"
+  options={[
+    'High volatility, strong trend.',
+    'Low volatility, ranging.',
+    'Risk-off macro environment with widening credit spreads.',
+    'High realized volatility breakouts.',
+  ]}
+  answer={1}
+  explanation="Mean reversion needs returns to swing around a stable mean — that requires range-bound price action and tame volatility. Strong trends and vol spikes break the mean-reverting assumption."
+/>

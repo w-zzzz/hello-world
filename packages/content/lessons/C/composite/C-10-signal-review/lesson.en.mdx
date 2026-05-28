@@ -1,0 +1,93 @@
+# Track C wrap-up
+
+Ten lessons in, you have seen confluence, divergence, regime, aggregation, smoothing, filtering, and a complete worked composite signal. This closing lesson is a deliberately short one — it consolidates the mental model you should be carrying out of Track C and signposts what comes next.
+
+## Five things to remember
+
+### 1. A signal is a rule, not a prediction
+
+The signals you have built do not claim to know the future. They are **rules** that *behave* in known ways across history and (you hope) generalize. The right question is never "is this signal right?" — it is "in what regime is this signal *less wrong*?" Good signals fail gracefully: they lose small in the wrong regime and win large in the right one.
+
+### 2. Confluence stacks across axes, not within one axis
+
+Stacking RSI, Stochastic, and Williams %R does not give you three signals. It gives you one momentum signal with three sleeves. Real confluence stacks **independent axes**: trend, momentum, volatility, and flow. The math is in C-06:
+
+$$
+\mathrm{Var}\!\left(\bar S\right) \;=\; \frac{\sigma^2}{N}\,\bigl(1 + (N-1)\,\rho\bigr)
+$$
+
+When $\rho$ is large, $N$ doesn't help you. The whole game of confluence is finding low-$\rho$ ingredients.
+
+### 3. Regime matters — every signal has a preferred environment
+
+Every rule has a regime in which it is at its best and a regime in which it is at its worst. **Track which regime you are in**, and use it as a filter to suppress trades in obviously hostile environments. Don't try to predict the next regime — you cannot — but do refuse to run mean reversion through a runaway trend.
+
+### 4. Filters trade frequency for hit-rate
+
+You can layer trend, vol, time-of-day, and persistence filters to lift per-trade hit-rate, but each one is paid for in cut trades. Cross the threshold of three or four filters and you are no longer designing — you are curve-fitting. Each filter must have an independent justification.
+
+### 5. Smoothing has a cost
+
+Every bar of smoothing is a bar of lag. The optimal smoothing parameter depends on the regime, which is why robust strategies use round-number windows chosen a priori — not grid-searched.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## The signal-builder's toolkit
+
+<Glossary>
+**Confluence** — Multiple independent signals agreeing on a single direction. Power comes from axis independence, not from signal count.
+
+**Regime** — A window of relatively stable market behaviour (trend vs range, high vs low vol, risk-on vs risk-off). Used as a filter, never as a forecast.
+
+**Aggregation** — AND (high precision), OR (high recall), or weighted voting (the tunable middle). Equal weights beat optimized weights out of sample more often than people admit.
+
+**Smoothing** — Variance reduction at the cost of lag. EWMA period $n$ implies roughly $(n-1)/2$ bars of lag.
+
+**Filter** — A condition applied after the base signal to suppress trades in hostile environments. Trades frequency for hit-rate.
+
+**Lookahead** — Using information at decision time that wouldn't actually have been available. The single most common cause of unreproducible backtests.
+
+**Time stop** — An exit triggered by elapsed bars. Bounds holding period, which bounds variance.
+</Glossary>
+
+## What comes next: Track D
+
+You can now generate signals. The next question is the most uncomfortable in quant finance: **does this signal actually make money?** Track D is about backtesting honestly — return, risk, drawdown, the difference between gross and net, walk-forward validation, and the many ways a beautiful equity curve can be a lie.
+
+If you skipped the workshop (C-09), do it before D-01. The disciplines we will measure with in Track D are the disciplines you practiced in the workshop.
+
+<Pitfall title="The most dangerous moment for a quant">
+You have just built a confluence rule that, on five years of SPY, produced a chart you like. The natural conclusion is "I've cracked it." The right conclusion is "I'd better walk-forward test this, on multiple symbols, with realistic costs, before I tell anyone — including myself — that I've cracked anything." The five-years-of-SPY chart is the easiest backtest in the world to fool yourself with.
+</Pitfall>
+
+<KeyPoint title="Track C exit ticket">
+You have a vocabulary (rule, regime, confluence, filter, aggregation, lookahead) and a process (hypothesis → axes → aggregation → exits → execution → lookahead check → out-of-sample). Track D will teach you to measure honestly what these rules actually do.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="C-10-signal-review-q1"
+  question="Which statement best captures the honest framing of a signal?"
+  options={[
+    'A signal is a prediction of future returns.',
+    'A signal is a rule that fails gracefully in the wrong regime and wins in the right one.',
+    'A signal is whatever indicator combination has the highest in-sample Sharpe.',
+    'A signal is a model whose parameters should be retrained nightly.',
+  ]}
+  answer={1}
+  explanation="Signals don't claim to predict. They claim to behave in known ways across regimes — winning where they fit, losing small where they don't."
+/>
+
+<Quiz
+  id="C-10-signal-review-q2"
+  question="After building a composite signal that looks great on 5 years of SPY, what is the right next move?"
+  options={[
+    'Deploy with full size — the backtest confirms the edge.',
+    'Tweak parameters to push Sharpe slightly higher before deployment.',
+    'Walk-forward test on a held-out window and on additional symbols with realistic costs.',
+    'Add three more filters until in-sample Sharpe exceeds 3.',
+  ]}
+  answer={2}
+  explanation="One in-sample backtest on one symbol is the easiest way to deceive yourself. Walk-forward, cross-symbol, cost-aware validation is the minimum standard before trusting a result."
+/>

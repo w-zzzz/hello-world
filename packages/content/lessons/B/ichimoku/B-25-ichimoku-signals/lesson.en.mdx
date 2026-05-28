@@ -1,0 +1,78 @@
+# Ichimoku trading signals: TK cross, Kumo breakout, Chikou clear
+
+The five-line chart is the *state* surface. This lesson is about *transitions* — the events traditional Japanese traders treated as entry triggers. There are three classics: the TK cross, the price-cloud breakout, and the Kumo twist. None is an edge on its own. The edge comes from requiring confluence between them.
+
+## Signal 1: the TK cross
+
+A **TK cross** happens when the Tenkan crosses the Kijun. With Tenkan computed on 9 bars and Kijun on 26 bars, this is structurally similar to a fast-slow moving-average cross:
+
+$$
+\mathrm{TK\ cross}_t = \mathrm{sign}\!\left( \mathrm{Tenkan}_t - \mathrm{Kijun}_t \right) \neq \mathrm{sign}\!\left( \mathrm{Tenkan}_{t-1} - \mathrm{Kijun}_{t-1} \right)
+$$
+
+The convention:
+
+- **Bullish TK cross:** Tenkan crosses above Kijun.
+- **Bearish TK cross:** Tenkan crosses below Kijun.
+
+Hosoda graded crosses by where they happen relative to the cloud:
+
+- **Strong:** bullish cross *above* the cloud, bearish cross *below*.
+- **Neutral:** cross *inside* the cloud.
+- **Weak:** bullish cross below the cloud, bearish cross above — fighting the prevailing trend.
+
+## Signal 2: the price-cloud breakout
+
+A **Kumo breakout** is a close that crosses the top or bottom edge of the cloud:
+
+- **Bullish breakout:** close above the top edge of the Kumo (the higher of SenkouA, SenkouB) after previously being inside or below.
+- **Bearish breakout:** close below the bottom edge after previously being inside or above.
+
+Thickness matters. A breakout through a thin cloud carries more conviction than a poke through a thick one, because the cloud was lighter — there was less aggregated support/resistance to overcome.
+
+## Signal 3: the Kumo twist
+
+A **Kumo twist** is when Senkou A and Senkou B cross *inside the forward-projected cloud*:
+
+$$
+\mathrm{Twist}_t \iff \mathrm{sign}\!\left( \mathrm{SenkouA}_t - \mathrm{SenkouB}_t \right) \neq \mathrm{sign}\!\left( \mathrm{SenkouA}_{t-1} - \mathrm{SenkouB}_{t-1} \right)
+$$
+
+Because both spans live 26 bars in the future on the chart, you actually see a twist coming — the cloud narrows, pinches, and flips color. Traders read this as a regime change: a *future* commitment from the data that the trend behind the cloud is rotating.
+
+## Confluence: Chikou clear and the full setup
+
+A purist Ichimoku long requires four conditions:
+
+1. Bullish TK cross.
+2. Price above the cloud.
+3. Cloud ahead is bullish.
+4. **Chikou clear** — the Chikou Span (today's close drawn 26 bars back) is above the price action 26 bars ago, with no candles obstructing it.
+
+The Chikou-clear check is the one most traders skip and is also the most useful. It is asking: *is today's close better than where this stock was a month ago?* If Chikou is buried inside last month's candles, your "bullish breakout" is happening into supply that you can see in plain sight.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the chart and find a stretch where price was clearly above the cloud. Was the trend smooth? Were there false TK crosses inside the trend? Now find a stretch where price was below the cloud — same exercise. Most of the time you will see TK crosses that did not produce moves, because the cloud-confluence condition was violated.
+
+## How the signals compare to plain moving averages
+
+A naive TK cross is *slightly worse* than an EMA(9)/EMA(26) cross on most equity backtests. The reason is the construction: Tenkan and Kijun use midpoints of highs and lows, not closes. Midpoints are smoother but more sensitive to single-bar wicks. So a fair, apples-to-apples comparison gives:
+
+- TK cross alone: roughly equivalent to a fast/slow moving-average cross, marginally worse.
+- TK cross + cloud filter: meaningfully better, because the cloud filter rejects counter-trend crosses.
+- TK cross + cloud + Chikou clear: even better hit rate, lower frequency.
+
+The lesson here is structural. The cross by itself has no edge unique to Ichimoku — it is just a moving-average cross with extra steps. The edge is the **filter stack**.
+
+<Pitfall title="Treating the TK cross as the signal">
+A TK cross on its own is not an Ichimoku signal — it is a moving-average cross that happens to use midpoints. Hosoda's whole point was that the cross is a *trigger* you only act on when the cloud and Chikou agree. Strategies that fire on TK crosses alone perform similarly to a noisy fast-slow MA cross and lose the entire conceptual benefit of the system. If you ablate the cloud and Chikou conditions and the backtest doesn't get visibly worse, you are not actually trading Ichimoku.
+</Pitfall>
+
+<KeyPoint title="Signals are events; the cloud is the filter">
+TK cross, Kumo breakout, and Kumo twist are the three classic Ichimoku events. The edge comes from requiring confluence: bullish event + price above cloud + bullish cloud ahead + Chikou clear. Take any of those four away and you are back to a marginal moving-average system.
+</KeyPoint>
+
+<Quiz id="B-25-ichimoku-signals-q1" question="What is the difference between a 'strong' and a 'weak' TK cross under Hosoda's grading?" options={["Strong crosses use Tenkan(9) and weak crosses use Tenkan(7).","A strong cross happens in the direction of the prevailing cloud regime; a weak cross fights it.","A strong cross uses closes and a weak cross uses opens.","Strong crosses only happen on Mondays."]} answer={1} explanation="Hosoda graded crosses by where they occur relative to the cloud. Bullish above the cloud or bearish below the cloud is 'strong' because the trigger agrees with the regime; the opposite is 'weak' because it fights the prevailing trend." />
+
+<Quiz id="B-25-ichimoku-signals-q2" question="Why is a TK cross alone roughly equivalent to a fast/slow moving-average cross, with no Ichimoku-specific edge?" options={["Because Tenkan and Kijun are literally EMAs under a different name.","Because the cross is just a moving-average-style event; Ichimoku's edge lives in the confluence filter — cloud position, cloud color, and Chikou clear.","Because Hosoda only intended the cross as decoration.","Because midpoints have higher variance than closes, so they cancel any edge."]} answer={1} explanation="The TK cross is structurally a fast/slow line crossover and carries no special edge by itself. Ichimoku's value comes from gating that event with the cloud filter and the Chikou clear — that is the system, not the cross." />

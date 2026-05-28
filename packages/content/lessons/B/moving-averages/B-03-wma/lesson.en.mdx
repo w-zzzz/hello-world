@@ -1,0 +1,85 @@
+# Weighted Moving Average (WMA)
+
+You have now seen two extremes. The SMA gives every bar in its window equal weight — simple, but blind to recency. The EMA gives recent bars more weight via geometric decay, with the side effect that *every* past bar still contributes a tiny amount forever. The weighted moving average sits between them: like the SMA, it has a finite window of exactly $n$ bars; like the EMA, it weights recent prices more heavily. The decay it uses is **linear**.
+
+In this lesson you will see the WMA formula, why the linear weights normalize cleanly to $2/(n(n+1))$, when WMA is a sensible pick over SMA or EMA, and the trap that catches people who reach for the most "responsive" average without thinking about what they are responding to.
+
+## Definition
+
+For a window of $n$ bars, the WMA assigns weight $n$ to the most recent bar, $n-1$ to the one before, and so on down to weight $1$ for the oldest bar in the window:
+
+$$
+\mathrm{WMA}_t(n) = \frac{\sum_{i=0}^{n-1} (n - i) \, P_{t-i}}{\sum_{i=0}^{n-1} (n - i)}
+$$
+
+The denominator is the sum $1 + 2 + \cdots + n = n(n+1)/2$, so the formula simplifies to:
+
+$$
+\mathrm{WMA}_t(n) = \frac{2}{n(n+1)} \sum_{i=0}^{n-1} (n - i) \, P_{t-i}
+$$
+
+That tidy $2/(n(n+1))$ factor is just the normalizer that makes the weights add to 1.
+
+A small worked example. Take $n = 4$ and the last four closes 100, 102, 104, 106 (oldest to newest). The weights from oldest to newest are $1, 2, 3, 4$, summing to 10. So:
+
+$$
+\mathrm{WMA}_4 = \frac{1 \cdot 100 + 2 \cdot 102 + 3 \cdot 104 + 4 \cdot 106}{10} = \frac{1040}{10} = 104.0
+$$
+
+By contrast the SMA(4) of the same series is $103.0$. The WMA is pulled higher because it weights the more recent (and higher) closes more.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the SPY chart above. Imagine the SMA as a single straight horizontal beam across your window, and the WMA as a beam tilted to lean on the most recent bar. Both averages still smooth the price — but the WMA's center of mass sits further to the right.
+
+## Where WMA lives between SMA and EMA
+
+It helps to think in terms of weight profiles:
+
+- **SMA(n)** — uniform weight $1/n$ on each of the last $n$ bars, zero before that.
+- **WMA(n)** — linearly decaying weight on the last $n$ bars, zero before that.
+- **EMA(n)** — geometrically decaying weight on **all** past bars, never exactly zero.
+
+The WMA's effective lag is roughly $(n-1)/3$ bars, compared to $(n-1)/2$ for the SMA at the same $n$. So WMA(20) lags by about 6 bars on average, where SMA(20) lags by about 10. The EMA(20) lags by about 9.5 by construction. The WMA is the *most responsive of the three at the same nominal period*, while still forgetting old bars cleanly.
+
+That makes WMA a reasonable pick when:
+
+- You want responsiveness, but you do not want an indicator that "remembers" prices from a year ago.
+- You prefer the WMA's straightforward weight shape over the EMA's recursive bookkeeping.
+
+If you want to play with responsiveness interactively, the SMA and EMA playgrounds from B-01 and B-02 are the right sandboxes — switch the period there to feel how shorter windows trade smoothness for speed. The WMA's behavior sits between those two, closer to the EMA end.
+
+## The responsiveness trap
+
+<Pitfall title="More responsive is not the same as better signal">
+A frequent mistake is to reach for the WMA (or any fast-reacting filter) because "it turns sooner than the SMA." Yes — and it also turns sooner on **fakeouts**. Every wiggle in the most recent bar gets weight $n$ out of $n(n+1)/2$, which for short windows is a large fraction. On a window of 10, the latest bar alone carries weight $10/55 \approx 18\%$; for SMA(10) it is exactly $10\%$.
+
+If your underlying signal-to-noise ratio is low, switching SMA → WMA → EMA from least to most responsive can actually **lower** your strategy's Sharpe ratio, not raise it. The responsiveness you bought also amplifies noise. The right way to pick a moving average is by **what you want to filter out**, not by which one looks "smartest."
+</Pitfall>
+
+<KeyPoint title="The WMA contract">
+WMA(n) is a finite window with linearly decaying weights, normalized by $2/(n(n+1))$. It lags less than SMA(n) and has cleaner finite memory than EMA(n) — but it amplifies recent noise more than either. Choose it when you want responsiveness *with* a hard cutoff on history.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-03-wma-q1"
+  question="For a 5-bar WMA, the denominator (sum of weights) equals:"
+  options={['5', '10', '15', '25']}
+  answer={2}
+  explanation="The denominator is 1+2+3+4+5 = 15, which equals n(n+1)/2 = 5·6/2 = 15. That is what the 2/(n(n+1)) factor normalizes."
+/>
+
+<Quiz
+  id="B-03-wma-q2"
+  question="Compared to SMA(n) and EMA(n) at the same nominal period n, which best describes WMA(n)?"
+  options={[
+    'WMA has the longest memory of the three.',
+    'WMA weights every bar equally, like the SMA.',
+    'WMA decays linearly and forgets cleanly after n bars — between SMA (uniform, finite) and EMA (exponential, infinite memory).',
+    'WMA is identical to EMA but written non-recursively.',
+  ]}
+  answer={2}
+  explanation="WMA sits between SMA and EMA: linearly decaying weights inside a hard window of n bars. SMA is uniform inside the window; EMA decays geometrically forever. WMA shares EMA's recency bias and SMA's clean cutoff."
+/>

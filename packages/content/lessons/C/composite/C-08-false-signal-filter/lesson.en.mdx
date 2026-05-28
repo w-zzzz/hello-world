@@ -1,0 +1,103 @@
+# Filtering false signals
+
+A base signal generator that fires every time RSI crosses 50 will be right about half the time. Layer the right filter on top and you can lift that hit-rate substantially — at the cost of fewer trades. Layer the wrong filters and you have a beautifully curve-fitted backtest that loses money tomorrow. This lesson walks through the five filters that actually pull their weight, and the discipline that keeps you from stacking them dishonestly.
+
+## The five filters that earn their place
+
+These are typically applied *after* the base entry signal: if the base says "go long", a filter says "but only if".
+
+### 1. Trend filter
+
+> Take longs only when price > SMA(200). Take shorts only when price < SMA(200).
+
+Cuts roughly half the candidate trades — the half that fought the dominant trend — and tends to retain most of the win on the surviving half. The cheapest, oldest, and most defensible filter in the toolbox.
+
+### 2. Volatility filter
+
+> Skip signals when realized vol is more than ~2× its trailing median.
+
+Extreme volatility breaks the assumptions of most timing models. A trend follower entering a volatility spike often eats the reversion; a mean-reverter entering one often watches the "mean" run away.
+
+### 3. Volume filter
+
+> Skip signals on below-average volume.
+
+Low volume = low conviction. A breakout on thin volume is usually noise. The filter has the side benefit of also reducing slippage cost.
+
+### 4. Time-of-day filter
+
+> On equities, skip the first and last 30 minutes.
+
+The open auction is wide and noisy; the close is dominated by index rebalancing flows. Both produce signals that don't generalize. Cutting them costs you a handful of theoretically-profitable trades and removes a lot of practical bleed.
+
+### 5. Persistence filter
+
+> Require the signal to hold for $k$ consecutive bars before acting.
+
+Trades fewer one-bar spikes. The cost is $k$ bars of additional lag — see the previous lesson on smoothing vs lag for the trade-off.
+
+## How filters reshape your distribution
+
+Conceptually, each filter trades **frequency** for **hit-rate**. If your base signal generates $N$ trades with expected per-trade edge $\mu_0$, and a filter keeps only a fraction $f \in (0, 1]$ of trades but lifts the per-trade edge to $\mu_1 > \mu_0$, the question is whether:
+
+$$
+N \cdot f \cdot \mu_1 \;\gtrless\; N \cdot \mu_0
+$$
+
+A filter is "worth it" when $f \cdot \mu_1 > \mu_0$. That sounds obvious, but in practice you also have to subtract the increased variance from running fewer trades, and the higher transaction-cost ratio if your edge per trade is small.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## The curve-fitting trap
+
+Layering filters is irresistible because each one usually *does* improve in-sample Sharpe. Stack five and the backtest looks beautiful. But each filter you add multiplies your effective number of hypotheses, and the in-sample improvement no longer corresponds to a real population edge.
+
+Bonferroni discipline: if you tested $m$ filters independently, the significance threshold for any single filter should be roughly $\alpha / m$, not $\alpha$. With $m = 5$, your "p < 0.05" filters need to clear p < 0.01 to mean anything.
+
+A blunter rule of thumb that I (and most quants) actually use: **every filter must have an independent justification that is not "it improves backtest Sharpe."** The trend filter is justified because trading with the trend has decades of cross-asset evidence. The time-of-day filter is justified by market microstructure. If your fifth filter is "skip Mondays", you need a microstructure or behavioural story — not a backtest plot.
+
+<Pitfall title="Five filters until the curve looks good = curve-fitting">
+The mind that says "let me try one more filter" is the same mind that says "let me try one more lookback". Each addition consumes degrees of freedom you do not get back. Two or three filters, each defensible without seeing the backtest result, is the honest ceiling for most signals.
+</Pitfall>
+
+<KeyPoint title="The rule">
+Justify the filter, then measure it. Not measure it, then justify it.
+</KeyPoint>
+
+## A practical posture
+
+Pick filters in this order:
+
+1. **Trend filter** — almost always wins for momentum/breakout signals.
+2. **Vol filter or time-of-day** — depending on whether your signal is sensitive to noise or microstructure.
+3. **Maybe one more**, justified independently. **Stop.**
+
+After deployment, monitor whether the filters still cut what they claimed to cut. A trend filter that no longer reduces trade count means the underlying signal has drifted into different territory; recheck.
+
+## Check yourself
+
+<Quiz
+  id="C-08-false-signal-filter-q1"
+  question="A base signal generates 200 trades with expected edge mu_0 = 4 bps per trade. After adding a trend filter, only 120 trades remain, but edge per trade rises to mu_1 = 7 bps. The filter is:"
+  options={[
+    'Worth it — fewer trades but the expected total edge rose from 800 to 840 bps.',
+    'Not worth it — fewer trades always means less profit.',
+    'Worth it because the per-trade edge is higher, regardless of count.',
+    'Indistinguishable without seeing transaction costs and variance.',
+  ]}
+  answer={0}
+  explanation="Expected total edge = N * f * mu_1 = 120 * 7 = 840 vs original 200 * 4 = 800. The filter wins in expectation; you would still want to check variance and costs, but the gross math is positive."
+/>
+
+<Quiz
+  id="C-08-false-signal-filter-q2"
+  question="Which discipline best prevents filter-stacking curve fitting?"
+  options={[
+    'Always include at least 5 filters so the signal is well-conditioned.',
+    'Each filter must have an independent justification that is not "it improves backtest Sharpe".',
+    'Use only filters that boost in-sample Sharpe by at least 0.5.',
+    'Re-fit filter parameters every quarter to track the regime.',
+  ]}
+  answer={1}
+  explanation="The honest test is whether you can defend each filter before seeing the backtest. Justification-then-measurement keeps you from accumulating filters that only look good in-sample."
+/>

@@ -1,0 +1,77 @@
+# Ichimoku Kinko Hyo: five lines and the cloud
+
+Ichimoku Kinko Hyo — "one-glance equilibrium chart" — was published by Goichi Hosoda in 1969. The promise is that a trained eye reads trend, momentum, and support/resistance from a single glance. The cost is that it looks busy: five lines, a shaded cloud, two time shifts. In this lesson you will learn what each line measures, how the cloud is constructed, and why Hosoda chose 9, 26, 52 as the canonical periods.
+
+## The five lines
+
+Every Ichimoku line is built from rolling high-low midpoints, not closes. Let $\mathrm{HH}_n$ be the highest high over the last $n$ bars and $\mathrm{LL}_n$ the lowest low. The five components are:
+
+$$
+\mathrm{Tenkan}_t = \frac{\mathrm{HH}_9 + \mathrm{LL}_9}{2}
+$$
+
+$$
+\mathrm{Kijun}_t = \frac{\mathrm{HH}_{26} + \mathrm{LL}_{26}}{2}
+$$
+
+$$
+\mathrm{SenkouA}_t = \frac{\mathrm{Tenkan}_t + \mathrm{Kijun}_t}{2}, \text{ plotted 26 bars ahead}
+$$
+
+$$
+\mathrm{SenkouB}_t = \frac{\mathrm{HH}_{52} + \mathrm{LL}_{52}}{2}, \text{ plotted 26 bars ahead}
+$$
+
+$$
+\mathrm{Chikou}_t = C_t, \text{ plotted 26 bars behind}
+$$
+
+Tenkan ("conversion line") reacts to short-term swings. Kijun ("base line") is slower and acts like a magnet during trends. Senkou A and B are the two edges of the cloud. Chikou ("lagging span") is just today's close drawn 26 bars back — a visual check that today's price is above or below where it was a month ago.
+
+## The Kumo: a forward-projected cloud
+
+The shaded area between Senkou A and Senkou B is the **Kumo**. Because both spans are plotted 26 bars ahead, the cloud extends into the future on the chart. That forward shift is intentional: it tells you where, given today's data, support and resistance will sit roughly a month from now.
+
+The cloud has color and thickness:
+
+- **Bullish:** $\mathrm{SenkouA} > \mathrm{SenkouB}$ — typically green.
+- **Bearish:** $\mathrm{SenkouB} > \mathrm{SenkouA}$ — typically red.
+- **Thick:** wide A–B gap, strong support/resistance.
+- **Thin:** A and B nearly equal, next breakout likely punches through.
+
+This forward projection is what makes Ichimoku a **forecasting visual** rather than a pure lagging indicator. The cloud in front of price today was computed 26 bars ago.
+
+## Why 9, 26, 52?
+
+Hosoda's numbers come from the pre-war Japanese trading week of six days: 9 days is about a week and a half, 26 days is roughly a month, 52 days is two months. Modern five-day weeks make these slightly off, but the community standardized on 9/26/52 because changing them breaks every published rule. Treat them as a convention, not a hyperparameter.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the chart and mentally overlay the five lines. Where price hugs Kijun on a pullback in an uptrend, the indicator is doing its job. Where price dives through a thin cloud, you are seeing a regime change.
+
+## Reading at a glance
+
+A bullish setup looks like this:
+
+1. Price above the cloud.
+2. Cloud ahead is bullish (A above B).
+3. Tenkan above Kijun.
+4. Chikou above price 26 bars ago.
+
+Flip every sign for bearish. When two or three of these agree but not all, the chart is in transition — Hosoda's advice was to wait.
+
+## Limitations
+
+Ichimoku was designed on **daily and weekly charts of Japanese equities**, markets that trend slowly with clear regimes. On noisy intraday timeframes the cloud thickens and thins rapidly, Tenkan/Kijun whipsaw, and the forward cloud gets reshaped by every wick. The system was not meant to live there.
+
+<Pitfall title="Above the cloud is not a buy signal">
+Beginners read "price above the cloud" as a green light to enter long. That is a *state*, not an entry. A stock can sit above the cloud for weeks going nowhere, or be 30% above the cloud right before mean-reversion. Ichimoku tells you the regime; it does not tell you when to click buy. Pair the state with a triggering event — TK cross, breakout, Chikou confirmation — which is what the next lesson covers.
+</Pitfall>
+
+<KeyPoint title="The Ichimoku mental model">
+Five lines built from high-low midpoints, with the cloud projected 26 bars forward. You read trend (price vs cloud), momentum (Tenkan vs Kijun), and forward support/resistance in one glance. The forward shift is the point — without it, Ichimoku is just three moving averages.
+</KeyPoint>
+
+<Quiz id="B-24-ichimoku-intro-q1" question="What is the Senkou Span A calculated as, and where is it plotted relative to the current bar?" options={["Average of the last 26 closes, plotted on the current bar.","Midpoint of Tenkan and Kijun, plotted 26 bars ahead.","Midpoint of the highest high and lowest low over 52 bars, plotted on the current bar.","Today's close, plotted 26 bars behind."]} answer={1} explanation="Senkou A = (Tenkan + Kijun) / 2, plotted 26 bars forward. The forward shift is what makes Ichimoku a forecasting visual rather than a lagging one." />
+
+<Quiz id="B-24-ichimoku-intro-q2" question="Which statement best describes a limitation of Ichimoku?" options={["The cloud has no economic meaning and should never be used.","Tenkan and Kijun are mathematically identical to EMA(9) and EMA(26).","The system was designed for daily/weekly equity charts and becomes whippy on noisy intraday timeframes.","Ichimoku gives perfect signals in any market once you tune the parameters."]} answer={2} explanation="Hosoda calibrated the periods 9/26/52 for daily and weekly Japanese equities. On intraday data the cloud thickens and signals flip rapidly because the underlying regime structure Ichimoku assumes simply isn't there." />

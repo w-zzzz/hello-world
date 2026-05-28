@@ -1,0 +1,132 @@
+---
+id: B-05-bollinger-strategies
+title: 'Bollinger Bands: squeeze, mean-reversion, breakout'
+locale: en
+trackId: B
+module: bollinger
+order: 5
+difficulty: intermediate
+durationMin: 20
+xp: 110
+prerequisites: ['B-04-bollinger-bands']
+tags: ['indicators', 'bollinger']
+contributors: ['@quant-academy']
+---
+
+# Bollinger Bands: squeeze, mean-reversion, breakout
+
+The previous lesson built Bollinger Bands from a rolling mean and a rolling standard deviation. Now we turn the indicator into trading rules. There are three classics — mean reversion, the squeeze breakout, and walking the bands — and every one of them works **only inside a specific regime**. The real skill is not the entry rule; it is knowing which regime you are in.
+
+## 1. Mean reversion at the bands
+
+The most intuitive trade: when price tags the upper band, short; when it tags the lower band, go long; cover at the middle line.
+
+<MathBox>
+$$
+\text{entry}_t =
+\begin{cases}
+-1 & \text{if } P_t \ge \mathrm{Upper}_t \\
++1 & \text{if } P_t \le \mathrm{Lower}_t \\
+\phantom{+}0 & \text{otherwise}
+\end{cases}
+$$
+</MathBox>
+
+This is the textbook strategy and it has an obvious appeal: trades are frequent, mechanical, and visually compelling.
+
+It works when:
+
+- Realised volatility is roughly stationary.
+- There is no dominant trend on the scale of $n$ bars.
+- Liquidity is deep enough that touching the band is not itself a signal of trouble.
+
+It fails when any of those break. The same SPY band-touch rule that prints money on 2003-2007 daily data hands it back in 2008 and then refuses to recover until 2015. The bands did not stop working; the regime changed.
+
+<Chart
+  id="bbands-mr-equity"
+  caption="Equity curve of a naive band-touch mean reversion on SPY: smooth profits 2003-2007, severe drawdown in 2008, choppy stagnation through the 2010s low-vol regime."
+/>
+
+## 2. Walking the bands
+
+In a strong trend, price hugs one band and pulls the middle line along with it. The same touch that screams "reversion" in a range now confirms **continuation**.
+
+<IndicatorPlayground indicator="bollinger" />
+
+Drag the chart to a trending segment and watch what happens. Closes consistently above the upper band — not just touching it — are a feature of momentum, not a bug. A useful filter: require **two consecutive closes outside the band on the same side** before you treat the touch as a reversion signal. In a real trend that filter triggers almost never; in a range it triggers often.
+
+<Compare
+  left={{ label: 'Ranging market', note: 'Touches alternate; band-touch fade works.' }}
+  right={{ label: 'Trending market', note: 'Closes stack outside one band; same rule loses money.' }}
+/>
+
+## 3. The squeeze and the breakout
+
+When realised volatility collapses, bandwidth collapses with it. A "Bollinger squeeze" is conventionally defined as $\mathrm{BW}_t$ at, say, a six-month low. Squeezes do not predict *direction* — they predict that the **next leg will be larger than the last**. To turn that into a trade you need a direction trigger:
+
+<MathBox>
+$$
+\text{long breakout}_t = \mathbf{1}\bigl[\mathrm{BW}_{t-1} \le q_{0.1}(\mathrm{BW})\bigr] \cdot \mathbf{1}\bigl[P_t > \mathrm{Upper}_{t-1}\bigr]
+$$
+</MathBox>
+
+That is: only act on an upper-band break **after** a low-bandwidth setup. Combine with a volume confirmation (e.g. volume $> 1.5 \times$ its 20-bar average) and the false-break rate drops materially. Without those filters you are just buying every upper-band touch — the rule that already failed in §1.
+
+## 4. Why every backtester rediscovers this
+
+There is a folk theorem in quant blogs: every newcomer backtests band-touch mean reversion on SPY 2003-2007, finds a Sharpe near 2, scales it up, and loses money post-2008. Why is that specific period so flattering?
+
+- **Volatility was structurally low and stationary.** A constant $\sigma$ assumption is roughly right.
+- **Market microstructure was friendly.** Pre-HFT, pre-decimal-spread compression, mean-reversion edges decayed slowly.
+- **Macro regime was a long bull range.** No dominant trend on the band's timescale.
+
+Post-2008 the VIX regime broke, intraday auto-correlation flipped, and Fed-driven trends ran for months. The bands themselves are unchanged — but the **environment** that made the rule profitable disappeared.
+
+<Pitfall>
+Every generation of backtester rediscovers band-touch mean reversion on SPY 2003-2007 and loses money on it from 2008 onward. The cause is a **vol-regime change**, not a bug in Bollinger Bands. Always condition your rules on a regime detector — bandwidth percentile, realised vol, or a trend filter — before you size up.
+</Pitfall>
+
+## 5. A regime-aware playbook
+
+A practical, defensible recipe:
+
+1. Compute $\mathrm{BW}_t$ and its rolling percentile over the last 252 bars.
+2. **Low percentile (< 20%)**: arm a breakout rule. Trade the first close outside the band, with volume confirmation. Stop on a return inside the band.
+3. **Mid percentile + flat SMA slope**: arm mean reversion. Fade band touches towards the middle line. Skip if the SMA is sloping noticeably.
+4. **High percentile + steep SMA slope**: assume "walking the bands". Do not fade; consider trend-following on pullbacks to the middle line.
+
+The same indicator drives all three. The regime classifier — not the entry rule — is what determines whether you make or lose money over a decade.
+
+<KeyPoint>
+Bollinger Bands do not have a single strategy. They have a **family** of strategies, each tied to a volatility/trend regime. Build the regime classifier first; the entry rule is the easy part.
+</KeyPoint>
+
+<Reveal title="A worked example: NDX 2020">
+Late February 2020: bandwidth in the 5th percentile after months of grinding rally. First close below the lower band on Feb 24 with volume 2.3× the 20-bar average. A regime-aware system flips from mean-reversion mode to breakout-short mode and stays short until $\mathrm{BW}_t$ peaks in late March. A naive band-touch reverter, in contrast, is long all the way down.
+</Reveal>
+
+<Quiz
+  id="B-05-bollinger-strategies-q1"
+  question="A trader runs band-touch mean reversion on SPY and finds great results on 2003-2007 daily data. What is the most likely reason the same rule disappoints post-2008?"
+  options={[
+    'The Bollinger Bands formula was revised after 2008.',
+    'Volatility and trend regimes changed; the rule was implicitly conditioned on a low-vol ranging environment that no longer holds.',
+    'SPY stopped trading in 2008.',
+    'Mean reversion has been mathematically proven impossible since 2009.'
+  ]}
+  answer={1}
+  explanation="The classic 2003-2007 SPY backtest fits a low-vol, ranging regime. Post-2008 the vol regime broke and macro-driven trends dominated; the rule fails because its hidden regime assumption no longer holds."
+/>
+
+<Quiz
+  id="B-05-bollinger-strategies-q2"
+  question="Which setup most cleanly identifies a Bollinger 'squeeze' setup ready for a breakout trade?"
+  options={[
+    'Price touches the upper band for the first time this month.',
+    'The middle SMA is rising sharply.',
+    'Bandwidth is at a multi-month low, followed by a close outside the band with above-average volume.',
+    'The lower band is below yesterday\'s low.'
+  ]}
+  answer={2}
+  explanation="A squeeze is a low-bandwidth state. It becomes an actionable breakout only when price actually closes outside the band, ideally confirmed by elevated volume."
+/>

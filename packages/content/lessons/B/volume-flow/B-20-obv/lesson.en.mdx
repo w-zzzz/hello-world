@@ -1,0 +1,86 @@
+# On-Balance Volume (OBV)
+
+On-Balance Volume is one of the oldest volume indicators still in active use, and one of the most misread. Joe Granville's idea from 1963 was simple: if today closed higher, treat the entire day's volume as buying pressure; if it closed lower, treat it as selling pressure; if flat, ignore it. Add up the signed flow forever and you get a running tape of who is winning the accumulation game.
+
+In this lesson you will learn the exact definition, why the **absolute level** of OBV is essentially meaningless, and how to use slope and divergence to confirm — or quietly contradict — what price is doing.
+
+## Definition
+
+Let $C_t$ be today's close, $V_t$ today's volume, and $\Delta C_t = C_t - C_{t-1}$. OBV is the cumulative sum
+
+$$
+\mathrm{OBV}_t = \mathrm{OBV}_{t-1} + \mathrm{sign}(\Delta C_t) \cdot V_t
+$$
+
+where $\mathrm{sign}(\Delta C_t) \in \{-1, 0, +1\}$. In plain English: add today's volume if the close rose, subtract it if the close fell, do nothing if the close was unchanged. OBV always starts from an arbitrary base value (zero, or whatever the first observation happens to be).
+
+That last clause matters more than it looks. Because the starting value is arbitrary, **the absolute level of OBV carries no information**. Only its slope and the shape it traces matter.
+
+## What OBV is actually measuring
+
+OBV is a crude proxy for **cumulative net flow**. It bets that days when price closes up have buyers in control, and days when price closes down have sellers in control — and it weights each day by its volume, the only piece of information about conviction that a daily bar gives you.
+
+It is crude because it throws away the magnitude of the move (a 0.1% up day and a 4% up day both add the same volume). But the crudeness is also why it is hard to overfit. There are no parameters to tune, no smoothing knob, no lookback — once you accept the definition, the line is what it is.
+
+## Reading OBV: slope and divergence
+
+Pull up a chart of SPY and overlay a mental OBV line in your head as you scroll.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Two readings carry most of the signal:
+
+- **Confirmation.** Price makes a higher high, OBV makes a higher high too. The rally is being funded by real volume on up days — it is structurally healthy.
+- **Divergence.** Price makes a higher high, but OBV makes a lower high. Up days are happening on shrinking volume, or down days are getting heavier. This is the classic OBV warning sign — the move is running on fumes.
+
+Bullish divergence works the same way in reverse: price prints a lower low, OBV prints a higher low, and you suspect the selling is exhausted.
+
+## A worked example
+
+Suppose three trading days look like this:
+
+| Day | Close | Volume | $\mathrm{sign}(\Delta C)$ | OBV |
+|---|---|---|---|---|
+| 1 | 100.0 | 1.0M | — | 0 |
+| 2 | 101.0 | 1.5M | +1 | +1.5M |
+| 3 | 100.5 | 2.0M | −1 | −0.5M |
+
+By Day 3, price is up 0.5% from Day 1 but OBV is negative — Day 3's higher volume on a down close flipped the cumulative ledger. That is the kind of subtle disagreement OBV is designed to surface.
+
+## Common pitfalls
+
+<Pitfall title="Comparing OBV levels across assets or time">
+OBV's starting value is arbitrary, so its absolute number is path-dependent. SPY's OBV of "+800M" tells you nothing on its own — you cannot say it is "high" or "low," and you certainly cannot compare it to QQQ's OBV of "+400M." The only legitimate reads are the slope of the OBV line and its divergence from price within the same chart.
+</Pitfall>
+
+<KeyPoint title="Takeaway">
+OBV is a cumulative sum of signed volume. The level is meaningless — the slope and any divergence from price are what you trade. Confirmation strengthens the trend hypothesis; divergence weakens it.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-20-obv-q1"
+  question="On a day where the close is unchanged from yesterday's close, what does OBV do?"
+  options={[
+    "Adds today's volume.",
+    "Subtracts today's volume.",
+    "Stays at the same value as yesterday.",
+    "Resets to zero.",
+  ]}
+  answer={2}
+  explanation="When sign(ΔC) = 0, no volume is added or subtracted, so OBV holds its previous value."
+/>
+
+<Quiz
+  id="B-20-obv-q2"
+  question="SPY makes a new 52-week high, but OBV makes a lower high than its prior peak. The most defensible reading is:"
+  options={[
+    "OBV is broken — ignore it and follow price.",
+    "Bearish divergence: the new high is being made on weaker cumulative volume, raising the odds the breakout fails.",
+    "Bullish confirmation: any new price high is healthy.",
+    "OBV is too low in absolute terms to be valid.",
+  ]}
+  answer={1}
+  explanation="A new price high without a matching OBV high is the textbook bearish divergence — the move is not being supported by cumulative volume. It is a probabilistic warning, not a guarantee."
+/>

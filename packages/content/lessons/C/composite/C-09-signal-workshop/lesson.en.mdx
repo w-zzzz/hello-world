@@ -1,0 +1,99 @@
+# Building a composite signal end-to-end
+
+This is the workshop lesson. We'll take everything from Track C — confluence, regime, aggregation, smoothing, filtering — and build one concrete composite signal on SPY, narrating the choices honestly so you can repeat the process on your own ideas. **This is not a strategy you should deploy.** It is a teaching scaffold for how to encode rules carefully.
+
+## Step 1: state the hypothesis
+
+> "On SPY, dip-buys during a healthy uptrend in a calm volatility environment tend to recover within a few weeks."
+
+Write it down in plain language *first*. If you cannot, you don't have a hypothesis — you have a graph someone showed you. The hypothesis names three axes (trend, momentum, volatility) and one timeframe (a few weeks).
+
+## Step 2: encode each axis as a rule
+
+We map each axis to one rule, deliberately keeping the rules round-numbered and pre-chosen, not optimized:
+
+- **Trend filter:** price > 200-day SMA. From C-08, this is the cheapest, most-defensible filter.
+- **Momentum trigger:** RSI(14) crosses up through 40 from below. We use 40 instead of 50 because we want a "dip recovering" event, not a "trend continuing" one.
+- **Regime filter:** realized volatility is in the bottom 80% of its trailing 252-day distribution. From C-05, this avoids the "calm dip" turning into a "crisis dip".
+
+Aggregation style (from C-06): **AND**. All three must hold simultaneously.
+
+$$
+S_t \;=\; \mathbb{1}[\,\text{close}_t > \mathrm{SMA}_{200,t}\,] \;\cdot\; \mathbb{1}[\,\text{RSI}_{14,t-1} < 40 < \mathrm{RSI}_{14,t}\,] \;\cdot\; \mathbb{1}[\,\mathrm{RV}_t < q_{0.80}(\mathrm{RV})\,]
+$$
+
+Use the RSI playground to see how often the cross-up-through-40 event actually fires:
+
+<IndicatorPlayground indicator="rsi" />
+
+## Step 3: define the exit, not just the entry
+
+Beginners obsess over entries. Professionals know exits do most of the work. We give the trade three independent exits, whichever comes first:
+
+1. **Profit target:** RSI(14) > 70 — momentum has carried us into overbought territory.
+2. **Trend break:** close < 200-day SMA — the regime assumption no longer holds.
+3. **Time stop:** 20 trading days elapsed — if it hasn't worked in a month, the thesis is stale.
+
+The time stop matters more than people think. It bounds your maximum holding period, which bounds your variance and gives you cleaner statistics.
+
+## Step 4: nail down execution detail
+
+The single most common backtest lie is acting on the same bar's close. Be explicit:
+
+- **Signal computed:** on the close of bar $t$, using only data available at bar $t$.
+- **Order placed:** at the open of bar $t + 1$.
+- **Fill assumption:** at the open price of bar $t + 1$, possibly with a slippage haircut.
+
+Write this down in the code as a single function that takes bar $t$'s OHLCV and returns the entry/exit decision for bar $t + 1$. If you can't, you have lookahead somewhere.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## Step 5: check for lookahead
+
+Hunt your code for any value computed from data that wouldn't be available at decision time:
+
+- An "indicator" that uses `close.rolling(N).mean()` with a window that includes today is fine if you act tomorrow. But if the SMA uses *future* bars, you have lookahead.
+- The 80th percentile of realized vol must be computed over data ending at $t-1$, not $t$.
+- RSI(14) at bar $t$ should use closes through bar $t$, no later.
+
+The one-line check: if I replay the strategy bar-by-bar with each bar's data hidden after it is consumed, do I get the same trades?
+
+## Step 6: test out-of-sample
+
+Reserve at least the most recent 2 years of data and **do not look at it** while developing the rules. Run the finished signal once, end-to-end, on the held-out window. If it works similarly to the in-sample period, you have weak evidence the rules generalize. If it doesn't, accept that and either reformulate the hypothesis or kill the idea — do not return to "tweak" the rules on the now-leaked out-of-sample data.
+
+<Pitfall title="This is a scaffold, not a strategy">
+The signal you just walked through is not something to deploy. It is illustrative of the **process**: hypothesis → axis decomposition → AND aggregation → explicit exits → execution honesty → lookahead check → out-of-sample. Repeat the process on your own hypothesis. Resist the urge to backtest this exact rule, see a number you like, and call it done.
+</Pitfall>
+
+<KeyPoint title="The workshop in one sentence">
+A composite signal is the disciplined encoding of a clear hypothesis, with exits and execution defined as carefully as the entry, validated honestly against data you held out before you started.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="C-09-signal-workshop-q1"
+  question="In Step 4 we specified that the signal is computed on the close of bar t and the order is filled at the open of bar t+1. What problem does this avoid?"
+  options={[
+    'Lookahead — using information from bar t when computing the bar-t signal.',
+    'Lookahead — using information from bar t to decide a fill on bar t.',
+    'Survivorship bias — only trading instruments that still exist.',
+    'Selection bias from the held-out validation window.',
+  ]}
+  answer={1}
+  explanation="Filling on the same bar whose close you used to make the decision implicitly assumes you could trade at a price determined by data that hadn't been observed yet at decision time. Acting on the next open removes that lookahead."
+/>
+
+<Quiz
+  id="C-09-signal-workshop-q2"
+  question="Why does the workshop include a 20-bar time stop in addition to a profit target and a stop-loss?"
+  options={[
+    'To improve the in-sample Sharpe by pruning long trades.',
+    'To bound the maximum holding period, which bounds variance and gives cleaner statistics.',
+    'Because all professional strategies use exactly 20-bar stops.',
+    'It is required by exchange regulations.',
+  ]}
+  answer={1}
+  explanation="A time stop puts a hard cap on holding period. Without it, a single dragged-out trade can dominate the strategy's variance and obscure its true edge."
+/>

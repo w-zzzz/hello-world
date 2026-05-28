@@ -1,0 +1,81 @@
+# Simple Moving Average (SMA)
+
+The simple moving average is the first indicator almost every quant meets, and for good reason — it does exactly one thing, and that one thing is easy to reason about. You take the last $n$ closing prices, average them, and plot the result alongside the price. That single line tells you, at a glance, where the recent middle of the market has been.
+
+In this lesson you will see how the SMA is defined, why it lags, what changes when you move from a 20-day window to a 200-day window, and why "equal weight" — its core simplicity — is also its main weakness.
+
+## Definition
+
+Given a price series $P_1, P_2, \ldots$, the SMA with window $n$ at time $t$ is the arithmetic mean of the last $n$ closes:
+
+$$
+\mathrm{SMA}_t(n) = \frac{1}{n} \sum_{i=0}^{n-1} P_{t-i}
+$$
+
+That is the whole formula. No tuning constants, no recursion, no warm-up tricks. The only choice you make is the window $n$.
+
+A small worked example: if the last 5 closes on SPY were 450, 452, 451, 455, 457, then
+
+$$
+\mathrm{SMA}_5 = \frac{450 + 452 + 451 + 455 + 457}{5} = 453.0
+$$
+
+## What the window length actually does
+
+Changing $n$ trades smoothness for responsiveness, and there is no free lunch.
+
+- **SMA(20)** on SPY tracks roughly one month of trading. It hugs the price closely, turns within a few days of a real reversal, but also wiggles on every small bump. Short-term traders use it as a dynamic mid-line.
+- **SMA(200)** averages roughly a year. It barely moves day to day. Crossing above or below it is treated as a regime statement — bull versus bear — by a huge portion of institutional flow.
+
+Try both in the playground. Switch the window and watch the line tighten or loosen:
+
+<IndicatorPlayground indicator="sma" />
+
+A useful intuition: the SMA at time $t$ effectively lags the *center* of its window by roughly $(n-1)/2$ bars. So an SMA(20) is, on average, "looking at" the price from about ten bars ago. That is why a fast-moving market always seems to leave the SMA behind.
+
+## Lag is a feature, not a bug
+
+Beginners often try to "fix" the lag by shrinking the window. That works until $n$ is small enough that the SMA is just a noisier version of the price itself. At $n=1$ the SMA *is* the price, and you have learned nothing.
+
+The point of a moving average is to throw away high-frequency wiggles so that lower-frequency structure becomes visible. The lag is the cost of that filtering. If you cannot tolerate any lag, you do not actually want a moving average — you want the raw price.
+
+## A canonical use: trend filter
+
+One common pattern is to use a long SMA as a regime gate. If price is above $\mathrm{SMA}_{200}$ you only take long signals; if it is below, you stand aside or go short-only. This does not predict anything — it just keeps you from fighting the slow tide while you trade fast strategies on top.
+
+You may have heard of the **golden cross** (SMA(50) crosses above SMA(200)) and **death cross** (the reverse). These are widely watched but slow signals — by the time they fire, the trend has been in place for weeks. We unpack them properly in the strategy track; for now, just know they exist and that "popular" does not mean "edge."
+
+## What the SMA hides
+
+<Pitfall title="Equal weight ignores recency">
+The SMA gives the price from $n-1$ days ago exactly the same weight as today's close. For a 200-day SMA, a wild outlier from last September still tugs the line today as hard as this morning's open. In a regime change, that old data is actively misleading — yet the SMA keeps reporting it as if nothing changed, until enough new bars push the outlier out of the window. This is the single biggest reason traders graduate from SMA to EMA.
+</Pitfall>
+
+A second, subtler issue: when the oldest bar finally drops out, the SMA can jump even if today's price did nothing. People who do not realize this misread normal window roll-off as a signal.
+
+<KeyPoint title="The SMA contract">
+SMA(n) = arithmetic mean of the last $n$ closes. Bigger $n$ = smoother and slower. Every bar in the window counts the same, which is honest and simple — and also exactly why fancier moving averages exist.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-01-sma-q1"
+  question="The last 4 closes of a stock are 100, 102, 104, 106. What is the SMA(4) at the most recent bar?"
+  options={['102', '103', '104', '105']}
+  answer={1}
+  explanation="(100+102+104+106)/4 = 412/4 = 103. The SMA is just the arithmetic mean of the last n closes."
+/>
+
+<Quiz
+  id="B-01-sma-q2"
+  question="Compared to SMA(20), what is true of SMA(200) on the same price series?"
+  options={[
+    'It reacts faster to a sudden price move.',
+    'It is smoother and lags real reversals more.',
+    'It weights recent prices more heavily.',
+    'It has higher values on average.',
+  ]}
+  answer={1}
+  explanation="A longer window averages more bars, which suppresses short-term noise (smoother) and delays the response to genuine turns (more lag). Weighting is uniform in both — they just sum over different lengths."
+/>

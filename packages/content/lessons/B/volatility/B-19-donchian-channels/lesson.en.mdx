@@ -1,0 +1,92 @@
+# Donchian Channels
+
+The Donchian Channel is the simplest possible volatility envelope: take the highest high and lowest low over the last $n$ bars and draw them. No smoothing, no exponents, no standard deviations — only the raw extremes of recent history. That bluntness is what makes it useful, and what makes it dangerous.
+
+By the end you will know how to compute Donchian Channels, why they powered the Turtle breakout system, and why "new 20-day high" is **by construction a chase**.
+
+## Definition
+
+For a window length $n$ (typically 20), the upper, lower, and middle Donchian lines at bar $t$ are:
+
+$$
+\mathrm{Upper}_t = \max(H_{t-n+1}, H_{t-n+2}, \ldots, H_t)
+$$
+
+$$
+\mathrm{Lower}_t = \min(L_{t-n+1}, L_{t-n+2}, \ldots, L_t)
+$$
+
+$$
+\mathrm{Mid}_t = \tfrac{1}{2}\bigl(\mathrm{Upper}_t + \mathrm{Lower}_t\bigr)
+$$
+
+That is the whole indicator. Upper is the **rolling $n$-bar high**, lower the rolling $n$-bar low, middle the midpoint. No averaging, no weighting. The upper line is a staircase that only ever rises or stays flat until an old high rolls off the window.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Imagine, at each bar, sliding a 20-bar window and recording max high and min low. The upper line traces every fresh 20-day high — and only updates **after** price prints a new extreme.
+
+## Why this is a "breakout" indicator
+
+Most indicators are descriptive — RSI describes momentum, ATR describes range. Donchian is **definitional**: a Donchian upper-band breakout *is* a new $n$-bar high. Wait for the line to lift, buy the close, and your entry is by definition preceded by an extreme. No Donchian buy signal can arrive *before* the extreme it describes.
+
+That makes Donchian a clean specification: "buy when the close is above the prior 20-day Donchian upper, exit on a new 10-day low." It is also trivial to backtest — only the window length matters.
+
+## The Turtle system
+
+The most famous use of Donchian is the Turtle Trading system Richard Dennis taught in 1983. The entry/exit core was nested Donchian channels:
+
+- **Entry:** buy on a new 20-day high (55-day in System 2).
+- **Exit:** sell on a new 10-day low (20-day in System 2).
+
+The asymmetric window — wider for entry, tighter for exit — locks profits while letting winners run. Position size was ATR-targeted, which is the bridge to your previous lesson: **Donchian decides when, ATR decides how much.** Without ATR sizing, the bare breakout rule gets shredded by chop.
+
+## A small worked example
+
+Suppose SPY's last 20 daily highs include a \$502 from 15 days ago, with the rest at or below \$500. Today's high is \$501, so $\mathrm{Upper}_t = 502$ — unchanged. Five days later the \$502 rolls out. If the next 19-max is \$500.50 and today's high is \$501.20, the upper band drops to \$501.20 — a fresh high in the *current* window despite being below \$502. This stair-step shape is the entire reason traders talk about "Donchian breakouts."
+
+## What Donchian does not tell you
+
+Three things every user must internalize.
+
+1. **No volatility scaling.** A 1-point break in a 30-cent ATR regime and in a \$5 ATR regime print identically — only one is meaningful.
+2. **Persistent latency.** The signal is never early. You always buy after the new high.
+3. **Stair-step path dependence.** The upper band only falls when an old extreme rolls off, so it can sit flat far above current price for many bars. That gap tempts "anticipatory" trades — they are not Donchian signals.
+
+## Pitfalls
+
+<Pitfall title="Donchian is a chase indicator">
+By construction, a Donchian breakout fires **after** price hits a new $n$-bar extreme — you are always buying the move, never anticipating it. In a clean trend that is fine; in chop you will buy every false high and sell every false low, paying the gap each time. A bare Donchian rule without (a) volatility-aware sizing, (b) a regime filter, or (c) a longer trend filter is one of the easiest ways to bleed an account. The Turtles did not get rich on Donchian alone — Donchian *plus* ATR sizing *plus* strict risk limits did the work.
+</Pitfall>
+
+<KeyPoint title="Carry this forward">
+Donchian = rolling $n$-bar high/low. It is the cleanest possible definition of "breakout," but it is **a description of an event that already happened**. Marry it to volatility-aware sizing and a regime filter, or it will chase you into every chop.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-19-donchian-channels-q1"
+  question="What does the upper Donchian band at bar t literally represent?"
+  options={[
+    "An exponentially smoothed estimate of typical highs.",
+    "The maximum high over the last n bars including bar t.",
+    "The mean of the last n closes plus two standard deviations.",
+    "A forecast of the next bar's high."
+  ]}
+  answer={1}
+  explanation="Donchian's upper band is just max(H over the last n bars). No smoothing, no statistics — only the raw maximum in the window."
+/>
+
+<Quiz
+  id="B-19-donchian-channels-q2"
+  question="Why is a naive Donchian breakout strategy dangerous in choppy, range-bound markets?"
+  options={[
+    "Because the indicator repaints historical bars.",
+    "Because the signal only fires after a new extreme — in a range, you buy every false high and sell every false low.",
+    "Because Donchian only works on weekly bars.",
+    "Because the upper band always equals the lower band in chop."
+  ]}
+  answer={1}
+  explanation="A breakout signal arrives strictly after the extreme it describes. In a range, those extremes keep failing — the strategy ends up long at local tops and short at local bottoms, the classic whipsaw recipe without an ATR or regime filter."
+/>

@@ -1,0 +1,97 @@
+# Average True Range (ATR)
+
+Every volatility indicator answers the same question in a different dialect: **how far does this market usually move?** Average True Range, introduced by J. Welles Wilder in 1978, is the most direct answer. It does not predict where price is going. It tells you the size of the noise floor — the typical bar-to-bar travel — in the price's own units.
+
+By the end of this lesson you will know how to compute ATR by hand, why it beats the naive high-minus-low range when overnight gaps exist, and how to use it to size positions and place stops.
+
+## True Range — fixing the gap problem
+
+A naive day-range is simply $H_t - L_t$. That works on a continuously trading market. On stocks or futures it fails: if SPY closes at \$500 and reopens at \$490 (a \$10 gap), the next bar might still show a \$2 intraday range, and the naive measure says "calm day" — missing the \$10 jump entirely.
+
+Wilder's **True Range** patches the hole by taking the largest of three candidates:
+
+$$
+\mathrm{TR}_t = \max\bigl(H_t - L_t,\; |H_t - C_{t-1}|,\; |L_t - C_{t-1}|\bigr)
+$$
+
+The second and third terms anchor the current bar to the previous close. If price gapped up overnight, $|H_t - C_{t-1}|$ is huge and dominates. True Range therefore captures **gap risk** that the plain range silently drops.
+
+## ATR — Wilder smoothing of TR
+
+A single bar's TR is noisy, so Wilder defined ATR as a running average:
+
+$$
+\mathrm{ATR}_t = \frac{(n-1)\,\mathrm{ATR}_{t-1} + \mathrm{TR}_t}{n}
+$$
+
+with $n = 14$ default. Algebraically this is an EMA with smoothing factor $\alpha = 1/n$, not the more common $\alpha = 2/(n+1)$ — heavier, slower. The seed is the simple mean of the first $n$ TRs.
+
+ATR is **not** annualized, percent-based, or directional. It is in price units. An ATR of 4.20 on SPY means the average daily bar-to-bar travel is \$4.20 right now.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Imagine drawing a band of width $\pm \mathrm{ATR}$ around each close. It widens in panic stretches and shrinks in quiet drifts — that is the noise floor you are measuring.
+
+## Using ATR: position sizing and stops
+
+Two practical recipes account for most of what traders do with ATR.
+
+**Volatility-targeted size.** Pick a dollar risk per trade (say \$500). Size the position so a one-ATR adverse move costs exactly that amount:
+
+$$
+\text{shares} = \frac{\text{risk budget}}{k \cdot \mathrm{ATR}_t}
+$$
+
+The constant $k$ is how many ATRs of pain you tolerate before being stopped out (commonly $k = 2$). When ATR doubles, share count halves — the mechanism that keeps risk roughly stationary across regimes.
+
+**ATR-based stops.** Rather than a fixed percentage stop, place stops $k \cdot \mathrm{ATR}$ below entry. In calm tape, stops are tight; in chaotic tape they widen, so normal noise doesn't knock you out.
+
+A third use is a **regime filter**: only accept breakout signals when current ATR is above its 60-day median.
+
+## Worked example
+
+Yesterday SPY closed at 500; today H = 503, L = 498. Then $H - L = 5$, $|H - C_{t-1}| = 3$, $|L - C_{t-1}| = 2$, so $\mathrm{TR}_t = 5$. If yesterday's ATR was 4.20 and $n = 14$:
+
+$$
+\mathrm{ATR}_t = \frac{13 \cdot 4.20 + 5}{14} \approx 4.26
+$$
+
+A single high-TR bar nudges the average — it does not jump it. Position sizes computed from ATR don't flip-flop on a single noisy bar.
+
+## Pitfalls
+
+<Pitfall title="ATR does not predict direction">
+Beginners overlay ATR alongside RSI or MACD and read it for buy/sell signals. ATR rising means **bars are getting bigger**, full stop — it says nothing about whether they are getting bigger up or down. A rising ATR in a steady uptrend is a healthy trend; a rising ATR around an unchanged price is volatility expansion before a move. Use ATR to scale your bets, not to time them.
+</Pitfall>
+
+<KeyPoint title="Carry this forward">
+ATR is the **absolute noise floor in price units**. Use it to make position size and stops volatility-aware, never as a directional signal. True Range exists to catch overnight gaps that the naive $H - L$ range silently throws away.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-17-atr-q1"
+  question="Why does True Range use the previous close, not just today's high minus low?"
+  options={[
+    "To make the formula look more sophisticated than the simple range.",
+    "Because the simple high-minus-low ignores overnight gap risk between bars.",
+    "Because Wilder wanted ATR to be a leading indicator of direction.",
+    "Because the previous close is always higher than today's low."
+  ]}
+  answer={1}
+  explanation="The two extra terms anchor today's range to yesterday's close, so a gap up or down is fully reflected in TR. Without them, a $10 overnight gap on a quiet day would register as a tiny range."
+/>
+
+<Quiz
+  id="B-17-atr-q2"
+  question="ATR doubles from 4 to 8 while your risk budget per trade stays at $500. Using volatility-targeted sizing with k = 2, how does your position size change?"
+  options={[
+    "Position size doubles — more volatility means more opportunity.",
+    "Position size stays the same — ATR doesn't affect sizing.",
+    "Position size halves — the same dollar risk now buys fewer shares.",
+    "Position size quadruples — you scale by ATR squared."
+  ]}
+  answer={2}
+  explanation="Shares = risk / (k * ATR). When ATR doubles, the denominator doubles, so shares halve. This keeps the per-trade dollar risk roughly stationary across volatility regimes."
+/>

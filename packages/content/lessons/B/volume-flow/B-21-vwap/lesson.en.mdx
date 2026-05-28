@@ -1,0 +1,77 @@
+# Volume-Weighted Average Price (VWAP)
+
+VWAP is the price at which the average share traded today, weighted by how much volume happened at each price. That sounds like a definition only an accountant could love, but VWAP is one of the most consequential numbers in modern markets — every institutional execution desk on the planet is benchmarked against it, and millions of intraday charts have it drawn as the single most-watched line.
+
+In this lesson you will see the exact formula, the role VWAP plays as an **execution benchmark**, how it doubles as an intraday mean-reversion magnet, and why "daily VWAP" and "intraday VWAP" are emphatically not the same animal.
+
+## Definition
+
+Within a single trading session, let bar $i$ have high $H_i$, low $L_i$, close $C_i$, and volume $V_i$. Define the typical price
+
+$$
+P_i = \frac{H_i + L_i + C_i}{3}
+$$
+
+The session VWAP at bar $t$ is then
+
+$$
+\mathrm{VWAP}_t = \frac{\sum_{i \le t} P_i V_i}{\sum_{i \le t} V_i}
+$$
+
+A few things to notice. First, it is a **running** average — at 10:00 a.m. it uses every bar from the open to 10:00; by 4:00 p.m. it sums the whole day. Second, the denominator is total volume, not bar count, so a single heavy 9:31 bar dominates VWAP for the first hour. Third, VWAP **resets at every session open**: tomorrow's curve does not remember today's.
+
+## Why VWAP matters: the execution benchmark
+
+If you are a fund running a 500,000-share buy order, your performance is judged in basis points relative to VWAP. Fill at a volume-weighted price below the day's VWAP and you "beat the benchmark"; fill above and you cost the fund money. That single fact is why VWAP gets so much attention — billions of dollars of order flow are explicitly trying to track it.
+
+This produces a self-fulfilling dynamic. Institutional algorithms slice their orders to mimic the volume curve, which pulls price back toward VWAP whenever it drifts away. Throughout the day VWAP behaves like a mean-reversion magnet, especially on liquid large-caps.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On the SPY chart above, imagine drawing the session VWAP each day. You will often see price probe above it, get rejected by sellers, mean-revert to the line, and consolidate — then break out late afternoon with the close near the high. That whole choreography is partly an artifact of VWAP-targeting flow.
+
+## Anchored VWAP
+
+A popular variant is **anchored VWAP**: instead of resetting at the session open, you anchor the running sum at a specific event — an earnings report, a swing low, a Fed announcement. The formula is the same, only the start of the summation changes. Anchored VWAP gives you "the average price paid by everyone who traded since that event," which is a more behavioral than statistical quantity. Traders use it as dynamic support or resistance.
+
+## Limitations
+
+VWAP rewards the first hour heavily. By 3:30 p.m. the line is so weighted toward the morning's volume that a calm afternoon barely moves it — making "late-day reversion to VWAP" a weaker signal than the morning version. It is also a pure intraday tool: extending session VWAP into the next day mixes two unrelated samples and produces nothing meaningful.
+
+## Common pitfalls
+
+<Pitfall title="Confusing intraday VWAP with a daily-bar VWAP">
+The VWAP in the formula above runs over intraday bars within one session. If you instead compute a "VWAP" over a series of daily bars — say twenty days of (typical price × daily volume) — you get something completely different: a rolling volume-weighted average over weeks, not the execution benchmark traders mean. Both are legitimate calculations, but they answer different questions. Always state your time aggregation explicitly, and never compare an intraday VWAP value to a daily-bar VWAP value as if they were the same line.
+</Pitfall>
+
+<KeyPoint title="Takeaway">
+VWAP is the running volume-weighted typical price within a session. It is an execution benchmark first and a mean-reversion magnet second. Resets at session open; anchored variants reset at an event. Daily-bar "VWAP" is a different calculation — be explicit about your time aggregation.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-21-vwap-q1"
+  question="At 10:00 a.m. on a normal trading day, which statement about session VWAP is correct?"
+  options={[
+    "It is a simple average of the open and current price.",
+    "It is the volume-weighted average of typical prices from the session open through 10:00.",
+    "It uses yesterday's close as the starting anchor.",
+    "It includes overnight futures volume.",
+  ]}
+  answer={1}
+  explanation="Session VWAP is a running sum from the session open. At 10:00 it covers the open-to-10:00 window, weighted by each bar's volume."
+/>
+
+<Quiz
+  id="B-21-vwap-q2"
+  question="Why is VWAP useful as an execution benchmark for a large institutional buy order?"
+  options={[
+    "It guarantees the best possible fill price.",
+    "It is computed by the exchange, so it is tamper-proof.",
+    "It represents the volume-weighted price actually traded that day, so beating it means filling better than the average market participant.",
+    "Regulators require all funds to track it.",
+  ]}
+  answer={2}
+  explanation="VWAP is the volume-weighted average price of the actual day's trading. Filling at a price better than VWAP means you transacted better than the day's average liquidity-taker — a clean, public benchmark."
+/>

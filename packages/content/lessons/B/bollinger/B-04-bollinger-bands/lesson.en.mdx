@@ -1,0 +1,133 @@
+---
+id: B-04-bollinger-bands
+title: 'Bollinger Bands: math + intuition'
+locale: en
+trackId: B
+module: bollinger
+order: 4
+difficulty: intermediate
+durationMin: 18
+xp: 100
+prerequisites: ['B-02-ema']
+tags: ['indicators', 'bollinger']
+contributors: ['@quant-academy']
+---
+
+# Bollinger Bands: math + intuition
+
+In the EMA lesson we built a single line that summarised recent price. Bollinger Bands take the next step: they wrap that line in a **volatility-aware envelope**. The envelope widens when the market is jumpy and pinches in when it is quiet — making the indicator equal parts trend filter and volatility gauge.
+
+This lesson focuses on the math and the intuition. We will derive the bands from first principles, look at how they behave on real series, and end with the most important caveat: a band touch is descriptive, not predictive.
+
+## 1. The formula
+
+Let $P_t$ be the close price at bar $t$ and let $\mathrm{SMA}_n(P_t)$ be the simple moving average over the most recent $n$ closes. Bollinger Bands are defined by three lines:
+
+<MathBox>
+$$
+\begin{aligned}
+\mathrm{Middle}_t &= \mathrm{SMA}_n(P_t) \\
+\mathrm{Upper}_t  &= \mathrm{SMA}_n(P_t) + k\,\sigma_n(P_t) \\
+\mathrm{Lower}_t  &= \mathrm{SMA}_n(P_t) - k\,\sigma_n(P_t)
+\end{aligned}
+$$
+</MathBox>
+
+where $\sigma_n(P_t)$ is the **sample standard deviation** of the same window:
+
+<MathBox>
+$$
+\sigma_n(P_t) = \sqrt{\frac{1}{n-1}\sum_{i=0}^{n-1}\bigl(P_{t-i} - \mathrm{SMA}_n(P_t)\bigr)^2}.
+$$
+</MathBox>
+
+The conventional defaults are $n = 20$ and $k = 2$. John Bollinger picked them because 20 bars is roughly a trading month and $\pm 2\sigma$ would, *under normality*, contain ~95% of observations.
+
+## 2. Why standard deviation, not range?
+
+You could build a similar envelope with high-minus-low or ATR. Bollinger chose $\sigma$ because it has two clean properties:
+
+- It scales with **the data itself** — no extra parameter to fit per asset.
+- It is **symmetric** around the mean, so the envelope is centred on the SMA by construction.
+
+The cost is that $\sigma$ is sensitive to outliers — a single $5\sigma$ candle inflates the band for the next $n$ bars.
+
+## 3. Bands adapt to volatility
+
+Play with the controls below. Drag $n$ and $k$ and watch the bands breathe. Notice two things:
+
+1. When realised volatility rises, the bands fan out — even though the SMA itself barely moves.
+2. When volatility collapses (a "squeeze"), the bands pinch tightly around price. We will exploit this in the next lesson.
+
+<IndicatorPlayground indicator="bollinger" />
+
+<Chart
+  id="bbands-spy-2020"
+  caption="SPY daily closes with 20-day Bollinger Bands. Note the explosion of band width in March 2020 and the squeeze that preceded it."
+/>
+
+## 4. The normality myth
+
+The "95% inside $\pm 2\sigma$" claim is the most-quoted and most-misleading fact about Bollinger Bands. It is true *if* log-returns are i.i.d. Gaussian. They are not:
+
+- Returns have **fat tails**: $5\sigma$ days happen orders of magnitude more often than a normal model predicts.
+- Returns have **volatility clustering**: today's $\sigma$ is correlated with yesterday's, so the bands lag.
+- Returns have **skew**: drops are sharper than rallies in equity indices.
+
+Empirically, the share of closes outside the bands varies from ~5% (sleepy ranges) to ~15% (crashes). Treat 95% as a rule of thumb, not a probability.
+
+<Pitfall>
+A touch of the upper band is **not** a sell signal. In a strong uptrend, price can "walk the upper band" for weeks while the band itself drifts up with the SMA. Selling every upper-band touch in 2017 SPY would have been a disaster. We will tackle this head-on in the next lesson.
+</Pitfall>
+
+## 5. Reading band width
+
+A useful derived series is the **bandwidth**:
+
+<MathBox>
+$$
+\mathrm{BW}_t = \frac{\mathrm{Upper}_t - \mathrm{Lower}_t}{\mathrm{Middle}_t} = \frac{2 k \,\sigma_n(P_t)}{\mathrm{SMA}_n(P_t)}.
+$$
+</MathBox>
+
+Because it is normalised by the SMA, $\mathrm{BW}_t$ is comparable across assets and across time. Low $\mathrm{BW}_t$ relative to its own history means "this asset is quieter than usual" — a regime worth flagging, even before you decide what to trade.
+
+<KeyPoint>
+Bollinger Bands are a **rolling mean plus or minus a rolling standard deviation**. The width is the indicator's most underrated output: it is a clean, scale-free measure of realised volatility regime.
+</KeyPoint>
+
+## 6. Practical defaults
+
+- **$n = 20, k = 2$** for daily equities — the original setting and still hard to beat.
+- **$n = 20, k = 2.5$** for crypto, where fatter tails punish a tight envelope.
+- **$n = 10, k = 1.9$** for intraday — shorter window, slightly tighter $k$ to keep touches frequent enough to study.
+
+Two more details often forgotten in implementation. First, decide explicitly whether to use the **sample** standard deviation (divisor $n - 1$) or the **population** version (divisor $n$). Most reference implementations use the sample form; mixing the two will cause your bands to subtly disagree with another library and waste an afternoon. Second, the window is **trailing**, so the very first $n - 1$ bars of any series have undefined bands. Drop them rather than back-filling — back-filling silently leaks future information into a backtest.
+
+Whatever you pick, log it as a parameter and stress-test it. The next lesson turns these bands into actual trading rules — and shows where each rule quietly breaks.
+
+<Quiz
+  id="B-04-bollinger-bands-q1"
+  question="With default settings (n=20, k=2), what does the upper Bollinger Band equal?"
+  options={[
+    'The 20-bar exponential moving average plus 2 times the 20-bar ATR.',
+    'The 20-bar simple moving average plus 2 times the 20-bar sample standard deviation of price.',
+    'The highest high of the last 20 bars.',
+    'The 20-bar simple moving average plus 2% of price.'
+  ]}
+  answer={1}
+  explanation="Bollinger Bands use the simple moving average as the centre line and add or subtract k times the sample standard deviation of price over the same window."
+/>
+
+<Quiz
+  id="B-04-bollinger-bands-q2"
+  question="A trader sees price touch the upper band in a strong, persistent uptrend. What is the most defensible interpretation?"
+  options={[
+    'A mechanical sell signal — 95% of bars must stay inside the bands.',
+    'The trend is over and mean reversion is imminent.',
+    'The market is descriptively at +2σ of its recent distribution; this is common in trends and is not, by itself, a reversal signal.',
+    'The bandwidth has collapsed, predicting a breakout.'
+  ]}
+  answer={2}
+  explanation="Bollinger Bands describe where price is relative to its recent distribution. In trending markets, prices can hug or walk the band; treating every touch as a reversal is a known failure mode."
+/>

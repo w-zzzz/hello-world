@@ -1,0 +1,81 @@
+# Fibonacci pivot levels
+
+Once you understand floor-trader pivots, Fibonacci pivots are a one-line change. Same central pivot, same geometry, same role as scaffolding for the day — but the support and resistance offsets are scaled by Fibonacci ratios instead of the integer multipliers of the classic formula. The result is a tighter cluster of levels around the central pivot. In this lesson you will see the formula, compare it to the floor-trader and Camarilla variants, and confront the uncomfortable question of *why* a 0.618 multiple would have any predictive power at all.
+
+## The formula
+
+Start from the same central pivot:
+
+$$
+P = \frac{H + L + C}{3}
+$$
+
+Then scale the previous day's range $R = H - L$ by Fibonacci ratios:
+
+$$
+R_1 = P + 0.382 \cdot (H - L), \quad S_1 = P - 0.382 \cdot (H - L)
+$$
+
+$$
+R_2 = P + 0.618 \cdot (H - L), \quad S_2 = P - 0.618 \cdot (H - L)
+$$
+
+$$
+R_3 = P + 1.000 \cdot (H - L), \quad S_3 = P - 1.000 \cdot (H - L)
+$$
+
+The 0.382 and 0.618 are the two famous Fibonacci ratios — successive terms of the Fibonacci sequence converge to ratios that approach those numbers. The 1.0 level closes the system at exactly one full range above and below $P$.
+
+## A worked example
+
+Take yesterday's SPY values: $H = 510$, $L = 504$, $C = 508$, so $H - L = 6$.
+
+$$
+P = 507.33
+$$
+
+$$
+R_1 = 507.33 + 0.382 \cdot 6 = 509.62, \qquad S_1 = 507.33 - 2.29 = 505.04
+$$
+
+$$
+R_2 = 507.33 + 0.618 \cdot 6 = 511.04, \qquad S_2 = 507.33 - 3.71 = 503.62
+$$
+
+$$
+R_3 = 507.33 + 6 = 513.33, \qquad S_3 = 507.33 - 6 = 501.33
+$$
+
+Notice how the Fibonacci levels sit *inside* the corresponding floor-trader levels. Floor-trader $R_1$ was $510.67$; Fibonacci $R_1$ is $509.62$. That tighter geometry is the whole practical difference: Fib pivots fire earlier and more often, floor-trader pivots fire later but with bigger moves.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the chart and pick a day. Mentally overlay both pivot sets. You will see Fib pivots being touched more frequently — which means more false signals as well as more real ones. Whether that trade-off helps you depends on what your strategy looks like.
+
+## Comparison to floor-trader and Camarilla pivots
+
+There are three popular pivot families that all start from $P = (H+L+C)/3$ but use different scaling:
+
+- **Floor-trader pivots:** integer multiples of $H-L$ and asymmetric levels (2P − L, 2P − H, etc.). Widest spacing.
+- **Fibonacci pivots:** 0.382, 0.618, 1.0 multiples of $H-L$. Medium-tight spacing.
+- **Camarilla pivots:** very tight multiples (1.1/12, 1.1/6, etc. of $H-L$). Smallest spacing — designed for reversion to a tight central zone.
+
+A trader who wants confluence sometimes plots all three. When floor-trader $R_2$, Fib $R_2$, and a Camarilla level all land within a few cents of each other, the cluster is treated as a stronger zone.
+
+## The unconfortable question
+
+If $P$ has a clear interpretation (last session's typical price), and floor-trader $R_1$ has a clear interpretation (a symmetric reflection of the low across $P$), what does $0.382 \cdot (H-L)$ above $P$ measure?
+
+Honest answer: **nothing intrinsic.** The Fibonacci ratios were imported to financial charts by analogy from natural spirals and the golden ratio, but there is no statistical reason 0.382 or 0.618 should be a special price level. The level matters only because enough chartists and algorithms place orders there. That is exactly the same sociological edge as floor-trader pivots — except now the "everyone watches this number" effect is weaker, because the audience for Fib pivots is smaller and more retail-leaning than the audience for floor-trader pivots.
+
+<Pitfall title="Confusing pattern with signal">
+The Fibonacci ratios feel like deep structure — they show up in spirals, in art, in plant biology. It is tempting to assume they confer real predictive power on price. They do not. If your backtest works only because price respected 0.618, ask: would the same logic with 0.5 or 0.65 also work? If yes, you have a level effect (price respects round-ish numbers in a range), not a Fib effect. If your strategy relies on Fib pivots to confer real edge, you are very likely confusing pattern with signal — the same mistake the system was meant to help you avoid.
+</Pitfall>
+
+<KeyPoint title="Same scaffolding, tighter geometry, weaker base">
+Fibonacci pivots share the central $P$ with floor-trader pivots but place R/S levels at 0.382, 0.618, 1.0 of yesterday's range — tighter and more frequently touched. The math is just a rescaling. The sociological edge is real but smaller than floor-trader pivots, because the Fib audience is smaller. Use them as descriptive lines, not as oracles.
+</KeyPoint>
+
+<Quiz id="B-27-fibonacci-pivots-q1" question="What is the main geometric difference between Fibonacci pivots and floor-trader pivots?" options={["Fib pivots use a different central pivot P; floor-trader pivots use (H+L)/2.","Both start from the same P, but Fib pivots scale the range by 0.382, 0.618, 1.0 — producing tighter levels around P than floor-trader.","Fib pivots only have R and S, no central level.","Fib pivots reset every minute; floor-trader pivots reset daily."]} answer={1} explanation="Both families share P = (H+L+C)/3. The difference is scaling: floor-trader uses integer multiples of the range and asymmetric formulas, while Fib pivots use 0.382, 0.618, 1.0 multiples — yielding tighter levels around the central pivot." />
+
+<Quiz id="B-27-fibonacci-pivots-q2" question="Why is it intellectually dangerous to claim that 0.618 is a 'special' price level?" options={["Because 0.618 is mathematically irrational and software cannot compute it precisely.","Because there is no statistical reason the ratio should matter for prices — any edge comes from social coordination on these specific numbers, which means a strategy depending on Fib pivots for real predictive power is mistaking pattern for signal.","Because Fibonacci ratios only apply to natural spirals, never to finance.","Because 0.618 was secretly chosen by a single trading firm in the 1980s."]} answer={1} explanation="Fibonacci ratios appear in nature, but there is no causal mechanism connecting them to price formation. To the extent Fib pivots 'work,' it is because a community of traders coordinates on those numbers — the same sociological mechanism as floor-trader pivots, but with a smaller audience. Treating the ratio as inherently predictive confuses pattern with signal." />

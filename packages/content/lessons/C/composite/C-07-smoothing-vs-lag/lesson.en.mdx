@@ -1,0 +1,84 @@
+# Smoothing vs lag — a fundamental trade-off
+
+Every smoothing knob you turn down to reduce noise quietly turns up another knob called lag. You cannot escape this. It is the same reason a thermostat with heavy averaging is calm but slow, while one with no averaging is jumpy but fast. This lesson is about treating that trade-off honestly instead of pretending some magic parameter solves it.
+
+## Why smoothing always lags
+
+A moving average is, by construction, an average over past values. Information from bar $t$ shows up in a window that ends at bar $t$, so the centre of the window sits at $t - n/2$. That offset *is* the lag.
+
+For an exponentially weighted moving average with smoothing factor $\alpha = 2 / (n + 1)$, the effective lag is approximately:
+
+$$
+\text{lag}_{\text{EWMA}} \;\approx\; \frac{n - 1}{2}
+$$
+
+So a 20-period EMA carries roughly 9–10 bars of lag. Want less lag? Lower $n$. But the variance of the smoothed series is roughly $\sigma^2 / n_{\text{eff}}$ where $n_{\text{eff}} \approx (2 - \alpha)/\alpha$, so dropping $n$ to 5 doubles the noise. Pick your poison.
+
+## Three options for managing lag
+
+### 1. Lower the window
+
+The simplest move. Less smoothing, less lag, more false signals. Useful when your downstream filter (a confluence rule, a regime gate) can tolerate the extra noise.
+
+### 2. Use a smarter filter
+
+Filters like Kalman smoothers, Hodrick-Prescott, or Savitzky-Golay can, in theory, achieve lower lag at the same noise level — but only if their assumed model matches reality. They introduce **model risk**: when the market regime changes, the assumed dynamics no longer hold and the "smart" filter can lag worse than a dumb EMA. Sophistication is not always robustness.
+
+### 3. Lead/lag substitutes
+
+Combine a fast oscillator (e.g. RSI(7)) with a slow trend filter (e.g. SMA(200)). The oscillator gives near-zero lag on local extremes; the trend filter contributes near-zero noise on the broad direction. Together they approximate a signal that is both responsive and steady — at the cost of two parameters instead of one.
+
+## See it for yourself
+
+Toggle the period in the playground. Watch the 10-period EMA hug price closely but produce many crossovers; the 50-period EMA is calmer but enters trends visibly late.
+
+<IndicatorPlayground indicator="ema" />
+
+The hard lesson: on the same dataset, **no single period is best**. The best period in a trending year is too slow in a choppy year, and vice versa.
+
+## The temptation — and why it fails
+
+Every new quant goes through a phase of grid-searching the smoothing parameter to find "the optimum." It always exists in-sample. It rarely survives out-of-sample. The reason is structural: the optimum is a function of the regime, and the regime changes. A parameter that looks brilliant on 2017–2019 looks foolish on 2020 and again on 2022.
+
+<Pitfall title="The "perfect smoothing parameter" is a mirage">
+There is no period that is robustly optimal across regimes. Searching for one — and reporting the in-sample winner — is one of the most reliable ways to deceive yourself with a backtest. Robust strategies are deliberately **un-clever** about smoothing: round numbers, picked a priori, justified on signal-processing grounds, not on backtest Sharpe.
+</Pitfall>
+
+## A practical posture
+
+Pick smoothing windows from a small, defensible set (5, 10, 20, 50, 100, 200) before you backtest. Document **why** you chose each. Re-validate that they still make sense on walk-forward windows, but resist the urge to grid-search.
+
+If you find yourself needing aggressive smoothing to make a signal work, ask whether the underlying signal is real. Heavy smoothing can hide a weak edge — and lag it into uselessness.
+
+<KeyPoint title="Two facts to keep together">
+1. Every bar of smoothing is a bar of lag.
+2. The optimal smoothing window changes with the regime, so optimizing it once and freezing it overfits the regime you measured in.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="C-07-smoothing-vs-lag-q1"
+  question="A 20-period EMA on daily bars carries approximately how much lag?"
+  options={[
+    'Zero — EMA weights recent bars more heavily.',
+    'About 1 bar.',
+    'About 9–10 bars.',
+    'About 20 bars.',
+  ]}
+  answer={2}
+  explanation="The effective lag of an EWMA with period n is roughly (n-1)/2 bars. For n=20 that is about 9.5 bars."
+/>
+
+<Quiz
+  id="C-07-smoothing-vs-lag-q2"
+  question="Why is grid-searching the smoothing period on historical data dangerous?"
+  options={[
+    'It is computationally expensive and slows the backtest.',
+    'The optimum is regime-dependent and rarely persists out of sample.',
+    'Modern filters like Kalman are always better, so searching EMA periods is wasted effort.',
+    'It overweights recent data inappropriately.',
+  ]}
+  answer={1}
+  explanation="The best smoothing window in a trending sample is different from the best one in a choppy sample. Optimizing on history bakes the historical regime into the parameter — and out of sample the regime changes."
+/>

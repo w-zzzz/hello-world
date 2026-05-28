@@ -1,0 +1,80 @@
+# Volume Profile / Distribution
+
+OBV, VWAP, and MFI all live on the time axis — they answer "what was volume doing at time $t$?" Volume Profile rotates that picture ninety degrees. Instead of plotting volume against time, it plots volume against **price** — a horizontal histogram of how much trading happened at each price level over a chosen window.
+
+In this lesson you will learn the construction, the three terms every profile reader uses (POC, Value Area, HVN/LVN), how shape characterizes a session, and the most important caveat: a volume profile is **descriptive**, not predictive.
+
+## Construction
+
+Pick a window — one session, a week, a month, a multi-month swing. Slice the price range into bins (TradingView defaults to roughly 24 bins per session). For each trade, add its size to the bin containing its execution price. Plotted sideways, the bin totals form the familiar mountain-on-its-side shape.
+
+Formally, with bins indexed by $b$ and trades $i$:
+
+$$
+\mathrm{VP}(b) = \sum_{i : P_i \in \mathrm{bin}(b)} V_i
+$$
+
+The window's total volume is $\sum_b \mathrm{VP}(b)$; the **profile** is just this distribution drawn as a horizontal histogram.
+
+## Three terms to know
+
+- **Point of Control (POC)** — the single bin with the highest traded volume. POC tends to act as a magnet: price often returns to it on revisits.
+- **Value Area** — the contiguous range around the POC that contains a fixed share (conventionally 70%) of the window's volume. The boundaries are **VAH** (Value Area High) and **VAL** (Value Area Low).
+- **High Volume Nodes (HVN) / Low Volume Nodes (LVN)** — local maxima and minima in the profile. HVNs are likely support/resistance on retest; LVNs are thin patches that price often slices through quickly.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at SPY and try to mentally bucket the last month's price action into bins. The bin you visited most often is your POC. The fat middle is your value area. The thin shoulders are LVNs.
+
+## Profile shapes
+
+The shape of the histogram is itself a signal:
+
+- **D-shape (balanced).** Symmetric, one clear POC in the middle. The market rotated around a fair price. Mean-reversion strategies tend to work here.
+- **P-shape.** Heavy on top, thin on bottom. Often a short-covering rally that stalled.
+- **b-shape.** Mirror of P — heavy bottom, thin top. Often long liquidation, then a failed bounce.
+- **Double-distribution.** Two POCs with a thin valley between — usually a regime change midway through the window.
+
+## Trading use cases
+
+1. **Support/resistance maps.** Mark POC, VAH, VAL, and major HVNs from a multi-week profile. Revisits often produce real reactions because the levels correspond to real positioning.
+2. **Expected reversal zones.** In a D-shape session, VAH/VAL edges are where mean-reversion entries cluster — price tags the edge, fails to accept outside, snaps back to POC.
+3. **Context for other signals.** A breakout **through an LVN** is more reliable (no rest volume to absorb it); a breakout into an HVN tends to stall.
+
+## Common pitfalls
+
+<Pitfall title="Treating a volume profile as a forecast">
+A volume profile tells you **where trading happened**, not where it will happen. The POC of August is a real, observable property of August; it is not a prediction about September. The shape of last week's profile is a description of last week's flow, not a model of next week's. Backtests of mechanical "fade VAH, target POC" strategies look brilliant on the same window the profile was built from — which is exactly the window the profile is fit to. Out of sample, especially across a regime change, that edge collapses. Use profile as **context** for discretionary or rule-based decisions, not as an oracle. If you build a strategy around profile levels, hold out a separate validation window before believing the results.
+</Pitfall>
+
+<KeyPoint title="Takeaway">
+Volume profile is a horizontal histogram of volume by price within a window. Read it through POC (highest-volume bin), the Value Area (typically 70% boundaries, VAH/VAL), and HVN/LVN structure. The shape characterizes the session — D, P, b, or double. It is a description of past flow, not a forecast.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-23-volume-profile-q1"
+  question="In a volume profile, what does the Point of Control (POC) represent?"
+  options={[
+    "The price at the start of the window.",
+    "The price bin with the highest traded volume within the window.",
+    "The midpoint of the price range, regardless of volume.",
+    "The price at the end of the window.",
+  ]}
+  answer={1}
+  explanation="POC is the single bin holding the largest share of the window's volume — the level where the most agreement and order flow occurred."
+/>
+
+<Quiz
+  id="B-23-volume-profile-q2"
+  question="A trader publishes a strategy that fades the Value Area High and targets POC on the same window used to build the profile. The backtest shows a 3.2 Sharpe. What is the most defensible critique?"
+  options={[
+    "Sharpe ratios above 3 are always real — the strategy is sound.",
+    "The strategy is unsound only if it loses money.",
+    "The profile is fitted to the same window the strategy is tested on, so the result is descriptive, not predictive — out-of-sample performance is likely to be much weaker.",
+    "Volume profile cannot be used for trading at all.",
+  ]}
+  answer={2}
+  explanation="Volume profile describes what happened. A mechanical strategy that uses POC and Value Area on the very window the profile is built from is reading the answers to its own test — out-of-sample, especially across regime changes, that edge typically disappears."
+/>

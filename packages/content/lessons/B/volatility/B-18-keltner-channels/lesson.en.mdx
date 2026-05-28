@@ -1,0 +1,106 @@
+# Keltner Channels
+
+A Keltner Channel is a volatility envelope drawn around a moving average. It looks superficially like a Bollinger Band, but the math underneath differs in a way that matters: Keltner uses **ATR** (absolute, gap-aware range), while Bollinger uses the **standard deviation of close prices**. Once you see what each formula throws away, you can pick the right one.
+
+In this lesson you will write the Keltner formula, compare it with Bollinger, and see why touches on a Keltner band rarely mean what touches on a Bollinger band mean.
+
+## Definition
+
+Keltner uses three lines: an EMA midline plus an ATR-scaled envelope on each side. With $n = 20$, $m = 10$, $k = 2$ as typical defaults:
+
+$$
+\mathrm{Mid}_t = \mathrm{EMA}_n(C_t)
+$$
+
+$$
+\mathrm{Upper}_t = \mathrm{Mid}_t + k \cdot \mathrm{ATR}_m, \qquad \mathrm{Lower}_t = \mathrm{Mid}_t - k \cdot \mathrm{ATR}_m
+$$
+
+The midline tracks **trend**, the band width tracks **typical bar travel**. Because ATR uses Wilder smoothing and includes gap risk, the envelope reacts to overnight jumps that a stddev-of-close measure can miss.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Mentally overlay a 20-EMA on this chart. The upper Keltner is that EMA plus twice the recent ATR. The bands inflate during stress and deflate when bars get small — but on a longer time constant than Bollinger's variance window.
+
+## Keltner vs Bollinger — the same shape, different physics
+
+Both indicators are "moving-average + width," but they answer different questions about width.
+
+<Compare
+  leftTitle="Keltner Channel"
+  rightTitle="Bollinger Bands"
+  left={<>
+    <p>Mid = EMA<sub>20</sub>(C)</p>
+    <p>Up = Mid + 2·ATR<sub>10</sub></p>
+    <p>Width source: <strong>ATR</strong> — captures intraday range and overnight gaps.</p>
+    <p>Smoothing: Wilder ATR is slow, so band width changes gradually.</p>
+  </>}
+  right={<>
+    <p>Mid = SMA<sub>20</sub>(C)</p>
+    <p>Up = Mid + 2·σ<sub>20</sub>(C)</p>
+    <p>Width source: <strong>stddev of closes</strong> — measures how dispersed closes are around the mean.</p>
+    <p>Smoothing: a rolling-window stddev jumps faster as recent closes change.</p>
+  </>}
+/>
+
+Picture a market that gaps down \$5 every morning and drifts flat all day. The closes trend smoothly, so rolling stddev stays small and Bollinger says "calm." But ATR is large every day because TR catches the gap — Keltner widens. **ATR sees overnight risk; stddev of close does not.**
+
+Play with Bollinger here to feel how a centered band breathes with volatility:
+
+<IndicatorPlayground indicator="bollinger" />
+
+Imagine the same chart with SMA replaced by EMA and stddev replaced by an ATR multiple. Same shape, slower breathing, gap-aware width.
+
+## When to prefer which
+
+Use **Bollinger** for *how unusual* recent closes are versus their short-term distribution — a statistical mean-reversion framing.
+
+Use **Keltner** for *how big bars are* in real price units, including overnight risk — a trader's noise-floor framing. Trend channels and ATR stops are usually Keltner-shaped.
+
+Many systems use both: Bollinger inside Keltner ("squeeze") flags an unusually quiet variance regime relative to typical range — compressed energy before a breakout.
+
+## How traders use it
+
+Three idioms cover most cases.
+
+1. **Trend channel.** Closes persistently pushing along the upper band is a strong-trend signal, not an overbought one. The midline is dynamic support for adds.
+2. **Volatility breakout.** When price exits the band after a tight stretch (low ATR), the move often runs further than a Bollinger touch would suggest — Keltner's slow band means the system was genuinely sleepy.
+3. **Stop placement.** Trailing stops at $\mathrm{Mid}_t - k \cdot \mathrm{ATR}_m$ give a volatility-adjusted exit on the chart you are already watching.
+
+## Pitfalls
+
+<Pitfall title="Treating Keltner touches like Bollinger touches">
+On Bollinger, a band touch is by construction a high-percentile event in the recent close distribution — mean-reversion traders read it as "stretched." On Keltner, the upper band is just "EMA plus 2 ATRs," and because ATR is Wilder-smoothed, **price can ride or sit outside the upper band for many bars in a strong trend.** Fading every Keltner touch is one of the fastest ways to be run over on a trend day. If you trade Keltner mean-reversion, demand extra confirmation (e.g. RSI divergence).
+</Pitfall>
+
+<KeyPoint title="Carry this forward">
+Keltner = EMA midline + ATR-scaled envelope. ATR makes the envelope **gap-aware and slow**, which is great for trend channels and stops, but it does *not* make band touches statistically extreme the way Bollinger touches are. Pick the indicator that matches the question you are asking.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-18-keltner-channels-q1"
+  question="What is the single most important formulaic difference between a Keltner Channel and a Bollinger Band?"
+  options={[
+    "Keltner uses a longer lookback than Bollinger.",
+    "Keltner scales the band by ATR, Bollinger scales the band by the stddev of closes.",
+    "Keltner is only valid on intraday timeframes.",
+    "Bollinger is centered on the EMA, Keltner on the SMA."
+  ]}
+  answer={1}
+  explanation="Both are 'moving average + width.' The width source is the meaningful difference: ATR captures intraday range and overnight gaps; stddev of close measures only how dispersed closes are around their mean."
+/>
+
+<Quiz
+  id="B-18-keltner-channels-q2"
+  question="Why is fading every touch of the upper Keltner band in a strong uptrend dangerous?"
+  options={[
+    "Because Keltner bands are repainted retroactively.",
+    "Because ATR is Wilder-smoothed and slow, so price can ride or sit outside the band for many bars during a real trend.",
+    "Because Keltner only works on commodities.",
+    "Because the band only updates once a week."
+  ]}
+  answer={1}
+  explanation="Keltner's band width changes slowly because ATR uses 1/n Wilder smoothing. In a powerful trend, price can stay outside the band for an extended stretch — fading every touch is a fast way to get steamrolled."
+/>

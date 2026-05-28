@@ -1,0 +1,81 @@
+# Floor-trader pivot points
+
+Floor-trader pivots are the simplest piece of technical scaffolding still in active use. They come from the pre-screen days at the CME and CBOT, when traders in the pit needed support and resistance levels they could compute in their head before the bell. The formula uses just yesterday's high, low, and close, takes about five seconds to compute, and produces a central pivot plus three resistance and three support levels that stay fixed for the entire trading day.
+
+## The math
+
+Let $H$, $L$, $C$ be yesterday's high, low, and close. The central pivot is:
+
+$$
+P = \frac{H + L + C}{3}
+$$
+
+That is the arithmetic average of yesterday's range bookends and close — sometimes called the *typical price* of yesterday. From $P$ we build symmetric levels:
+
+$$
+R_1 = 2P - L, \quad S_1 = 2P - H
+$$
+
+$$
+R_2 = P + (H - L), \quad S_2 = P - (H - L)
+$$
+
+$$
+R_3 = H + 2(P - L), \quad S_3 = L - 2(H - P)
+$$
+
+You compute all seven once at the open. They stay fixed for the rest of the session and reset overnight using *that* session's H, L, C. There is no smoothing, no tuning parameter, no lag — just a snapshot of yesterday turned into seven horizontal lines.
+
+## A worked example
+
+Suppose SPY closed yesterday with $H = 510$, $L = 504$, $C = 508$.
+
+$$
+P = \frac{510 + 504 + 508}{3} = 507.33
+$$
+
+$$
+R_1 = 2(507.33) - 504 = 510.67, \qquad S_1 = 2(507.33) - 510 = 504.67
+$$
+
+$$
+R_2 = 507.33 + 6 = 513.33, \qquad S_2 = 507.33 - 6 = 501.33
+$$
+
+$$
+R_3 = 510 + 2(507.33 - 504) = 516.67, \qquad S_3 = 504 - 2(510 - 507.33) = 498.67
+$$
+
+Today's intraday action will be read against those seven lines. Open above $P$ and grind toward $R_1$? Trend day up. Open below $P$ and reject $S_1$? Range day.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the chart and pick any day. Compute that day's pivots from the previous day's H/L/C. Notice how often $R_1$ and $S_1$ align with the day's actual intraday extremes — surprisingly often on liquid index ETFs.
+
+## How traders actually use them
+
+Pivots are **descriptive levels, not signals**. They mark the structure for the day; what you do at each level depends on order flow and your strategy:
+
+- **Trend bias from price vs P:** opens above $P$ tend to favor longs; below favors shorts.
+- **Mean-reversion targets:** tag $R_1$ or $S_1$ then fade back to $P$.
+- **Breakout context:** a clean break of $R_1$ that holds tends to point toward $R_2$.
+
+None of these are mechanical signals you can backtest as written. They are framing — places where many other traders are looking. That is the entire game.
+
+## Why the levels work (when they work)
+
+Pivots have no economic interpretation. There is no shareholder value above $R_2$. They work to the extent they work because **everyone watches the same number**. A futures trader at a prop desk, a retail day trader, and a market-making algo can all be looking at the same $R_1$. That coordination produces real, observable order-flow clustering at the level.
+
+This is a sociological edge, not a statistical one. It dies the moment the asset stops having enough participants who use this formula.
+
+<Pitfall title="Pivots are self-fulfilling, not magic">
+On highly liquid futures (ES, NQ, CL, GC) and the largest equity ETFs (SPY, QQQ, IWM), pivots reliably show clustering of orders because thousands of traders watch them. On a thinly traded small-cap stock, a Chinese A-share with very different participant structure, or a low-volume crypto pair, the same formula produces lines that price ignores. Always **validate per asset** before assuming pivots have any presence. The formula did not change — the audience did.
+</Pitfall>
+
+<KeyPoint title="Pivots as session scaffolding">
+$P, R_1\text{-}R_3, S_1\text{-}S_3$ are seven horizontal lines computed once from yesterday's H/L/C. They are descriptive, not predictive. Their value is that everyone else is looking at the same lines, which produces real order-flow clustering — only on assets with enough participants to coordinate.
+</KeyPoint>
+
+<Quiz id="B-26-pivot-points-q1" question="In the floor-trader formula, what is the central pivot P computed as?" options={["The midpoint of yesterday's high and low only.","The average of yesterday's high, low, and close.","Today's open price.","A 26-period exponential moving average of close."]} answer={1} explanation="P = (H + L + C) / 3 of yesterday's session. Sometimes this is called the typical price of yesterday. R1-R3 and S1-S3 are then built symmetrically from P and yesterday's range." />
+
+<Quiz id="B-26-pivot-points-q2" question="Why might pivot points 'work' on S&P 500 futures but produce useless lines on an illiquid small-cap stock?" options={["The formula is wrong for small-caps and uses different periods.","Because pivots depend on enough coordinating participants watching the same number — small-caps lack that coordination, so the level loses its sociological pull.","Because small-cap pivots use closes only, large-cap pivots use opens.","Because small-caps have lower volatility, so pivots are too narrow."]} answer={1} explanation="Pivots have no economic meaning; their effectiveness is sociological. On liquid futures and major ETFs, a huge audience watches the same R1/S1, producing real order-flow clustering. On thin small-caps, that audience does not exist, so price ignores the levels." />

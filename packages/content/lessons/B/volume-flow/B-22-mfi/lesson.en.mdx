@@ -1,0 +1,96 @@
+# Money Flow Index (MFI)
+
+If RSI is the canonical price-only momentum oscillator, the Money Flow Index is its volume-aware sibling. MFI takes the same bounded $[0, 100]$ shape and the same 80/20 overbought-oversold geometry, but it weights every up-day and down-day by the dollar volume that actually traded. The result is a slower, more selective oscillator — when MFI fires, more capital was behind the move.
+
+In this lesson you will see the exact construction, why it behaves like a "filtered RSI," and the failure mode that catches people off guard in quiet tape.
+
+## Construction
+
+The build is four short steps. First, the typical price for bar $t$:
+
+$$
+\mathrm{TP}_t = \frac{H_t + L_t + C_t}{3}
+$$
+
+Second, money flow — typical price times volume:
+
+$$
+\mathrm{MF}_t = \mathrm{TP}_t \cdot V_t
+$$
+
+Third, classify each bar. If $\mathrm{TP}_t > \mathrm{TP}_{t-1}$, this bar's $\mathrm{MF}_t$ is **positive money flow**; if $\mathrm{TP}_t < \mathrm{TP}_{t-1}$, it is **negative money flow**; if equal, neither. Over a lookback of $n = 14$ bars, sum each bucket separately and form the **Money Ratio**:
+
+$$
+\mathrm{MoneyRatio}_t = \frac{\sum \mathrm{PositiveMF}}{\sum \mathrm{NegativeMF}}
+$$
+
+Fourth, squash that ratio into the canonical bounded form:
+
+$$
+\mathrm{MFI}_t = 100 - \frac{100}{1 + \mathrm{MoneyRatio}_t}
+$$
+
+That last line should look familiar — it is exactly the RSI transform applied to a different ratio. RSI uses the ratio of up-day price moves to down-day price moves; MFI uses the ratio of up-day dollar volume to down-day dollar volume.
+
+## How to read MFI
+
+Standard thresholds: **above 80 is overbought, below 20 is oversold**. The interpretation is the same as RSI's 70/30 levels, but pushed further out because MFI's denominator carries more punch.
+
+The signals worth knowing:
+
+- **Threshold crosses.** MFI rising back through 20 from below is a classic oversold-reversal long; falling through 80 from above is the symmetric short.
+- **Divergence.** Price prints a higher high but MFI prints a lower high — money flow is fading even as price extends. This is widely considered MFI's strongest signal.
+- **Failure swings.** MFI fails to make a new extreme on the second push and then breaks its intervening swing low. Same shape as the RSI failure swing.
+
+Open SPY and trace a mental MFI line across the chart.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+You will notice MFI moves less than RSI would over the same window — because a 1.5% up day on quiet volume contributes less positive money flow than a 0.5% up day on heavy volume. That selectivity is the whole point.
+
+## Why "filtered RSI" is the right intuition
+
+Both oscillators share the same final transform. The only difference is what you feed the ratio. RSI sums price changes; MFI sums dollar volume on price-direction days. So MFI is RSI with the **volume gate** applied — moves that lack participation are quietly down-weighted.
+
+That has two implications:
+
+1. MFI fires less often. False signals from low-conviction drift are filtered out.
+2. When MFI does cross 80 or 20, the move had volume behind it — more likely to reflect actual positioning rather than noise.
+
+## Common pitfalls
+
+<Pitfall title="Trusting MFI in a low-volume regime">
+MFI is more selective than RSI precisely because volume gates the signal. But that same gate makes MFI go inert in quiet regimes — pre-holiday weeks, the middle of August, the dead patch between earnings seasons. Price can drift several percent while MFI sits glued to 50 because the dollar volume on up days and down days is roughly equal (and small). In those windows, MFI is not "neutral on purpose" — it is structurally numb. Cross-check the absolute volume level before treating an MFI reading as meaningful, and consider switching to plain RSI when volume is far below its 20-day average.
+</Pitfall>
+
+<KeyPoint title="Takeaway">
+MFI is RSI applied to dollar-volume-weighted typical price. Range $[0, 100]$, overbought/oversold at 80/20, divergence is the strongest signal. The volume gate makes MFI more selective than RSI — but the same gate causes it to fall asleep in low-volume regimes.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-22-mfi-q1"
+  question="Why is MFI often described as 'RSI for money flow'?"
+  options={[
+    "Because MFI uses exponential smoothing like RSI.",
+    "Because MFI applies the same 100 − 100/(1 + ratio) transform, but to a volume-weighted ratio instead of pure price changes.",
+    "Because MFI and RSI always print the same value.",
+    "Because RSI was renamed to MFI in 2010.",
+  ]}
+  answer={1}
+  explanation="The final transform is identical. RSI's ratio is up-price-moves over down-price-moves; MFI's ratio is up-day dollar volume over down-day dollar volume. Same squash, different fuel."
+/>
+
+<Quiz
+  id="B-22-mfi-q2"
+  question="SPY drifts up 2% over two weeks on the lightest volume of the year. MFI barely moves off 50. The best interpretation is:"
+  options={[
+    "MFI is broken and should be replaced.",
+    "MFI is bearish — flat readings always mean weakness.",
+    "MFI is structurally inert because the volume gate has no fuel. Treat the reading as low-information, not as a directional signal.",
+    "MFI is confirming a strong uptrend.",
+  ]}
+  answer={2}
+  explanation="In low-volume regimes, positive and negative money flow are both small and roughly balanced, so MFI parks near 50. That is a property of the indicator, not a market call — read the absolute volume level before trusting MFI in such windows."
+/>

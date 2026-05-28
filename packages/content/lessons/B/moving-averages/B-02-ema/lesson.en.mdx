@@ -1,0 +1,79 @@
+# Exponential Moving Average (EMA)
+
+You just saw that the simple moving average treats every bar in its window with equal weight. The exponential moving average is the natural fix: weight recent prices more, weight older prices less, and let those weights decay smoothly as you go back in time. The result is a line that turns faster than the SMA on real moves while staying smooth enough to be useful.
+
+In this lesson you will learn the recursive EMA formula, see why the smoothing constant $\alpha$ depends on a chosen period $n$, watch how the EMA responds to a step change in price, and meet the most common mistake — assuming "EMA(20)" and "SMA(20)" are comparable just because they share the number 20.
+
+## Definition
+
+The EMA is defined by a one-step recursion:
+
+$$
+\mathrm{EMA}_t = \alpha \, P_t + (1 - \alpha) \, \mathrm{EMA}_{t-1}
+$$
+
+where the smoothing constant $\alpha \in (0, 1)$ is chosen from a period $n$ by
+
+$$
+\alpha = \frac{2}{n + 1}.
+$$
+
+Each new bar's EMA is a blend: a fraction $\alpha$ of today's close plus a fraction $1 - \alpha$ of yesterday's EMA. Because yesterday's EMA already contained a blend of the day before, the influence of old prices does not disappear — it just shrinks by a factor of $(1-\alpha)$ every bar.
+
+If you unroll the recursion, you can show the EMA is an infinite weighted sum where the weight on $P_{t-k}$ is $\alpha (1-\alpha)^k$. The weights decay geometrically and sum to 1.
+
+## Why does $\alpha = 2/(n+1)$?
+
+The choice is a convention, picked so that an EMA with period $n$ has roughly the same "center of mass" — the average age of the data it weights — as an SMA with the same $n$. For an SMA(20), the average lag is about 9.5 bars; setting $\alpha = 2/21 \approx 0.095$ in the EMA gives a similar effective lag. This is what lets people say "EMA(20)" and "SMA(20)" in the same sentence without immediately contradicting themselves.
+
+Try a few periods side by side and watch the EMA hug the price more closely than the SMA at the same $n$:
+
+<IndicatorPlayground indicator="ema" />
+
+## Step response: what happens when price jumps
+
+Suppose price has been flat at 100 for a long time, so $\mathrm{EMA}_{t-1} = 100$. Then a piece of news pushes the close to 110 — a clean step up.
+
+With $n = 20$, $\alpha \approx 0.0952$. The next EMA value is:
+
+$$
+\mathrm{EMA}_t = 0.0952 \times 110 + 0.9048 \times 100 = 100.95
+$$
+
+So the EMA absorbs about 9.5% of the move on bar 1. Iterating, it covers $1 - (1-\alpha)^k$ of the gap by bar $k$. After 20 bars the EMA has closed about $1 - 0.905^{20} \approx 86\%$ of the gap; after 40 bars, about $98\%$. The SMA(20) over the same path snaps fully into place at exactly bar 20 — but it bounces around discontinuously as old pre-jump bars exit the window one at a time. The EMA's response is smoother, even if it never *quite* arrives.
+
+## Where EMA earns its keep
+
+Because the EMA reacts faster to recent prices, it is the default choice when you care about catching turns earlier — momentum strategies, trend-following crossovers (e.g. EMA(12) vs EMA(26), the building block of MACD), and any setup where being a few bars late costs real basis points.
+
+It is also nicer to compute online: you only need to keep the previous EMA value, not the whole window. For a streaming pipeline that processes millions of bars, that matters.
+
+## What the EMA does not do
+
+<Pitfall title="Same number, different meaning">
+A common mistake is to assume EMA(20) and SMA(20) are interchangeable because both say "20." They have similar average lag by construction, but the EMA has an infinite memory: the price from 200 bars ago still contributes a tiny — but nonzero — amount to today's value. The SMA forgets exactly at bar 21. If you backtest an EMA-based strategy with an SMA-based parameter sweep, or vice versa, the period that "looked optimal" for one will not behave the same way in the other.
+
+A related trap: when comparing across moving-average families, compare by **half-life** (the bar count $k$ where weights drop to half: $k = \ln(0.5) / \ln(1 - \alpha)$) instead of by nominal period. For EMA(20), the half-life is about 7 bars.
+</Pitfall>
+
+<KeyPoint title="The EMA contract">
+EMA is a recursive weighted average where weights decay geometrically. Faster than SMA, smoother than the raw price, infinite memory, easy to compute online. Pick the period based on the response you want — and remember the period is a convention, not a hard window.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-02-ema-q1"
+  question="For EMA with period n = 9, what is the smoothing constant α using the standard convention?"
+  options={['0.1', '0.2', '0.5', '0.9']}
+  answer={1}
+  explanation="α = 2/(n+1) = 2/(9+1) = 0.2. The same formula gives α ≈ 0.0952 for n=20 and α ≈ 0.0099 for n=200."
+/>
+
+<Quiz
+  id="B-02-ema-q2"
+  question="Price has been steady at 100, so the previous EMA is 100. Today's close prints 120 and you are running EMA(19), so α = 0.1. What is the new EMA?"
+  options={['100', '102', '110', '120']}
+  answer={1}
+  explanation="EMA = 0.1 × 120 + 0.9 × 100 = 12 + 90 = 102. The EMA absorbs 10% of the gap on the first bar after a step change."
+/>

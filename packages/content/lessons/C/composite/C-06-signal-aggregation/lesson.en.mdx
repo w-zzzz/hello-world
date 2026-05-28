@@ -1,0 +1,100 @@
+# Aggregating multiple signals
+
+You almost never trade on one indicator alone. The interesting question is *how* to combine several. Take an AND of all of them and you trade once a quarter. Take an OR and you're in the market constantly. Use a regression to pick weights and you've quietly overfit the last five years. This lesson walks through the three honest aggregation styles and the one piece of math you must respect: correlation between signals destroys diversification.
+
+## Three styles of aggregation
+
+Suppose you have $n$ binary signals $s_1, \dots, s_n \in \{0, 1\}$ (or continuous signals in $[-1, 1]$).
+
+### Style 1: AND — all conditions
+
+$$
+S_{\text{AND}} \;=\; \prod_{i=1}^{n} s_i
+$$
+
+You trade only when every signal agrees. High precision, low recall. Few trades, high hit-rate per trade, but you miss most of the moves. AND is what you want when each false positive is expensive (e.g. high transaction cost or news risk).
+
+### Style 2: OR — any condition
+
+$$
+S_{\text{OR}} \;=\; \mathbb{1}\!\left[\,\sum_{i=1}^{n} s_i \,\ge\, 1\,\right]
+$$
+
+You trade whenever at least one signal fires. Low precision, high recall. Many trades, lots of false positives, but you catch nearly every real move. OR fits scenarios where missing a move is more costly than acting on a bad one.
+
+### Style 3: voting / weighted average
+
+$$
+S_{\text{vote}} \;=\; \sum_{i=1}^{n} w_i \, s_i, \qquad \text{trade if } S_{\text{vote}} \ge \tau
+$$
+
+The continuous, tunable middle ground. Equal weights ($w_i = 1/n$) is the Occam baseline. The threshold $\tau$ slides you between AND-like behavior (high $\tau$) and OR-like behavior (low $\tau$).
+
+## How to pick the weights
+
+The honest order of preference:
+
+1. **Equal weights.** They don't overfit. They are interpretable. They are usually within 10% of any cleverer scheme out of sample.
+2. **Rank-based weights** from a long, walk-forward sample — e.g. inverse-volatility of the signal's PnL, or rank by Sharpe.
+3. **Regression-derived weights** (OLS, ridge, lasso) from in-sample PnL. These are the ones to be careful with: with $n = 5$ signals and a year of data, you can fit anything.
+
+A useful rule: if you cannot defend a weighting scheme without showing backtest Sharpe, you are overfitting it.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## Why correlation eats your diversification
+
+The case for combining signals rests on the variance of the average. If each $s_i$ has variance $\sigma^2$ and pairwise correlation $\rho$, then for an equal-weighted vote:
+
+$$
+\mathrm{Var}\!\left(\bar S\right) \;=\; \frac{\sigma^2}{N}\,\bigl(1 + (N-1)\,\rho\bigr)
+$$
+
+When $\rho = 0$ (independent signals), variance shrinks like $1/N$ — the textbook diversification benefit. When $\rho \to 1$ (signals all measure the same thing), the bracketed factor goes to $N$ and variance does not shrink at all.
+
+In practice, signals built on the same price series with similar lookbacks are highly correlated. **Five RSI variants are not five signals — they are one signal in five costumes.**
+
+<Pitfall title="Don't equate "more signals" with "more diversification"">
+Combining five trend-following signals on the same symbol via equal-weight voting does **not** give you variance reduction proportional to $1/5$. Their pairwise correlation is typically 0.7+, and the effective number of independent signals is closer to one. Real diversification comes from combining signals on **different return axes** — trend, mean reversion, carry, volatility, flow — not from stacking variations of one axis.
+</Pitfall>
+
+## Practical recipe
+
+A reasonable default workflow when you have a handful of candidate signals:
+
+1. Compute pairwise correlations of the signals themselves (not their PnL). If anything is above ~0.7, treat them as one signal.
+2. Equal-weight the surviving (low-correlation) signals.
+3. Choose $\tau$ by inspecting the trade-frequency curve over a long sample, not by optimizing Sharpe.
+4. Track post-hoc whether one signal silently dominates the others; if so, you didn't need the others.
+
+<KeyPoint title="The honest aggregation order">
+Independence first, equal weights second, optimization a distant last. Most "signal cocktails" that look great in backtest are just one good signal plus four ornaments.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="C-06-signal-aggregation-q1"
+  question="You combine 4 trend-following signals on SPY by equal-weighted voting. Their pairwise correlation is about 0.8. Compared to combining 4 independent signals, what should you expect?"
+  options={[
+    'Roughly 4x variance reduction, the textbook benefit.',
+    'About 2x variance reduction.',
+    'Almost no variance reduction; they behave like one signal.',
+    'More variance, because correlated signals interfere destructively.',
+  ]}
+  answer={2}
+  explanation="With pairwise rho near 0.8 the bracketed term (1 + (N-1)rho) is roughly 1 + 3*0.8 = 3.4, leaving variance at 3.4/4 of the single-signal level — essentially no diversification."
+/>
+
+<Quiz
+  id="C-06-signal-aggregation-q2"
+  question="Which aggregation style is most appropriate when each false-positive trade is expensive (high commissions, slippage, news risk)?"
+  options={[
+    'OR — you do not want to miss any move.',
+    'AND — only trade when all signals agree, accepting fewer trades.',
+    'Regression-derived weights fit on the last 3 months.',
+    'Random subsampling of one of the signals each day.',
+  ]}
+  answer={1}
+  explanation="AND is the high-precision, low-recall style. Fewer trades, higher hit-rate per trade — exactly the trade-off you want when each false positive is costly."
+/>
