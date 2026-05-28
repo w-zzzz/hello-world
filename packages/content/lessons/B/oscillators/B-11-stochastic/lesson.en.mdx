@@ -1,0 +1,69 @@
+# Stochastic Oscillator (%K and %D)
+
+The Stochastic Oscillator answers a very specific question: where does today's close sit inside the recent trading range? If price keeps closing near the top of its range, buyers are in control. If it keeps closing near the bottom, sellers are. George Lane built the indicator on this single observation in the 1950s, and seven decades later traders still squint at the same two wavy lines.
+
+In this lesson you will derive the %K and %D formulas from scratch, see why the "fast vs slow" variants exist, and learn the one trap that quietly invalidates most Stochastic crossover backtests.
+
+## The core formula
+
+Let $C_t$ be today's close, and over the last $n$ bars let $\mathrm{HH}_n$ be the highest high and $\mathrm{LL}_n$ the lowest low. The raw fast line is:
+
+$$
+\%K = 100 \cdot \frac{C_t - \mathrm{LL}_n}{\mathrm{HH}_n - \mathrm{LL}_n}
+$$
+
+A value of 100 means today closed exactly at the top of the recent range; 0 means it closed at the bottom; 50 means the middle. The default $n$ is 14 bars, but 9, 21, and 30 are also common — bigger $n$ smooths, smaller $n$ snaps.
+
+The slow line %D is just a 3-period simple moving average of %K:
+
+$$
+\%D = \mathrm{SMA}_3(\%K)
+$$
+
+%D is the signal line — slower, less jagged, and the one that crosses %K to produce trade alerts.
+
+## Fast vs slow stochastic
+
+Confusingly, there are two versions of the indicator floating around platforms:
+
+- **Fast Stochastic** uses raw %K above and $\%D = \mathrm{SMA}_3(\%K)$.
+- **Slow Stochastic** smooths %K first: the displayed "%K" is itself $\mathrm{SMA}_3$ of the raw formula, and the "%D" is then $\mathrm{SMA}_3$ of that. So slow stochastic is fast stochastic run through one extra moving average.
+
+Slow Stochastic is the default on TradingView, MetaTrader, and most retail UIs because the fast version generates too many whiplash crossovers to be readable. When you compare backtests across platforms, always confirm which variant you are computing — the numerical difference is large enough to flip the sign of your edge.
+
+## Reading the indicator
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Three patterns matter:
+
+1. **Overbought / oversold thresholds.** Conventional zones are above 80 (overbought) and below 20 (oversold). These are calibration choices, not laws of physics — on a low-volatility ETF like SPY you might use 75 / 25 instead.
+2. **%K crosses %D.** %K rising through %D from below is a bullish signal; the reverse is bearish. This is the most popular Stochastic trade.
+3. **Divergence.** Price makes a new high but %K does not. The trend is losing momentum even if the tape has not turned yet — covered in depth in the B-08 RSI divergence lesson.
+
+## Why the range matters
+
+Stochastic is a *positional* oscillator: it tells you where price is, not how fast it is moving. Compare two days that both closed at \$100:
+
+- Day A: range was \$95 to \$101. $\%K = 100 \cdot (100 - 95) / (101 - 95) \approx 83$.
+- Day B: range was \$98 to \$102. $\%K = 100 \cdot (100 - 98) / (102 - 98) = 50$.
+
+Same close, very different %K, because Stochastic only sees position inside the window. That is exactly why it complements momentum indicators like RSI — the two answer different questions.
+
+<KeyPoint title="What to remember">
+%K asks: where in the recent range did we close? %D is just a smoothed %K. The indicator is bounded in [0, 100], unitless, and depends entirely on the window size you pick.
+</KeyPoint>
+
+## The trend trap
+
+<Pitfall title="Stochastic pins at 80+ during strong trends">
+In a sustained uptrend, every close is near the top of the rolling range by construction — that is what an uptrend *is*. %K will sit above 80 for weeks. If you sell every time Stochastic prints "overbought," you will short the entire move and watch a 30% rally pass you by. Combine this with %K crossing below %D and you get dozens of false sell signals per year in a trending name.
+
+Always pair Stochastic with a regime filter: a long-period moving average slope, an ADX threshold, or a simple "price above 200-day MA" rule. Use the overbought signal *only* in ranging regimes. The exact same gotcha applies to RSI — see B-06.
+</Pitfall>
+
+## Check yourself
+
+<Quiz id="B-11-stochastic-q1" question="Today's close is 50, the highest high over the last 14 bars is 55, and the lowest low is 45. What is %K?" options={["10", "25", "50", "100"]} answer={2} explanation="%K = 100 * (50 - 45) / (55 - 45) = 100 * 5 / 10 = 50. The close sits exactly in the middle of the 14-bar range." />
+
+<Quiz id="B-11-stochastic-q2" question="Your backtest of a 'sell when %K crosses below %D above 80' rule loses badly on tech stocks during 2020–2021. The most likely reason is:" options={["%K was computed with the wrong window length.","Stochastic stays pinned at 80+ in strong uptrends, so the rule fights the trend.","The slow variant should always be preferred over the fast variant.","Quiz options should always include a distractor about volume."]} answer={1} explanation="In a strong uptrend every close is near the high of the range, so Stochastic prints overbought continuously. Selling each crossover means shorting the entire move. A regime filter is required." />

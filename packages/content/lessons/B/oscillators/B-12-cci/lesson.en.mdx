@@ -1,0 +1,62 @@
+# Commodity Channel Index (CCI)
+
+Donald Lambert introduced the Commodity Channel Index in 1980 to spot cyclical turns in commodity futures, but the formula is general — it works on any tradable that has a high, low, and close. Unlike Stochastic or RSI, CCI is **unbounded**: it can print -300 or +400 if the market really wants to. That extra range gives it a different feel and a different set of failure modes.
+
+In this lesson you will derive CCI step by step, see why the strange constant 0.015 sits in the denominator, and learn why "±200 is extreme" is a useful rule of thumb only after you have calibrated it on your own asset.
+
+## Step 1 — typical price
+
+CCI does not look at the close alone. It looks at the **typical price** of each bar:
+
+$$
+\mathrm{TP}_t = \frac{H_t + L_t + C_t}{3}
+$$
+
+This averages the bar's high, low, and close so a wild intraday swing is not collapsed into a single tick. TP is the input to everything below.
+
+## Step 2 — the full formula
+
+Let $\mathrm{MD}_n$ be the mean absolute deviation of TP over the last $n$ bars (default $n = 20$). Then:
+
+$$
+\mathrm{CCI}_t = \frac{\mathrm{TP}_t - \mathrm{SMA}_n(\mathrm{TP})}{0.015 \cdot \mathrm{MD}_n}
+$$
+
+Read it left to right: take today's TP, subtract its $n$-bar average to get a deviation, then normalize by the mean absolute deviation. The result is a z-score-like statistic — except it uses MAD instead of standard deviation, so it is more robust to fat tails.
+
+## Step 3 — why 0.015?
+
+The 0.015 constant looks arbitrary and is the question every new CCI reader asks. Lambert chose it deliberately. Without the constant, CCI would just be a ratio of deviations and most of its values would cluster near ±1. He wanted a scale where roughly **70–80% of CCI values fall within ±100**, so that "above 100" felt meaningfully unusual.
+
+Because $1 / 0.015 \approx 66.7$, multiplying by that constant rescales typical deviations from "around 1" to "around 66" — so the boundary becomes ±100. The math is calibration, not theory. If you compute the empirical distribution of $(\mathrm{TP} - \mathrm{SMA})/\mathrm{MD}$ on real data you can verify it yourself.
+
+## Reading CCI
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Conventional usage:
+
+- **Above +100:** unusually strong upward deviation from the 20-bar mean. Trend-followers buy; mean-reverters fade.
+- **Below -100:** symmetric on the downside.
+- **Zero crossings:** TP crossing its own 20-bar SMA. Cleaner than threshold crossings but slower.
+- **Extreme prints (±200 or beyond):** rare by construction; often treated as "even more overbought / oversold."
+
+CCI is **unbounded**, which is its most important property. Stochastic is mathematically capped at 100 — there is no such thing as a 150 Stochastic. CCI has no such ceiling, so a print of +250 is information ("really unusual") whereas Stochastic at 99 vs Stochastic at 80 are not very different.
+
+<KeyPoint title="What to remember">
+CCI measures how far today's typical price has drifted from its recent mean, normalized by the mean absolute deviation, then scaled by 1/0.015 so ±100 is the rough boundary of "unusual." It is unbounded above and below — a feature, not a bug.
+</KeyPoint>
+
+## The threshold trap
+
+<Pitfall title="±200 is not a magic number">
+Plenty of educational content states "buy when CCI < -200, sell when CCI > +200." This is a sales-pitch shortcut. The 0.015 constant calibrates the distribution **on average across many assets and timeframes** — for your specific asset, the right boundary might be ±120 (low-volatility ETF) or ±350 (a single small-cap on a 1-minute chart).
+
+CCI is also famously noisy on intraday data: the 20-bar TP MAD denominator updates quickly and crosses are frequent. Before you trade any CCI threshold, compute the empirical 90th and 99th percentile of CCI on your specific asset and timeframe. Use those, not the textbook number.
+</Pitfall>
+
+## Check yourself
+
+<Quiz id="B-12-cci-q1" question="Why does the CCI formula divide by 0.015 * MAD instead of just MAD?" options={["To make the indicator stationary.","To rescale CCI so roughly 70–80% of values fall within ±100, giving ±100 a useful threshold meaning.","Because 0.015 is the historical volatility of corn futures.","To make CCI mathematically bounded between -100 and +100."]} answer={1} explanation="Lambert chose 0.015 (≈ 1/66.7) as a calibration constant so the typical CCI distribution would put about 70–80% of values inside ±100. It does not bound CCI — CCI is unbounded." />
+
+<Quiz id="B-12-cci-q2" question="Which statement about CCI is correct?" options={["CCI is bounded between -100 and +100.","CCI uses the close price only, like RSI.","CCI is unbounded; values of ±200 or beyond do occur and may be meaningful, but the exact 'extreme' threshold should be validated on your own asset.","CCI requires volume data to compute."]} answer={2} explanation="CCI is intentionally unbounded — its tail is informative. But the famous ±100 and ±200 thresholds are calibrations on Lambert's original commodity data; you must re-derive sensible boundaries for your own asset and timeframe." />

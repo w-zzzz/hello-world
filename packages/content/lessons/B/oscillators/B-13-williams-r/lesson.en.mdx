@@ -1,0 +1,77 @@
+# Williams %R
+
+Larry Williams published %R (pronounced "percent R") in 1973. It measures the same thing as the Stochastic %K — where today's close sits inside the recent high-low range — but it flips the sign so the indicator lives between -100 and 0 instead of 0 and 100. Once you see the two formulas side by side, you cannot un-see that they are almost the same statistic.
+
+In this lesson you will work through the formula, prove the algebraic relationship to Stochastic, and learn why mixing both indicators into one model is almost always a mistake.
+
+## The formula
+
+Let $\mathrm{HH}_n$ and $\mathrm{LL}_n$ be the highest high and lowest low over the last $n$ bars (default $n = 14$), and $C_t$ today's close:
+
+$$
+\%R = -100 \cdot \frac{\mathrm{HH}_n - C_t}{\mathrm{HH}_n - \mathrm{LL}_n}
+$$
+
+The numerator measures distance from today's close to the recent peak; the denominator is the range. So %R = 0 means today closed exactly at the recent high; %R = -100 means it closed at the recent low. The range is $[-100, 0]$.
+
+Conventional thresholds:
+
+- **Overbought:** $\%R > -20$ (close is near the top of the range).
+- **Oversold:** $\%R < -80$ (close is near the bottom).
+
+Note that "overbought" is the *higher* number here, because the scale is negative. This catches a lot of beginners.
+
+## %R vs Stochastic %K — the algebra
+
+Recall the Stochastic fast %K from B-11:
+
+$$
+\%K = 100 \cdot \frac{C_t - \mathrm{LL}_n}{\mathrm{HH}_n - \mathrm{LL}_n}
+$$
+
+Add %R and %K together:
+
+$$
+\%K + \%R = 100 \cdot \frac{(C_t - \mathrm{LL}_n) - (\mathrm{HH}_n - C_t)}{\mathrm{HH}_n - \mathrm{LL}_n} + \text{rearrange} \implies \%R = \%K - 100
+$$
+
+In other words, **Williams %R is just the raw fast Stochastic %K shifted down by 100**. There is no smoothing in %R (no built-in %D analog), but the underlying positional information is identical. If you plot them on top of each other, they trace the same shape — one runs 0 to 100, the other runs -100 to 0.
+
+This is why you sometimes hear %R described as "inverted Stochastic without smoothing." If you have already mastered Stochastic, you have already mastered %R.
+
+If you want to feel the comparison interactively, the closest analog in the M2 playground is RSI — also a momentum-style bounded oscillator. Try:
+
+<IndicatorPlayground indicator="rsi" />
+
+Then look at the same period on a raw chart:
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+Notice how RSI emphasizes speed of price change (gains vs losses), while %R / Stochastic emphasize position inside a window. Different question, sometimes different answer.
+
+<KeyPoint title="What to remember">
+%R is Stochastic %K minus 100. Range is [-100, 0]. Above -20 is overbought, below -80 is oversold. There is no built-in smoothing line, so the raw signal is jagged.
+</KeyPoint>
+
+## The double-counting trap
+
+<Pitfall title="Do not feed Stochastic and %R into the same model">
+Because $\%R = \%K - 100$, any linear model that takes both as features sees collinear columns — the design matrix is essentially singular. Tree models do not crash but will split on whichever ordering noise prefers, giving you fake importance. Worse, in a rules-based system you double-count the same signal: "%R below -80 AND Stochastic below 20" fires on identical bars.
+
+If you want a momentum oscillator + a positional oscillator, pair Stochastic (or %R, pick one) with RSI or CCI — they answer different questions about the same price series. Picking both Stochastic and %R buys you nothing except the warm feeling that you are using more indicators.
+</Pitfall>
+
+## When %R is genuinely useful
+
+Despite the redundancy with Stochastic, traders still reach for %R in two cases:
+
+1. **You want the raw, unsmoothed signal.** Fast Stochastic + no SMA = exactly %R shifted up. Some chart packages expose this more cleanly through %R than through a "fast %K, no %D" Stochastic configuration.
+2. **The negative scale matters for charting.** %R plotted on an axis where 0 is at the top reads more naturally for some people — extremes hit the top edge instead of running off into 100.
+
+Neither reason has anything to do with edge. Both are about ergonomics.
+
+## Check yourself
+
+<Quiz id="B-13-williams-r-q1" question="If %R = -15, what does that tell you about today's close relative to the last 14 bars?" options={["The close is near the lowest low.","The close is in the middle of the range.","The close is near the highest high — this is the overbought zone.","%R cannot be -15; the range is [0, 100]."]} answer={2} explanation="%R = 0 is at the highest high, %R = -100 at the lowest low. -15 is well above the -20 overbought threshold, meaning today closed near the top of the recent range." />
+
+<Quiz id="B-13-williams-r-q2" question="You build a model that uses Stochastic %K, %D, and Williams %R as three separate features. Why is this likely a mistake?" options={["The three indicators have incompatible units.","%R is algebraically %K - 100, so it is essentially the same signal as %K and adds no new information — the model is double-counting.","Williams %R only works on commodities.","%R must always be used with volume confirmation."]} answer={1} explanation="%R = %K - 100. Feeding both into a model is collinearity at best and explicit double-counting in rule systems at worst. Pair one positional oscillator with a different statistic (RSI, CCI, ADX) instead." />
