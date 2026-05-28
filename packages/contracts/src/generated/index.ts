@@ -20,13 +20,13 @@ export type Equity = number
 export type PositionValue = number
 export type T = string
 export type EquityCurve = EquityPoint[]
-export type Calmar = number
+export type Calmar = number | null
 export type Expectancy = number
 export type Exposure = number
 export type MaxDrawdown = number
-export type ProfitFactor = number
-export type Sharpe = number
-export type Sortino = number
+export type ProfitFactor = number | null
+export type Sharpe = number | null
+export type Sortino = number | null
 export type TradeCount = number
 export type Turnover = number
 export type WinRate = number
@@ -155,6 +155,16 @@ export interface EquityPoint {
   t: T
 }
 /**
+ * Backtest performance summary.
+ *
+ * ``sharpe``, ``sortino``, ``calmar`` and ``profit_factor`` are typed
+ * ``float | None``. ``None`` means the ratio is undefined for this run
+ * (e.g. zero trades, zero downside, zero losses — vectorbt returns
+ * ``NaN``/``inf`` in those cases). ``0.0`` means a genuine zero, which
+ * is only meaningful for ``max_drawdown`` and ``exposure``; the four
+ * ratio fields never return ``0.0`` as a stand-in for "undefined" — use
+ * ``None`` for that.
+ *
  * This interface was referenced by `QuantAcademyContracts`'s JSON-Schema
  * via the `definition` "Metrics".
  */
