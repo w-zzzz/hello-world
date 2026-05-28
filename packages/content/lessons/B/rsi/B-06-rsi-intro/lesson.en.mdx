@@ -1,0 +1,94 @@
+# RSI: intuition and the overbought/oversold trap
+
+The Relative Strength Index (RSI), introduced by J. Welles Wilder in 1978, is a **bounded momentum oscillator**. It compresses recent gains and losses into a single number between 0 and 100. That bounding is what makes it easy to read — and easy to misuse.
+
+In this lesson you'll build intuition for what RSI actually measures, why the [0, 100] range matters, and why "RSI > 70 means sell" is the single most expensive mistake new traders make.
+
+## What RSI is measuring
+
+Strip the formula away and RSI answers one question:
+
+> Over the last $n$ bars, how much of the total price movement was **upward** vs **downward**?
+
+If every bar of the lookback window was up, RSI prints 100. If every bar was down, RSI prints 0. Anything in between is a ratio — the share of the recent move that pushed price higher.
+
+The default lookback is $n = 14$ bars. That is Wilder's original choice and remains the industry default. Shorter periods (7, 9) make RSI twitchier; longer ones (21, 28) smooth it.
+
+<KeyPoint title="The one-line definition">
+RSI is the fraction of recent price action that was upward, rescaled to [0, 100]. It does not predict direction — it summarizes what just happened.
+</KeyPoint>
+
+## Why bounded matters
+
+Most indicators are unbounded: a moving average on a \$30 stock and a SMA on a \$3,000 stock live on different scales. You can't pool them or set a universal threshold.
+
+RSI lives in [0, 100] **for every instrument, on every timeframe**. An RSI of 78 on SPY and an RSI of 78 on a microcap mean the same thing structurally — recent action has been heavily one-sided. The bounding comes from the formula itself, derived next lesson:
+
+$$
+0 \leq \mathrm{RSI}_t \leq 100 \quad \text{for all } t
+$$
+
+## Wilder's thresholds: 70 and 30
+
+Wilder proposed two reference lines:
+
+- **70** — above this, the instrument is **overbought**: recent action has been mostly up.
+- **30** — below this, the instrument is **oversold**: recent action has been mostly down.
+
+Notice the careful language. Overbought does **not** mean "about to fall." It means "the last 14 bars have been dominated by buyers." Whether the next bar is up or down is governed by what comes next — not by what just happened.
+
+Try the playground below. Set the period to 14 and watch how often RSI crosses 70 and 30 on SPY. Then change the period to 7 — notice the crossings get noisier.
+
+<IndicatorPlayground indicator="rsi" />
+
+## The trap: "RSI > 70, so sell"
+
+The most common beginner rule is:
+
+> When RSI > 70, short the stock. When RSI < 30, buy it.
+
+This rule loses money in trending markets — and trending markets are where the biggest moves live. Consider a stock in a strong uptrend. RSI rises to 75, then 80, then 85, and the stock keeps going. The trader who sold at the first cross of 70 watches it climb another 20% before any pullback.
+
+Real SPY example: during the late-2020 melt-up, daily RSI held above 70 for **six straight weeks** while price advanced about 14%. A naive "sell at 70" rule would have shorted on day one and stopped out repeatedly all the way up.
+
+<Pitfall title="Overbought is not a sell signal">
+RSI above 70 means momentum is strong — not that it's about to reverse. In trends RSI can stay above 70 (or below 30) for weeks. Use the thresholds as a **state label**, not a standalone trade signal. We'll combine RSI with confirmation in lesson B-08.
+</Pitfall>
+
+## How to actually use RSI thresholds
+
+If "sell at 70" is wrong, what's right? Three safer reframings:
+
+1. **Range-bound markets only.** In a sideways instrument, mean-reversion off 70/30 has historical edge. The hard part is identifying "range-bound" — that's regime detection (Track C).
+2. **Look for failure swings.** Wilder's original signal was "RSI hits 70+, pulls back below 70, fails to reclaim it on the next rally." Two-step, much cleaner.
+3. **Combine with divergence.** When price makes a new high but RSI doesn't, the rally is losing steam. Topic of lesson B-08.
+
+None of these are guarantees. They are filters that turn a noisy raw signal into something with better odds.
+
+## Check yourself
+
+<Quiz
+  id="B-06-rsi-intro-q1"
+  question="What does RSI = 78 on a daily chart actually tell you?"
+  options={[
+    "The stock will fall within the next few days.",
+    "Over roughly the last 14 days, upward price action has dominated downward action.",
+    "The stock is overvalued relative to fundamentals.",
+    "Volume has been higher than average.",
+  ]}
+  answer={1}
+  explanation="RSI summarizes recent price action — specifically, what share of it was upward over the lookback window. It says nothing about future direction, valuation, or volume."
+/>
+
+<Quiz
+  id="B-06-rsi-intro-q2"
+  question="A trader shorts SPY every time daily RSI crosses above 70. During a six-week melt-up, RSI holds above 70 the entire time and SPY rises 14%. What's the core lesson?"
+  options={[
+    "The 14-period RSI is broken — they should use period 7.",
+    "Overbought conditions can persist in trends; RSI > 70 is a state, not a sell signal on its own.",
+    "RSI only works on individual stocks, not ETFs.",
+    "They should have used a shorter timeframe.",
+  ]}
+  answer={1}
+  explanation="In strong trends RSI routinely stays above 70 (or below 30) for weeks. Overbought/oversold describe the current regime, not a turning point. Confirmation — failure swings, divergence, or a regime filter — is what turns RSI into edge."
+/>

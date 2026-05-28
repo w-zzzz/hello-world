@@ -1,0 +1,129 @@
+# The RSI formula and Wilder smoothing
+
+In lesson B-06 you learned what RSI measures conceptually. Now we open the hood. Two formulas matter: the **core RSI identity**, and the **Wilder smoothing recurrence** used to update the average gain and average loss over time. Get these two right and every other RSI question is a footnote.
+
+By the end of this lesson you'll be able to compute RSI bar-by-bar from scratch, you'll know why "library A and library B disagree on RSI" is almost always a Wilder-vs-SMA bug, and you'll know which one Quant Academy ships.
+
+## The core identity
+
+Let $\mathrm{RS}_t$ be the **relative strength** at time $t$ — the ratio of average gain to average loss over the lookback window:
+
+$$
+\mathrm{RS}_t = \frac{\mathrm{AvgGain}_t}{\mathrm{AvgLoss}_t}
+$$
+
+Then RSI is just a bounded transform of that ratio:
+
+$$
+\mathrm{RSI}_t = 100 - \frac{100}{1 + \mathrm{RS}_t}
+$$
+
+Quick sanity checks on the algebra:
+
+- If $\mathrm{AvgLoss}_t = 0$ (every recent bar was up), $\mathrm{RS}_t \to \infty$ and $\mathrm{RSI}_t \to 100$.
+- If $\mathrm{AvgGain}_t = 0$ (every recent bar was down), $\mathrm{RS}_t = 0$ and $\mathrm{RSI}_t = 0$.
+- If $\mathrm{AvgGain}_t = \mathrm{AvgLoss}_t$ (perfectly balanced), $\mathrm{RS}_t = 1$ and $\mathrm{RSI}_t = 50$.
+
+So the 50 line is the **equilibrium** — equal upside and downside over the lookback. That makes RSI 50 a useful reference even though most beginners only watch 70/30.
+
+## Defining gain and loss per bar
+
+For each bar $t$, let $\Delta_t = P_t - P_{t-1}$ be the close-to-close change. Split it:
+
+$$
+\mathrm{Gain}_t = \max(\Delta_t,\, 0), \quad \mathrm{Loss}_t = \max(-\Delta_t,\, 0)
+$$
+
+So both are non-negative, and exactly one is zero per bar (unless price is unchanged, in which case both are zero). The whole RSI calculation reduces to: track running averages of these two streams.
+
+## Two ways to average — and only one is Wilder's
+
+Here's where libraries quietly disagree. There are two common definitions of "average gain":
+
+**Definition A — Simple-mean RSI.** Use a rolling SMA of the gain and loss streams:
+
+$$
+\mathrm{AvgGain}_t^{\,(\mathrm{SMA})} = \frac{1}{n} \sum_{i=t-n+1}^{t} \mathrm{Gain}_i
+$$
+
+**Definition B — Wilder's smoothed RSI.** Use Wilder's recurrence, which is mathematically a one-pole EMA with $\alpha = 1/n$:
+
+$$
+\mathrm{AvgGain}_t = \frac{(n - 1)\,\mathrm{AvgGain}_{t-1} + \mathrm{Gain}_t}{n}
+$$
+
+The same formula applies to $\mathrm{AvgLoss}_t$. The seed (for the first valid bar at $t = n$) is the plain mean of the first $n$ gains.
+
+Why these are different: the SMA forgets a bar abruptly the moment it falls out of the window. Wilder's recurrence forgets gradually — each old bar's weight decays geometrically. On the same data, the two indicators can disagree by 5–10 RSI points for long stretches, especially after a single large bar.
+
+**Wilder's original definition is the one we use at Quant Academy.** When a chart on this site says "RSI(14)", it means Definition B. Most popular libraries (TA-Lib, pandas-ta) also default to Wilder, but some textbook implementations and a surprising number of tutorial blog posts use the simple mean. Always check.
+
+<Pitfall title="Library mismatch is the #1 RSI reproducibility bug">
+Two backtests, two RSI implementations, "same data" — and the equity curves diverge. Nine times out of ten, one is Wilder and the other is simple-mean. Before debugging anything else, plot both definitions on the same chart and check which one your reference matches. The Quant Academy convention is Wilder smoothing with $\alpha = 1/n$.
+</Pitfall>
+
+## Walking through five bars
+
+Let's compute RSI(14) by hand for an instructive 5-bar slice, assuming the first 14 bars already gave us $\mathrm{AvgGain}_{14} = 0.50$ and $\mathrm{AvgLoss}_{14} = 0.30$ (units are price points).
+
+| Bar $t$ | Close | $\Delta_t$ | Gain | Loss | AvgGain | AvgLoss | RS | RSI |
+|---|---|---|---|---|---|---|---|---|
+| 14 | 100.00 | — | — | — | 0.500 | 0.300 | 1.667 | 62.50 |
+| 15 | 100.80 | +0.80 | 0.80 | 0.00 | 0.521 | 0.279 | 1.871 | 65.18 |
+| 16 | 100.20 | −0.60 | 0.00 | 0.60 | 0.484 | 0.302 | 1.604 | 61.60 |
+| 17 | 101.10 | +0.90 | 0.90 | 0.00 | 0.514 | 0.280 | 1.832 | 64.69 |
+| 18 | 101.50 | +0.40 | 0.40 | 0.00 | 0.505 | 0.260 | 1.940 | 65.99 |
+
+How bar 15 was computed:
+
+$$
+\mathrm{AvgGain}_{15} = \frac{13 \cdot 0.50 + 0.80}{14} = \frac{7.30}{14} \approx 0.521
+$$
+
+$$
+\mathrm{AvgLoss}_{15} = \frac{13 \cdot 0.30 + 0.00}{14} \approx 0.279
+$$
+
+$$
+\mathrm{RS}_{15} = \frac{0.521}{0.279} \approx 1.871, \quad \mathrm{RSI}_{15} = 100 - \frac{100}{2.871} \approx 65.18
+$$
+
+Notice that even on a strong up bar (+0.80), RSI moved less than 3 points — Wilder smoothing is deliberately sluggish so noise doesn't yank the indicator around.
+
+## Verify it yourself
+
+Open the playground and set the period to 14. The RSI you see is computed with exactly the recurrence above, on real SPY data, in the browser. Try toggling between periods and watching how the smoothing changes.
+
+<IndicatorPlayground indicator="rsi" />
+
+<KeyPoint title="Carry forward">
+RSI = $100 - 100 / (1 + \mathrm{RS})$ where $\mathrm{RS} = \mathrm{AvgGain}/\mathrm{AvgLoss}$. Quant Academy uses Wilder smoothing — an EMA with $\alpha = 1/n$ — not a simple moving average. Cross-library RSI mismatches almost always trace back to this one choice.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz
+  id="B-07-rsi-math-q1"
+  question="If over the lookback window the average gain equals the average loss, what is RSI?"
+  options={[
+    "0",
+    "30",
+    "50",
+    "100",
+  ]}
+  answer={2}
+  explanation="With AvgGain = AvgLoss, RS = 1, so RSI = 100 − 100/(1+1) = 50. That's the equilibrium level — equal upside and downside over the window."
+/>
+
+<Quiz
+  id="B-07-rsi-math-q2"
+  question="Your backtest's RSI(14) disagrees with the RSI(14) shown in your charting app by several points on the same data. What's the most likely cause?"
+  options={[
+    "The charting app uses a different data feed.",
+    "One uses Wilder smoothing (EMA with α = 1/n) and the other uses a simple moving average for AvgGain/AvgLoss.",
+    "Floating-point rounding error.",
+    "The charting app applies a hidden correction for volume.",
+  ]}
+  answer={1}
+  explanation="The single most common cause of RSI mismatches across libraries and charting apps is Wilder smoothing vs simple mean. They produce visibly different curves on the same data. Quant Academy uses Wilder, matching Wilder's 1978 original."
+/>

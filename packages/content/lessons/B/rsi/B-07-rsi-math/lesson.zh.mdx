@@ -1,0 +1,129 @@
+# RSI 公式与 Wilder 平滑
+
+B-06 让你建立了 RSI 的概念直觉，这一课我们掀开引擎盖。两个公式是关键：**RSI 核心恒等式**，以及用来逐根 K 线更新平均涨幅和平均跌幅的 **Wilder 平滑递推式**。把这两个搞清楚，其它所有 RSI 问题都只是脚注。
+
+学完本课，你应该可以：从零开始逐根 K 线手算 RSI；明白为什么"A 库和 B 库算出来的 RSI 不一样"几乎一定是 Wilder vs 简单平均的差异；并且知道 Quant Academy 用的是哪种。
+
+## 核心恒等式
+
+设 $\mathrm{RS}_t$ 为 $t$ 时刻的**相对强度（relative strength）**——回溯窗口内平均涨幅与平均跌幅的比值：
+
+$$
+\mathrm{RS}_t = \frac{\mathrm{AvgGain}_t}{\mathrm{AvgLoss}_t}
+$$
+
+那么 RSI 就是这个比值的一个有界变换：
+
+$$
+\mathrm{RSI}_t = 100 - \frac{100}{1 + \mathrm{RS}_t}
+$$
+
+代数自检：
+
+- 如果 $\mathrm{AvgLoss}_t = 0$（最近全是上涨），$\mathrm{RS}_t \to \infty$，$\mathrm{RSI}_t \to 100$。
+- 如果 $\mathrm{AvgGain}_t = 0$（最近全是下跌），$\mathrm{RS}_t = 0$，$\mathrm{RSI}_t = 0$。
+- 如果 $\mathrm{AvgGain}_t = \mathrm{AvgLoss}_t$（涨跌平衡），$\mathrm{RS}_t = 1$，$\mathrm{RSI}_t = 50$。
+
+所以 50 是**均衡线**——回溯窗口内上下完全平衡。即便大多数新手只盯 70/30，50 也是一个有用的参考。
+
+## 每根 K 线的"涨"和"跌"
+
+对每一根 K 线 $t$，令 $\Delta_t = P_t - P_{t-1}$ 为相邻收盘价变动。把它拆开：
+
+$$
+\mathrm{Gain}_t = \max(\Delta_t,\, 0), \quad \mathrm{Loss}_t = \max(-\Delta_t,\, 0)
+$$
+
+两者都非负，每根 K 线上必有一个为零（除非价格不变，那两个都为零）。整个 RSI 的计算就归结为：维护这两个序列的滚动平均。
+
+## 两种平均方式——只有一种是 Wilder 的
+
+各家库就是在这里悄悄分叉的。"平均涨幅"有两种常见定义：
+
+**定义 A——简单平均 RSI。** 对涨幅和跌幅序列做滚动 SMA：
+
+$$
+\mathrm{AvgGain}_t^{\,(\mathrm{SMA})} = \frac{1}{n} \sum_{i=t-n+1}^{t} \mathrm{Gain}_i
+$$
+
+**定义 B——Wilder 平滑 RSI。** 使用 Wilder 的递推式，数学上等价于 $\alpha = 1/n$ 的单极 EMA：
+
+$$
+\mathrm{AvgGain}_t = \frac{(n - 1)\,\mathrm{AvgGain}_{t-1} + \mathrm{Gain}_t}{n}
+$$
+
+$\mathrm{AvgLoss}_t$ 的递推完全同形。第一个有效点（$t = n$）的"种子"是前 $n$ 根 K 线涨幅的普通均值。
+
+两者为什么不同：SMA 在某根 K 线掉出窗口的瞬间，会把它的影响**一次性**忘掉；而 Wilder 递推是**渐进遗忘**——旧 K 线的权重按几何级数衰减。在同一段数据上，两种 RSI 可以在很长一段时间里相差 5–10 个点，特别是出现过一根大阳/大阴线之后。
+
+**Quant Academy 用的就是 Wilder 原始定义。** 本站任何地方显示"RSI(14)"，指的都是定义 B。大多数流行库（TA-Lib、pandas-ta）也以 Wilder 为默认，但仍有不少教科书实现和教程博客用的是简单平均。务必先确认。
+
+<Pitfall title="库实现不一致是 RSI 复现 bug 的头号原因">
+两次回测、两套 RSI 实现、"同样的数据"——结果资金曲线就是对不上。十有八九，一边是 Wilder，一边是简单平均。在 debug 任何别的东西之前，先把两种定义同时画到一张图上，看看你的对照实现匹配的是哪一种。Quant Academy 的约定是 $\alpha = 1/n$ 的 Wilder 平滑。
+</Pitfall>
+
+## 手算五根 K 线
+
+让我们用 RSI(14) 来手算一段有教学意义的 5 根 K 线切片。假设前 14 根已经给出 $\mathrm{AvgGain}_{14} = 0.50$，$\mathrm{AvgLoss}_{14} = 0.30$（单位是价格点）。
+
+| K 线 $t$ | 收盘 | $\Delta_t$ | 涨 | 跌 | AvgGain | AvgLoss | RS | RSI |
+|---|---|---|---|---|---|---|---|---|
+| 14 | 100.00 | — | — | — | 0.500 | 0.300 | 1.667 | 62.50 |
+| 15 | 100.80 | +0.80 | 0.80 | 0.00 | 0.521 | 0.279 | 1.871 | 65.18 |
+| 16 | 100.20 | −0.60 | 0.00 | 0.60 | 0.484 | 0.302 | 1.604 | 61.60 |
+| 17 | 101.10 | +0.90 | 0.90 | 0.00 | 0.514 | 0.280 | 1.832 | 64.69 |
+| 18 | 101.50 | +0.40 | 0.40 | 0.00 | 0.505 | 0.260 | 1.940 | 65.99 |
+
+第 15 根是这样算的：
+
+$$
+\mathrm{AvgGain}_{15} = \frac{13 \cdot 0.50 + 0.80}{14} = \frac{7.30}{14} \approx 0.521
+$$
+
+$$
+\mathrm{AvgLoss}_{15} = \frac{13 \cdot 0.30 + 0.00}{14} \approx 0.279
+$$
+
+$$
+\mathrm{RS}_{15} = \frac{0.521}{0.279} \approx 1.871, \quad \mathrm{RSI}_{15} = 100 - \frac{100}{2.871} \approx 65.18
+$$
+
+注意：即便是一根 +0.80 的强阳线，RSI 也只动了不到 3 个点。Wilder 平滑天生就是"迟钝"的，目的就是不让噪音把指标甩来甩去。
+
+## 自己验证一下
+
+打开下面的练习场，把周期设成 14。你看到的 RSI 就是用上面那条递推式、在浏览器里、对真实 SPY 数据算出来的。来回切换不同周期，观察平滑度的变化。
+
+<IndicatorPlayground indicator="rsi" />
+
+<KeyPoint title="一句话总结">
+RSI = $100 - 100 / (1 + \mathrm{RS})$，其中 $\mathrm{RS} = \mathrm{AvgGain}/\mathrm{AvgLoss}$。Quant Academy 使用 Wilder 平滑——$\alpha = 1/n$ 的 EMA，而不是简单移动平均。跨库 RSI 不一致几乎都能追溯到这一个选择上。
+</KeyPoint>
+
+## 小测验
+
+<Quiz
+  id="B-07-rsi-math-q1"
+  question="如果回溯窗口内平均涨幅与平均跌幅相等，RSI 等于多少？"
+  options={[
+    '0',
+    '30',
+    '50',
+    '100',
+  ]}
+  answer={2}
+  explanation="AvgGain = AvgLoss 时，RS = 1，所以 RSI = 100 − 100/(1+1) = 50。这就是均衡水平——窗口内上下完全对称。"
+/>
+
+<Quiz
+  id="B-07-rsi-math-q2"
+  question="你的回测中 RSI(14) 与图表软件显示的 RSI(14) 在同一份数据上相差好几个点。最可能的原因是？"
+  options={[
+    '图表软件用的是不同的数据源。',
+    '一边用 Wilder 平滑（α = 1/n 的 EMA），另一边用简单移动平均来算 AvgGain/AvgLoss。',
+    '浮点数舍入误差。',
+    '图表软件偷偷做了基于成交量的修正。',
+  ]}
+  answer={1}
+  explanation="跨库、跨软件 RSI 不一致最常见的原因，就是 Wilder 平滑 vs 简单平均的差异。它们在同一段数据上会画出明显不同的曲线。Quant Academy 选用 Wilder，与 1978 年的原版一致。"
+/>
