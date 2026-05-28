@@ -1,0 +1,75 @@
+# The MACD histogram and the zero line
+
+If MACD is the momentum-of-momentum indicator, the histogram is its **derivative**. It is the small set of bars under the two MACD lines that grow when momentum is accelerating and shrink when it is fading. Used well, it warns you a few bars before a line-and-signal cross prints. Used badly, you trade every tiny wiggle.
+
+## Definition: signed gap between MACD and signal
+
+The histogram is simply the difference between the MACD line and its signal line:
+
+$$
+\mathrm{Hist}_t = \mathrm{MACD}_t - \mathrm{Signal}_t
+$$
+
+Three immediate consequences:
+
+- $\mathrm{Hist}_t = 0$ exactly when MACD crosses its signal line.
+- $\mathrm{Hist}_t > 0$ when MACD is above signal — bullish bias.
+- $\mathrm{Hist}_t < 0$ when MACD is below signal — bearish bias.
+
+So the histogram does not contain new information beyond MACD and signal — it is a re-encoding. The reason to look at it is that **the sign and the slope of the histogram are easier to see at a glance** than two overlapping wiggly lines.
+
+## Why the slope matters: derivative of momentum
+
+The MACD line measures momentum. The histogram measures how far ahead (or behind) MACD is running compared to its own EMA. If $\mathrm{MACD}_t$ is accelerating upward faster than $\mathrm{Signal}_t$ can catch up, the histogram grows. If the acceleration is fading, the histogram shrinks even before the lines themselves cross.
+
+That is the practical edge. The histogram usually rolls over a few bars before the MACD–signal cross prints. Watching it gives you a chance to **prepare** for a cross, rather than be surprised by one.
+
+Explore the relationship on the playground:
+
+<IndicatorPlayground indicator="macd" />
+
+Pick a strong trend on a liquid symbol and watch the histogram bars. Notice the sequence: histogram tops, then shrinks for several bars, then prints zero (which is the moment the MACD line crosses signal). The cross is a confirmation; the shrinkage is the early warning.
+
+## The zero line as a regime filter
+
+There is also a second line in the picture — the zero line, which the MACD itself crosses. A MACD zero-line crossing has a slightly different meaning from a signal-line crossing. When MACD crosses zero, the 12-EMA and 26-EMA themselves are crossing on the price chart — a slower, weightier event.
+
+Many practical setups gate the histogram by the zero line:
+
+- Only take **bullish** histogram-shrinkage warnings when MACD is also above zero.
+- Only take **bearish** ones when MACD is below zero.
+
+This filter cuts most of the false signals you get when MACD chops around zero in a range-bound market.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On the SPY chart above, mentally mark the periods where the index is in a clean uptrend versus a sideways grind. The histogram is informative in the trending regimes and almost pure noise in the sideways ones — exactly when you would expect from a momentum indicator.
+
+## A worked sequence
+
+Walk through a typical bullish pattern, bar by bar:
+
+1. Price is rallying. MACD is positive and rising; histogram is positive and growing.
+2. Rally slows. MACD is still positive but flatter; histogram bars start getting shorter.
+3. Histogram prints near zero. MACD line crosses signal — bearish trigger fires.
+4. If price keeps falling, MACD itself eventually crosses below zero — confirming the regime change.
+
+Steps 1 and 2 are the actionable part if you are already long: shrinking histogram bars are your cue to tighten stops. Step 3 is the late "official" signal. Step 4 is so late it is usually a regime label, not a trade.
+
+## Where the histogram lies
+
+<Pitfall title="Tiny histogram dips are noise, not reversals">
+Beginners often try to short the first one or two shrinking histogram bars during a strong uptrend. Most of the time those are noise — a brief consolidation inside an ongoing rally. The histogram is most useful when its **change relative to recent volatility** is significant. In a real strategy, scale histogram readings by something like ATR so that "meaningful" is defined relative to the symbol's current range, not as an absolute number.
+</Pitfall>
+
+A second trap: zero-line crossings on noisy intraday data fire constantly because MACD itself oscillates near zero. The zero-line filter is most useful on daily and weekly charts.
+
+<KeyPoint title="Mental model to carry forward">
+The histogram is the signed gap between MACD and its signal line. Its slope warns you about upcoming crosses; its sign tells you the current bias; the zero line of MACD filters out range-bound chop. Always scale "meaningful" by volatility — small bars are noise.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="B-10-macd-histogram-q1" question="The MACD histogram at time t is defined as:" options={["EMA_12(P_t) - EMA_26(P_t)","MACD_t + Signal_t","MACD_t - Signal_t","EMA_9(MACD_t) - MACD_t"]} answer={2} explanation="By definition, Hist_t = MACD_t - Signal_t. The histogram is zero exactly when the two lines cross." />
+
+<Quiz id="B-10-macd-histogram-q2" question="During a strong uptrend, you notice the MACD histogram bars are shrinking for three sessions in a row. Which interpretation is most disciplined?" options={["Immediately short — the trend has reversed.","Ignore it — only zero-line crossings matter.","Treat it as an early warning that an MACD-signal cross may be coming, but scale 'meaningful' by recent volatility (e.g. ATR) before acting.","Add to longs — shrinking bars confirm continuation."]} answer={2} explanation="Shrinking histogram bars are a useful early warning of a potential MACD-signal cross, but small absolute changes are often noise. Scaling by ATR or similar volatility measures separates real signals from chop." />

@@ -1,0 +1,67 @@
+# MACD: the line and the signal
+
+The Moving Average Convergence Divergence indicator — MACD for short — is the most popular momentum tool in technical analysis. It is also one of the most misunderstood. People stare at the two wiggly lines, wait for a "cross," and treat the result as a trading signal. That is a recipe for buying every bounce and selling every dip late.
+
+In this lesson you will learn what the MACD line actually measures, why the signal line exists, and how to read the classic three states of the indicator without falling for its built-in lag.
+
+## Definition: the difference of two EMAs
+
+MACD is built from the EMA you already know. At time $t$ on a price series $P_t$:
+
+$$
+\mathrm{MACD}_t = \mathrm{EMA}_{12}(P_t) - \mathrm{EMA}_{26}(P_t)
+$$
+
+The signal line is just another EMA — this time of the MACD line itself:
+
+$$
+\mathrm{Signal}_t = \mathrm{EMA}_9(\mathrm{MACD}_t)
+$$
+
+The classic parameters are $(12, 26, 9)$. Gerald Appel chose them in the 1970s for daily charts, and they have stuck. They are not magic; they are a reasonable compromise between speed and smoothness.
+
+## Intuition: momentum of momentum
+
+Think about what $\mathrm{EMA}_{12} - \mathrm{EMA}_{26}$ measures. The fast EMA tracks recent price closely; the slow EMA reacts more sluggishly. When the fast line pulls ahead of the slow line, recent prices are systematically higher than the longer-term average — that is up momentum. When the fast line falls behind, momentum is down.
+
+So MACD is a **momentum-of-momentum indicator**: a smoothed-out estimate of how strongly price is accelerating in one direction. It oscillates around zero, with no fixed bounds — unlike RSI, MACD can drift arbitrarily far from the centerline in a strong trend.
+
+The signal line then smooths the MACD itself. Its purpose is not to predict — it is to give you a slower reference so that crossovers are less twitchy.
+
+## The three classic states
+
+Reading MACD comes down to three observations you can make at a glance.
+
+1. **MACD > 0 and rising.** The 12-EMA is above the 26-EMA and the gap is widening. This is the canonical "strong uptrend" state — momentum is up, and accelerating.
+2. **MACD crosses above the signal line.** A bullish trigger. Many systems use this as an entry. Be honest: by the time the cross prints, the underlying move is often half-done.
+3. **MACD crosses below the signal line.** The mirror image — a bearish trigger, often late, but useful as a discipline tool to exit longs.
+
+You can explore all three states by tweaking the playground below.
+
+<IndicatorPlayground indicator="macd" />
+
+Move the symbol and the parameters around. Notice how lowering the slow length makes MACD jumpier; raising it makes the indicator smoother but later. There is no free lunch.
+
+## A worked example: SPY
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Pick any sustained move on the SPY chart above. Trace the same window mentally on the playground. You will see a pattern that holds almost universally: MACD becomes meaningfully positive **after** the rally has been visible on the price chart for a while, and it crosses back below zero **after** the top has formed. MACD is a confirmation tool, not a leading one.
+
+## What MACD is not
+
+<Pitfall title="MACD is a lagging confirmation, not a forecast">
+MACD is an EMA of price differences smoothed by another EMA. Mathematically, it is filtered twice. By the time the signal-line cross prints, the underlying move is often already mature. Treat a MACD cross as a way to **confirm** an idea you formed from price structure — not as a standalone "buy this candle" trigger.
+</Pitfall>
+
+A related trap: people see MACD crosses on a 5-minute chart and conclude the indicator does not work. It does — but on noisy intraday data the $(12, 26, 9)$ defaults fire constantly, most of them false. Either retune the lengths or step up the timeframe.
+
+<KeyPoint title="Mental model to carry forward">
+MACD measures the gap between a fast and a slow EMA. Positive and rising means up momentum. Crosses against the signal line are confirmations, not predictions, and they lag the underlying move.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="B-09-macd-intro-q1" question="Which expression correctly defines the MACD line on a price series P_t?" options={["EMA_9(P_t) - EMA_26(P_t)","EMA_12(P_t) - EMA_26(P_t)","SMA_12(P_t) - SMA_26(P_t)","EMA_12(P_t) + EMA_26(P_t)"]} answer={1} explanation="The classic MACD line is the difference between the 12-period and 26-period EMAs of price. The signal line is a separate EMA_9 of the MACD line itself." />
+
+<Quiz id="B-09-macd-intro-q2" question="A trader claims that a bullish MACD-signal cross is a leading indicator of price reversals. What is the most accurate critique?" options={["MACD is leading; the trader is correct.","MACD ignores volume, so the cross is unreliable.","MACD is built from EMAs of EMAs, so its crosses lag price — they confirm an already-developing move rather than predict it.","MACD only works on weekly charts."]} answer={2} explanation="Because MACD is filtered twice (an EMA difference, then another EMA on top), its crosses arrive after the move is underway. The right framing is confirmation, not prediction." />
