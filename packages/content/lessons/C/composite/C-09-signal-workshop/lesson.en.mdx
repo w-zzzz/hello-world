@@ -50,17 +50,17 @@ Write this down in the code as a single function that takes bar $t$'s OHLCV and 
 
 ## Step 5: check for lookahead
 
-Hunt your code for any value computed from data that wouldn't be available at decision time:
+Hunt your code for any value computed from data unavailable at decision time:
 
-- An "indicator" that uses `close.rolling(N).mean()` with a window that includes today is fine if you act tomorrow. But if the SMA uses *future* bars, you have lookahead.
-- The 80th percentile of realized vol must be computed over data ending at $t-1$, not $t$.
+- If the SMA uses *future* bars, you have lookahead.
+- The 80th percentile of realized vol must use data ending at $t-1$, not $t$.
 - RSI(14) at bar $t$ should use closes through bar $t$, no later.
 
-The one-line check: if I replay the strategy bar-by-bar with each bar's data hidden after it is consumed, do I get the same trades?
+The one-line check: replay bar-by-bar with each bar hidden after consumption — same trades?
 
 ## Step 6: test out-of-sample
 
-Reserve at least the most recent 2 years of data and **do not look at it** while developing the rules. Run the finished signal once, end-to-end, on the held-out window. If it works similarly to the in-sample period, you have weak evidence the rules generalize. If it doesn't, accept that and either reformulate the hypothesis or kill the idea — do not return to "tweak" the rules on the now-leaked out-of-sample data.
+Reserve at least the most recent 2 years and **do not look at it** while developing the rules. Run the finished signal once, end-to-end, on the held-out window. If it works similarly to in-sample, you have weak evidence of generalization. If it doesn't, accept that — do not "tweak" the rules on the now-leaked window.
 
 <Pitfall title="This is a scaffold, not a strategy">
 The signal you just walked through is not something to deploy. It is illustrative of the **process**: hypothesis → axis decomposition → AND aggregation → explicit exits → execution honesty → lookahead check → out-of-sample. Repeat the process on your own hypothesis. Resist the urge to backtest this exact rule, see a number you like, and call it done.

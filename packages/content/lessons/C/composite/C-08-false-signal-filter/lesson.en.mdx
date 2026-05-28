@@ -8,33 +8,33 @@ These are typically applied *after* the base entry signal: if the base says "go 
 
 ### 1. Trend filter
 
-> Take longs only when price > SMA(200). Take shorts only when price < SMA(200).
+> Take longs only when price > SMA(200).
 
-Cuts roughly half the candidate trades — the half that fought the dominant trend — and tends to retain most of the win on the surviving half. The cheapest, oldest, and most defensible filter in the toolbox.
+Cuts roughly half the candidates — the half fighting the dominant trend — and retains most of the win on the surviving half. The cheapest and most defensible filter in the toolbox.
 
 ### 2. Volatility filter
 
 > Skip signals when realized vol is more than ~2× its trailing median.
 
-Extreme volatility breaks the assumptions of most timing models. A trend follower entering a volatility spike often eats the reversion; a mean-reverter entering one often watches the "mean" run away.
+Extreme volatility breaks the assumptions of most timing models. A trend follower entering a vol spike often eats the reversion.
 
 ### 3. Volume filter
 
 > Skip signals on below-average volume.
 
-Low volume = low conviction. A breakout on thin volume is usually noise. The filter has the side benefit of also reducing slippage cost.
+Low volume = low conviction. A breakout on thin volume is usually noise. Bonus: reduced slippage cost.
 
 ### 4. Time-of-day filter
 
 > On equities, skip the first and last 30 minutes.
 
-The open auction is wide and noisy; the close is dominated by index rebalancing flows. Both produce signals that don't generalize. Cutting them costs you a handful of theoretically-profitable trades and removes a lot of practical bleed.
+The open auction is wide and noisy; the close is dominated by index rebalancing. Both produce signals that don't generalize.
 
 ### 5. Persistence filter
 
 > Require the signal to hold for $k$ consecutive bars before acting.
 
-Trades fewer one-bar spikes. The cost is $k$ bars of additional lag — see the previous lesson on smoothing vs lag for the trade-off.
+Fewer one-bar spikes. The cost is $k$ bars of additional lag — see the previous lesson for the trade-off.
 
 ## How filters reshape your distribution
 
@@ -72,7 +72,7 @@ Pick filters in this order:
 2. **Vol filter or time-of-day** — depending on whether your signal is sensitive to noise or microstructure.
 3. **Maybe one more**, justified independently. **Stop.**
 
-After deployment, monitor whether the filters still cut what they claimed to cut. A trend filter that no longer reduces trade count means the underlying signal has drifted into different territory; recheck.
+After deployment, monitor whether the filters still cut what they claimed to cut.
 
 ## Check yourself
 

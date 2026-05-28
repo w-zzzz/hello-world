@@ -1,6 +1,6 @@
 # Fibonacci pivot levels
 
-Once you understand floor-trader pivots, Fibonacci pivots are a one-line change. Same central pivot, same geometry, same role as scaffolding for the day — but the support and resistance offsets are scaled by Fibonacci ratios instead of the integer multipliers of the classic formula. The result is a tighter cluster of levels around the central pivot. In this lesson you will see the formula, compare it to the floor-trader and Camarilla variants, and confront the uncomfortable question of *why* a 0.618 multiple would have any predictive power at all.
+Once you understand floor-trader pivots, Fibonacci pivots are a one-line change. Same central pivot, same geometry, same role as session scaffolding — but support and resistance offsets are scaled by Fibonacci ratios instead of integer multipliers. The result is a tighter cluster of levels around the central pivot. In this lesson you will see the formula, compare it to the floor-trader and Camarilla variants, and confront the uncomfortable question of *why* a 0.618 multiple would have any predictive power.
 
 ## The formula
 
@@ -24,11 +24,11 @@ $$
 R_3 = P + 1.000 \cdot (H - L), \quad S_3 = P - 1.000 \cdot (H - L)
 $$
 
-The 0.382 and 0.618 are the two famous Fibonacci ratios — successive terms of the Fibonacci sequence converge to ratios that approach those numbers. The 1.0 level closes the system at exactly one full range above and below $P$.
+The 0.382 and 0.618 are the famous Fibonacci ratios — successive terms of the Fibonacci sequence converge to those numbers. The 1.0 level closes the system at exactly one full range above and below $P$.
 
 ## A worked example
 
-Take yesterday's SPY values: $H = 510$, $L = 504$, $C = 508$, so $H - L = 6$.
+Yesterday's SPY: $H = 510$, $L = 504$, $C = 508$, so $H - L = 6$.
 
 $$
 P = 507.33
@@ -46,27 +46,27 @@ $$
 R_3 = 507.33 + 6 = 513.33, \qquad S_3 = 507.33 - 6 = 501.33
 $$
 
-Notice how the Fibonacci levels sit *inside* the corresponding floor-trader levels. Floor-trader $R_1$ was $510.67$; Fibonacci $R_1$ is $509.62$. That tighter geometry is the whole practical difference: Fib pivots fire earlier and more often, floor-trader pivots fire later but with bigger moves.
+Fib levels sit *inside* the corresponding floor-trader levels. Floor-trader $R_1$ was $510.67$; Fib $R_1$ is $509.62$. That tighter geometry is the practical difference: Fib pivots fire earlier and more often; floor-trader pivots fire later with bigger moves.
 
 <Chart symbol="SPY" height={360} intervalLabel="D" />
 
-Open the chart and pick a day. Mentally overlay both pivot sets. You will see Fib pivots being touched more frequently — which means more false signals as well as more real ones. Whether that trade-off helps you depends on what your strategy looks like.
+Open the chart and pick a day. Mentally overlay both pivot sets. Fib pivots are touched more frequently — more false signals as well as more real ones.
 
 ## Comparison to floor-trader and Camarilla pivots
 
-There are three popular pivot families that all start from $P = (H+L+C)/3$ but use different scaling:
+Three families all start from $P = (H+L+C)/3$ but scale differently:
 
-- **Floor-trader pivots:** integer multiples of $H-L$ and asymmetric levels (2P − L, 2P − H, etc.). Widest spacing.
-- **Fibonacci pivots:** 0.382, 0.618, 1.0 multiples of $H-L$. Medium-tight spacing.
-- **Camarilla pivots:** very tight multiples (1.1/12, 1.1/6, etc. of $H-L$). Smallest spacing — designed for reversion to a tight central zone.
+- **Floor-trader:** integer multiples of $H-L$, asymmetric levels. Widest spacing.
+- **Fibonacci:** 0.382, 0.618, 1.0 multiples. Medium spacing.
+- **Camarilla:** very tight multiples (~1.1/12, 1.1/6 of $H-L$). Smallest spacing — designed for tight mean-reversion.
 
-A trader who wants confluence sometimes plots all three. When floor-trader $R_2$, Fib $R_2$, and a Camarilla level all land within a few cents of each other, the cluster is treated as a stronger zone.
+A confluence trader plots all three. When floor-trader $R_2$, Fib $R_2$, and a Camarilla level land within a few cents, the cluster is treated as a stronger zone.
 
-## The unconfortable question
+## The uncomfortable question
 
-If $P$ has a clear interpretation (last session's typical price), and floor-trader $R_1$ has a clear interpretation (a symmetric reflection of the low across $P$), what does $0.382 \cdot (H-L)$ above $P$ measure?
+If $P$ has a clear interpretation (yesterday's typical price), and floor-trader $R_1$ has one (symmetric reflection of the low across $P$), what does $0.382 \cdot (H-L)$ above $P$ measure?
 
-Honest answer: **nothing intrinsic.** The Fibonacci ratios were imported to financial charts by analogy from natural spirals and the golden ratio, but there is no statistical reason 0.382 or 0.618 should be a special price level. The level matters only because enough chartists and algorithms place orders there. That is exactly the same sociological edge as floor-trader pivots — except now the "everyone watches this number" effect is weaker, because the audience for Fib pivots is smaller and more retail-leaning than the audience for floor-trader pivots.
+Honest answer: **nothing intrinsic.** Fibonacci ratios were imported to charts by analogy from natural spirals and the golden ratio, but there is no statistical reason 0.382 or 0.618 should be a special price level. The level matters only because enough chartists and algorithms place orders there. Same sociological edge as floor-trader pivots — except the audience is smaller and more retail-leaning.
 
 <Pitfall title="Confusing pattern with signal">
 The Fibonacci ratios feel like deep structure — they show up in spirals, in art, in plant biology. It is tempting to assume they confer real predictive power on price. They do not. If your backtest works only because price respected 0.618, ask: would the same logic with 0.5 or 0.65 also work? If yes, you have a level effect (price respects round-ish numbers in a range), not a Fib effect. If your strategy relies on Fib pivots to confer real edge, you are very likely confusing pattern with signal — the same mistake the system was meant to help you avoid.
