@@ -57,7 +57,8 @@ class PresetOut(StrictModel):
 
 
 class RunBacktestRequest(StrictModel):
-    preset: str
+    preset: str | None = None
+    code: str | None = None  # NEW (M6 untrusted mode)
     params: dict[str, str | int | float] = Field(default_factory=dict)
     universe: list[str] | None = None
     start: date | None = None
@@ -143,6 +144,51 @@ def _validate_params(preset_meta: Any, params: dict[str, str | int | float]) -> 
 
 @router.post("/", response_model=RunBacktestResponse)
 async def run_backtest(body: RunBacktestRequest) -> RunBacktestResponse:
+    if (body.preset is None) == (body.code is None):
+        raise HTTPException(
+            status_code=422,
+            detail="exactly one of 'preset' or 'code' must be set",
+        )
+
+    if body.code is not None:
+        if len(body.code.encode("utf-8")) > 65_536:
+            raise HTTPException(status_code=413, detail="code exceeds 64KB cap")
+        # Skip param validation in untrusted mode — strategy code consumes
+        # closes only; params are reserved for future per-strategy knobs.
+        params = dict(body.params)
+        bars = _load_bundled_bars()
+        if not bars:
+            raise HTTPException(status_code=500, detail="bundled bars not available")
+        universe = body.universe or ["SPY"]
+        config_payload = {
+            "code": body.code,
+            "params": params,
+            "universe": universe,
+            "start": body.start.isoformat() if body.start else None,
+            "end": body.end.isoformat() if body.end else None,
+        }
+        config_hash = canonical_config_hash(config_payload)
+        job = {
+            "code": body.code,
+            "params": params,
+            "universe": universe,
+            "data": bars,
+        }
+        try:
+            result_dict = execute(job)
+        except SandboxError as e:
+            # Decide between 422 (user code error) and 500 (infra). For M6 MVP we
+            # surface SandboxError messages directly; M5.1 review flagged this as
+            # M-SANDBOX-API-1. Refine post-M7.
+            raise HTTPException(status_code=422, detail=f"sandbox failure: {e}") from e
+        result_dict["config_hash"] = config_hash
+        result = BacktestResult.model_validate(result_dict)
+        return RunBacktestResponse(
+            run_id=str(result.run_id), config_hash=config_hash, result=result
+        )
+
+    # else: preset path (existing logic — preserved)
+    assert body.preset is not None  # guaranteed by XOR check above
     meta = get_preset(body.preset)
     if meta is None:
         raise HTTPException(status_code=404, detail=f"Unknown preset: {body.preset}")
