@@ -37,13 +37,39 @@ export interface BacktestWarning {
   message: string
 }
 
+/**
+ * Mirrors :class:`qa_core.schemas.Metrics`. The four ratio fields
+ * (``sharpe``/``sortino``/``calmar``/``profit_factor``) are
+ * ``float | None`` on the Python side: ``null`` means the ratio is
+ * undefined for this run (e.g. zero downside, zero losses) rather than
+ * a literal zero. Renderers must distinguish ``null`` from ``0``.
+ *
+ * Used by the tearsheet for documentation + lookup-key typing. The wire
+ * shape on :attr:`BacktestResultJson.metrics` is intentionally widened to
+ * ``Record<string, number | null>`` so existing call sites that thread
+ * the value through a ``Record<string, number>`` JSONB column continue
+ * to typecheck until those surfaces are migrated.
+ */
+export interface Metrics {
+  sharpe: number | null
+  sortino: number | null
+  calmar: number | null
+  profit_factor: number | null
+  max_drawdown: number
+  win_rate: number
+  expectancy: number
+  turnover: number
+  exposure: number
+  trade_count: number
+}
+
 export interface BacktestResultJson {
   run_id: string
   universe: string[]
   period: { start: string; end: string }
   equity_curve: BacktestEquityPoint[]
   trades: BacktestTrade[]
-  metrics: Record<string, number>
+  metrics: Record<string, number | null>
   drawdown_periods: BacktestDrawdownPeriod[]
   benchmark: BacktestResultJson | null
   rolling: unknown | null

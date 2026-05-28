@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { compute as bollinger } from '../bollinger'
 import { compute as ema } from '../ema'
+import { INDICATORS } from '../index'
 import { compute as macd } from '../macd'
 import { compute as rsi } from '../rsi'
 import { compute as sma } from '../sma'
@@ -147,5 +148,31 @@ describe('Bollinger', () => {
       expect(lower?.[i]).toBeNull()
     }
     expect(middle?.[4]).not.toBeNull()
+  })
+})
+
+describe('bollinger stddev parameter is honored', () => {
+  const bars = Array.from({ length: 30 }, (_, i) => ({
+    t: `2024-01-${String(i + 1).padStart(2, '0')}`,
+    open: 100,
+    high: 110,
+    low: 90,
+    close: 100 + (i % 3),
+    volume: 1000,
+  }))
+
+  it('produces wider bands when stddev increases', () => {
+    const wide = INDICATORS.bollinger({ bars, params: { period: 20, stddev: 4 } })
+    const narrow = INDICATORS.bollinger({ bars, params: { period: 20, stddev: 1 } })
+    const w = wide.upper[29] as number
+    const n = narrow.upper[29] as number
+    expect(w).toBeGreaterThan(n)
+  })
+
+  it('ignores the legacy "k" key — it must be named "stddev"', () => {
+    const withK = INDICATORS.bollinger({ bars, params: { period: 20, k: 4 } })
+    const withDefault = INDICATORS.bollinger({ bars, params: { period: 20 } })
+    // With 'k' but no 'stddev', the impl falls back to default stddev — bands match default.
+    expect(withK.upper[29]).toBeCloseTo(withDefault.upper[29] as number, 10)
   })
 })

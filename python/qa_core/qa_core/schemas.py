@@ -99,11 +99,22 @@ class Trade(StrictModel):
 
 
 class Metrics(StrictModel):
-    sharpe: float
-    sortino: float
-    calmar: float
+    """Backtest performance summary.
+
+    ``sharpe``, ``sortino``, ``calmar`` and ``profit_factor`` are typed
+    ``float | None``. ``None`` means the ratio is undefined for this run
+    (e.g. zero trades, zero downside, zero losses — vectorbt returns
+    ``NaN``/``inf`` in those cases). ``0.0`` means a genuine zero, which
+    is only meaningful for ``max_drawdown`` and ``exposure``; the four
+    ratio fields never return ``0.0`` as a stand-in for "undefined" — use
+    ``None`` for that.
+    """
+
+    sharpe: float | None
+    sortino: float | None
+    calmar: float | None
     max_drawdown: float
-    profit_factor: float
+    profit_factor: float | None
     win_rate: float
     expectancy: float
     turnover: float

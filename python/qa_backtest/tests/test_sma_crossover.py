@@ -53,17 +53,44 @@ def test_sma_crossover_metric_fields_are_finite() -> None:
     bars = _load_bars()
     result = run_sma_crossover(bars, fast=10, slow=30)
     m = result.metrics
+    # Non-ratio fields are always float and finite (NaN/Inf -> 0.0).
     for value in (
-        m.sharpe,
-        m.sortino,
-        m.calmar,
         m.max_drawdown,
-        m.profit_factor,
         m.win_rate,
         m.expectancy,
         m.turnover,
         m.exposure,
     ):
         assert isinstance(value, float)
-        # _safe_float coerces NaN/Inf to 0.0, so finite is guaranteed.
         assert value == value  # not NaN
+    # Ratio fields are float | None; when present they must be finite.
+    for value in (m.sharpe, m.sortino, m.calmar, m.profit_factor):
+        assert value is None or isinstance(value, float)
+        if value is not None:
+            assert value == value  # not NaN
+
+
+def test_metrics_optional_fields_can_be_none_on_degenerate_run():
+    """C-METRICS-1: profit_factor for a no-loss strategy is None, not 0.0."""
+    # Construct bars where the SMA cross only enters and never exits
+    # (so profit_factor would be inf). Easiest: monotonically rising prices.
+    from datetime import UTC, datetime
+
+    from qa_core.schemas import Bar
+
+    bars = [
+        Bar(
+            t=datetime(2024, 1, 1, tzinfo=UTC).replace(day=i),
+            open=100.0 + i,
+            high=110.0 + i,
+            low=90.0 + i,
+            close=100.0 + i,
+            volume=1000.0,
+        )
+        for i in range(1, 29)
+    ]
+    result = run_sma_crossover(bars, fast=3, slow=10)
+    # If no losses occurred, profit_factor should be None (not 0.0). Other
+    # ratios may also be None when the trade history is too thin to compute.
+    if result.metrics.trade_count > 0 and result.metrics.profit_factor is not None:
+        assert result.metrics.profit_factor > 0

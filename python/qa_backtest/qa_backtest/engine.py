@@ -3,8 +3,19 @@
 The engine is intentionally thin: it converts ``list[Bar]`` to a sorted
 DataFrame, feeds entries/exits into :func:`vectorbt.Portfolio.from_signals`,
 and then normalises vectorbt's many output shapes into the strict pydantic
-schema defined in :mod:`qa_core.schemas`. All NaNs/Infs are coerced to 0.0
-so the result JSON is safe to serialise and cache.
+schema defined in :mod:`qa_core.schemas`.
+
+NaN/Inf handling is split by field semantics:
+
+- Quantities that are always well-defined for a non-empty backtest (cash,
+  equity, max drawdown, exposure, trade pnl/price/qty) flow through
+  :func:`_finite_float` and become ``0.0`` on NaN/Inf.
+- Ratio metrics that are mathematically undefined under degenerate inputs
+  (``sharpe``/``sortino``/``calmar`` with zero downside or zero variance;
+  ``profit_factor`` with zero gross loss) flow through
+  :func:`_finite_or_none` and become ``None`` on NaN/Inf, so the result
+  JSON can distinguish "no losses" (``profit_factor=None``) from "only
+  losses" (``profit_factor=0.0``).
 """
 
 from __future__ import annotations
@@ -37,17 +48,34 @@ from qa_core.schemas import (  # noqa: E402
 )
 
 
-def _safe_float(x: Any) -> float:
-    """Coerce ``x`` to a finite float; NaN/Inf/None become 0.0."""
-    if x is None:
-        return 0.0
+def _finite_float(x: object) -> float:
+    """Coerce to float, mapping NaN and inf to 0.0.
+
+    Use for fields that are semantically a number for any non-empty
+    backtest (e.g. drawdown, exposure, cash, equity, trade pnl/price).
+    """
     try:
-        v = float(x)
+        v = float(x)  # type: ignore[arg-type]
+        if math.isnan(v) or math.isinf(v):
+            return 0.0
+        return v
     except (TypeError, ValueError):
         return 0.0
-    if math.isnan(v) or math.isinf(v):
-        return 0.0
-    return v
+
+
+def _finite_or_none(x: object) -> float | None:
+    """Coerce to float, mapping NaN and inf to None.
+
+    Use for ratio metrics that are undefined under degenerate conditions
+    (sharpe, sortino, calmar, profit_factor).
+    """
+    try:
+        v = float(x)  # type: ignore[arg-type]
+        if math.isnan(v) or math.isinf(v):
+            return None
+        return v
+    except (TypeError, ValueError):
+        return None
 
 
 def _to_utc_datetime(ts: Any) -> datetime:
@@ -105,8 +133,8 @@ def run_backtest(
     cash_series = pf.cash()
     equity_curve: list[EquityPoint] = []
     for idx in equity_series.index:
-        equity = _safe_float(equity_series.loc[idx])
-        cash = _safe_float(cash_series.loc[idx])
+        equity = _finite_float(equity_series.loc[idx])
+        cash = _finite_float(cash_series.loc[idx])
         equity_curve.append(
             EquityPoint(
                 t=_to_utc_datetime(idx),
@@ -130,10 +158,10 @@ def run_backtest(
                 entry_t=_to_utc_datetime(entry_ts),
                 exit_t=_to_utc_datetime(exit_ts),
                 side=side,
-                qty=_safe_float(row.get("Size")),
-                entry=_safe_float(row.get("Avg Entry Price")),
-                exit=_safe_float(row.get("Avg Exit Price")),
-                pnl=_safe_float(row.get("PnL")),
+                qty=_finite_float(row.get("Size")),
+                entry=_finite_float(row.get("Avg Entry Price")),
+                exit=_finite_float(row.get("Avg Exit Price")),
+                pnl=_finite_float(row.get("PnL")),
                 mae=0.0,
                 mfe=0.0,
                 bars_held=bars_held,
@@ -144,9 +172,16 @@ def run_backtest(
 
     def _stat(key: str) -> float:
         try:
-            return _safe_float(stats.get(key))
+            return _finite_float(stats.get(key))
         except Exception:
             return 0.0
+
+    def _ratio_stat(key: str) -> float | None:
+        """Stat lookup for ratio metrics — NaN/inf/missing -> None."""
+        try:
+            return _finite_or_none(stats.get(key))
+        except Exception:
+            return None
 
     exposure = (
         _stat("Position Coverage [%]") / 100.0
@@ -155,11 +190,11 @@ def run_backtest(
     )
 
     metrics = Metrics(
-        sharpe=_stat("Sharpe Ratio"),
-        sortino=_stat("Sortino Ratio"),
-        calmar=_stat("Calmar Ratio"),
+        sharpe=_ratio_stat("Sharpe Ratio"),
+        sortino=_ratio_stat("Sortino Ratio"),
+        calmar=_ratio_stat("Calmar Ratio"),
         max_drawdown=_stat("Max Drawdown [%]") / 100.0,
-        profit_factor=_stat("Profit Factor"),
+        profit_factor=_ratio_stat("Profit Factor"),
         win_rate=_stat("Win Rate [%]") / 100.0,
         expectancy=_stat("Expectancy"),
         turnover=0.0,
@@ -178,15 +213,15 @@ def run_backtest(
         recovery: datetime | None = None
         if recovery_ts is not None and pd.notna(recovery_ts) and status.lower() == "recovered":
             recovery = _to_utc_datetime(recovery_ts)
-        peak_val = _safe_float(row.get("Peak Value"))
-        valley_val = _safe_float(row.get("Valley Value"))
+        peak_val = _finite_float(row.get("Peak Value"))
+        valley_val = _finite_float(row.get("Valley Value"))
         depth = (valley_val - peak_val) / peak_val if peak_val else 0.0
         drawdown_periods.append(
             DrawdownPeriod(
                 start=start,
                 trough=trough,
                 recovery=recovery,
-                depth=_safe_float(depth),
+                depth=_finite_float(depth),
             )
         )
 

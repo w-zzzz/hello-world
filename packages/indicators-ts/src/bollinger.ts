@@ -6,15 +6,18 @@ import { coerceIntParam, coerceNumberParam, coerceSourceParam, pickSource } from
  *
  * - `middle` = SMA(period) of the source series.
  * - For every index where `middle` is defined, σ is the population (ddof=0)
- *   standard deviation of the same window. `upper = middle + k σ`,
- *   `lower = middle - k σ`.
+ *   standard deviation of the same window. `upper = middle + stddev · σ`,
+ *   `lower = middle - stddev · σ`.
  * - Population stddev is what pandas' `Series.rolling(window).std(ddof=0)`
  *   returns and matches numpy's default for ddof=0.
+ * - The width-multiplier param is named `stddev` to match the Python
+ *   canonical (`qa_indicators.bollinger.compute(..., stddev=2.0)`) and the
+ *   golden parity JSON. The legacy name `k` is not honored.
  */
 export function compute(input: IndicatorInput): IndicatorOutput {
   const period = coerceIntParam(input.params, 'period', 20)
   if (period < 2) throw new Error('period must be >= 2')
-  const k = coerceNumberParam(input.params, 'k', 2)
+  const stddev = coerceNumberParam(input.params, 'stddev', 2)
   const source: Source = coerceSourceParam(input.params, 'source', 'close')
   const series = pickSource(input.bars, source)
   const n = series.length
@@ -43,8 +46,8 @@ export function compute(input: IndicatorInput): IndicatorOutput {
   const seedVar = Math.max(0, sumSq / period - seedMean * seedMean)
   const seedSigma = Math.sqrt(seedVar)
   middle[period - 1] = seedMean
-  upper[period - 1] = seedMean + k * seedSigma
-  lower[period - 1] = seedMean - k * seedSigma
+  upper[period - 1] = seedMean + stddev * seedSigma
+  lower[period - 1] = seedMean - stddev * seedSigma
 
   for (let i = period; i < n; i++) {
     const incoming = series[i]
@@ -58,8 +61,8 @@ export function compute(input: IndicatorInput): IndicatorOutput {
     const variance = Math.max(0, sumSq / period - mean * mean)
     const sigma = Math.sqrt(variance)
     middle[i] = mean
-    upper[i] = mean + k * sigma
-    lower[i] = mean - k * sigma
+    upper[i] = mean + stddev * sigma
+    lower[i] = mean - stddev * sigma
   }
 
   return { middle, upper, lower }
