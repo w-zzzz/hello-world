@@ -1,6 +1,6 @@
 # Fibonacci pivot levels
 
-Once you understand floor-trader pivots, Fibonacci pivots are a one-line change. Same central pivot, same geometry, same role as session scaffolding — but support and resistance offsets are scaled by Fibonacci ratios instead of integer multipliers. The result is a tighter cluster of levels around the central pivot. In this lesson you will see the formula, compare it to the floor-trader and Camarilla variants, and confront the uncomfortable question of *why* a 0.618 multiple would have any predictive power.
+Fibonacci pivots are a one-line change from floor-trader pivots. Same central pivot, same geometry, same role as session scaffolding — but offsets are scaled by Fibonacci ratios instead of integer multipliers. The result is a tighter cluster of levels around the central pivot. In this lesson you will see the formula, compare it to floor-trader and Camarilla variants, and confront the uncomfortable question of *why* 0.618 would have any predictive power.
 
 ## The formula
 
@@ -24,7 +24,7 @@ $$
 R_3 = P + 1.000 \cdot (H - L), \quad S_3 = P - 1.000 \cdot (H - L)
 $$
 
-The 0.382 and 0.618 are the famous Fibonacci ratios — successive terms of the Fibonacci sequence converge to those numbers. The 1.0 level closes the system at exactly one full range above and below $P$.
+The 0.382 and 0.618 are the famous Fibonacci ratios. The 1.0 level closes the system at exactly one full range above and below $P$.
 
 ## A worked example
 
@@ -69,11 +69,11 @@ If $P$ has a clear interpretation (yesterday's typical price), and floor-trader 
 Honest answer: **nothing intrinsic.** Fibonacci ratios were imported to charts by analogy from natural spirals and the golden ratio, but there is no statistical reason 0.382 or 0.618 should be a special price level. The level matters only because enough chartists and algorithms place orders there. Same sociological edge as floor-trader pivots — except the audience is smaller and more retail-leaning.
 
 <Pitfall title="Confusing pattern with signal">
-The Fibonacci ratios feel like deep structure — they show up in spirals, in art, in plant biology. It is tempting to assume they confer real predictive power on price. They do not. If your backtest works only because price respected 0.618, ask: would the same logic with 0.5 or 0.65 also work? If yes, you have a level effect (price respects round-ish numbers in a range), not a Fib effect. If your strategy relies on Fib pivots to confer real edge, you are very likely confusing pattern with signal — the same mistake the system was meant to help you avoid.
+Fibonacci ratios feel like deep structure — they show up in spirals, art, plant biology. It is tempting to assume they confer real predictive power on price. They do not. If your backtest works only because price respected 0.618, ask: would 0.5 or 0.65 work too? If yes, you have a level effect, not a Fib effect. If your strategy relies on Fib pivots for real edge, you are confusing pattern with signal.
 </Pitfall>
 
 <KeyPoint title="Same scaffolding, tighter geometry, weaker base">
-Fibonacci pivots share the central $P$ with floor-trader pivots but place R/S levels at 0.382, 0.618, 1.0 of yesterday's range — tighter and more frequently touched. The math is just a rescaling. The sociological edge is real but smaller than floor-trader pivots, because the Fib audience is smaller. Use them as descriptive lines, not as oracles.
+Fib pivots share $P$ with floor-trader pivots but place R/S at 0.382, 0.618, 1.0 of yesterday's range — tighter, more frequently touched. The math is a rescaling. The sociological edge is real but weaker, because the Fib audience is smaller. Use them as descriptive lines, not oracles.
 </KeyPoint>
 
 <Quiz id="B-27-fibonacci-pivots-q1" question="What is the main geometric difference between Fibonacci pivots and floor-trader pivots?" options={["Fib pivots use a different central pivot P; floor-trader pivots use (H+L)/2.","Both start from the same P, but Fib pivots scale the range by 0.382, 0.618, 1.0 — producing tighter levels around P than floor-trader.","Fib pivots only have R and S, no central level.","Fib pivots reset every minute; floor-trader pivots reset daily."]} answer={1} explanation="Both families share P = (H+L+C)/3. The difference is scaling: floor-trader uses integer multiples of the range and asymmetric formulas, while Fib pivots use 0.382, 0.618, 1.0 multiples — yielding tighter levels around the central pivot." />
