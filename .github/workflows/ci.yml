@@ -179,6 +179,8 @@ jobs:
         run: uv run python -m qa_indicators.scripts.regenerate_golden --verify
       - name: TS parity vs Python goldens
         run: pnpm run check:parity
+      - name: Contracts in sync (Python schemas → TS)
+        run: pnpm run check:contracts
 
   sandbox-negative:
     name: Sandbox Negative Tests

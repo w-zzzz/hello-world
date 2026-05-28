@@ -6,11 +6,15 @@
   "description": "Cross-package maintenance scripts (parity check, etc.) for Quant Academy. Run from repo root via `pnpm run check:parity`.",
   "scripts": {
     "check:parity": "tsx check-indicator-parity.ts",
-    "check:ai-prompts": "node --import tsx --import ./script-loader-register.mjs check-ai-prompts.ts"
+    "check:ai-prompts": "node --import tsx --import ./script-loader-register.mjs check-ai-prompts.ts",
+    "check:contracts": "tsx check-contracts.ts",
+    "build:contracts": "tsx generate-contracts.ts"
   },
   "dependencies": {
     "@quant-academy/ai-tutor": "workspace:*",
-    "@quant-academy/indicators-ts": "workspace:*"
+    "@quant-academy/contracts": "workspace:*",
+    "@quant-academy/indicators-ts": "workspace:*",
+    "json-schema-to-typescript": "^15.0.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

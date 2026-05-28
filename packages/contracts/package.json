@@ -1,0 +1,27 @@
+{
+  "name": "@quant-academy/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/generated/index.d.ts",
+      "import": "./src/generated/index.ts"
+    }
+  },
+  "scripts": {
+    "build:contracts": "tsx ../../scripts/generate-contracts.ts",
+    "check:contracts": "tsx ../../scripts/check-contracts.ts",
+    "lint": "biome check src",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .turbo dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@quant-academy/tsconfig-config": "workspace:*",
+    "json-schema-to-typescript": "^15.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
