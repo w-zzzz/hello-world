@@ -8,17 +8,21 @@ Lifecycle (order matters):
 
 1. Read + parse JSON job spec. Fail fast on malformed input (exit 2) or
    missing/unknown preset (exit 1) — these paths never need vectorbt.
-2. **Pre-warm** vectorbt + numba so their lazy imports happen before the
-   sandbox hook is installed (deferred until step 1 succeeded so failed
-   jobs never pay the JIT cost).
-3. Install the import hook.
-4. Install resource limits + SIGALRM wall-clock.
-5. Dispatch to the named preset runner.
-6. Emit BacktestResult JSON.
+2. Branch on the new ``code`` field (M6 untrusted-code path) vs ``preset``
+   (trusted M5 preset path). Exactly one must be set.
+3. **Trusted preset path**: pre-warm vectorbt + numba so their lazy imports
+   happen before the sandbox hook is installed (deferred until step 1
+   succeeded so failed jobs never pay the JIT cost). Then install hook,
+   install limits, dispatch to the named preset runner.
+4. **Untrusted code path (M6)**: install the import hook + resource limits
+   (NO vectorbt prewarm — user code doesn't need it), then hand source +
+   bars to :func:`qa_sandbox.code_runner.run_user_code` which compiles and
+   exec'es the source in a globals dict scrubbed by ``restrict_builtins``.
+5. Emit BacktestResult JSON.
 
 Exit codes:
     0  — success
-    1  — preset error or unknown preset
+    1  — preset error / unknown preset / user-code validation error
     2  — malformed job spec
 """
 
@@ -63,7 +67,59 @@ def main() -> int:
         sys.stderr.write(f"sandbox: invalid job spec: {e}\n")
         return 2
 
+    code = job.get("code")
     preset = job.get("preset")
+
+    # Sanity: exactly one of code/preset
+    if (code is None) == (preset is None):
+        sys.stderr.write("sandbox: error: exactly one of 'code' or 'preset' must be set\n")
+        return 1
+
+    # ---- M6 untrusted-code branch ---------------------------------------
+    if isinstance(code, str):
+        bars_raw = job.get("data", []) or []
+        if not isinstance(bars_raw, list):
+            sys.stderr.write("sandbox: error: 'data' must be an array\n")
+            return 1
+
+        # Pre-import qa_core.schemas + qa_sandbox.code_runner BEFORE installing
+        # the import hook. They transitively pull in modules (e.g. ``uuid``,
+        # ``traceback``) that aren't on the user-facing allowlist. The runner's
+        # own imports must complete with full stdlib access; once the hook is
+        # in place only allow-listed modules can be imported by *user* code.
+        from qa_core.schemas import Bar
+        from qa_sandbox.code_runner import CodeRunnerError, run_user_code
+
+        try:
+            bars = [Bar(**b) for b in bars_raw]
+        except Exception as e:
+            sys.stderr.write(f"sandbox: error: invalid bar in 'data': {e}\n")
+            return 1
+
+        # No vectorbt prewarm — user code path doesn't use vectorbt. The
+        # hook + limits still apply as defence-in-depth on top of Layer-2
+        # Docker isolation.
+        from qa_sandbox.import_hook import install as install_import_hook
+        from qa_sandbox.limits import install_limits
+
+        install_import_hook()
+        install_limits()
+
+        try:
+            result = run_user_code(code, bars)
+        except CodeRunnerError as e:
+            sys.stderr.write(f"sandbox: error: {e}\n")
+            return 1
+        except Exception as e:
+            sys.stderr.write(f"sandbox: error: {e}\n")
+            sys.stderr.write(traceback.format_exc())
+            return 1
+
+        sys.stdout.write(result.model_dump_json())
+        sys.stdout.flush()
+        return 0
+
+    # ---- M5 trusted-preset branch (unchanged) ---------------------------
     if not isinstance(preset, str) or not preset:
         sys.stderr.write("sandbox: error: missing or non-string 'preset' field\n")
         return 1
