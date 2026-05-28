@@ -402,6 +402,21 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)(lightningcss@1.32.0)
 
+  packages/pyodide-bridge:
+    devDependencies:
+      '@quant-academy/tsconfig-config':
+        specifier: workspace:*
+        version: link:../tsconfig-config
+      '@types/node':
+        specifier: ^22
+        version: 22.19.19
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)(lightningcss@1.32.0)
+
   packages/tailwind-config:
     devDependencies:
       '@quant-academy/tsconfig-config':
