@@ -5,25 +5,30 @@ Run: python3 scripts/check-mdx-attrs.py
 Self-test: python3 scripts/check-mdx-attrs.py --self-test
 Exit: 0 if clean, 1 if any issues found.
 """
+
+# This file intentionally embeds "ambiguous" Unicode (full-width punctuation in
+# self-test fixtures, curly/CJK quote suggestions in messages) — that is the
+# domain it lints. Disable RUF001 for the whole file rather than per line.
+# ruff: noqa: RUF001
 import glob
 import re
 import sys
 
 # Attributes the project uses on JSX components in MDX. Add new ones here as components grow.
 ATTRS = (
-    'title',
-    'question',
-    'explanation',
-    'placeholder',
-    'label',
-    'note',
-    'caption',
-    'description',
+    "title",
+    "question",
+    "explanation",
+    "placeholder",
+    "label",
+    "note",
+    "caption",
+    "description",
 )
-ATTR_OPEN = re.compile(r'\b(' + '|'.join(ATTRS) + r')="')
+ATTR_OPEN = re.compile(r"\b(" + "|".join(ATTRS) + r')="')
 
 # Safe characters that may follow the closing `"` of a JSX attribute value.
-_SAFE_AFTER = ' \t\n\r/>}'
+_SAFE_AFTER = " \t\n\r/>}"
 
 
 def _scan_line(line):
@@ -42,7 +47,7 @@ def _scan_line(line):
         idx = rest.find('"')
         if idx == -1:
             continue  # closing " on a later line; skip (rare in MDX)
-        after = rest[idx + 1:idx + 2]
+        after = rest[idx + 1 : idx + 2]
         # Safe terminators after the closing ": whitespace, /, >, }, end of line.
         # If `after` is anything else (alphanumerics, CJK, punctuation, etc.),
         # that means the `"` we found is actually a stray inner quote and the
@@ -50,28 +55,24 @@ def _scan_line(line):
         if not after or after in _SAFE_AFTER:
             continue  # legitimate close
         col = start + idx + 1
-        findings.append((col, line.rstrip('\n')))
+        findings.append((col, line.rstrip("\n")))
     return findings
 
 
 def scan_file(path):
     issues = []
     in_fence = False
-    with open(path, encoding='utf-8') as f:
+    with open(path, encoding="utf-8") as f:
         for lineno, line in enumerate(f, 1):
             stripped = line.lstrip()
             # crude code-fence handling
-            if stripped.startswith('```'):
+            if stripped.startswith("```"):
                 in_fence = not in_fence
                 continue
             if in_fence:
                 continue
             # skip JSX/JS line comments
-            if (
-                stripped.startswith('{/*')
-                or stripped.startswith('//')
-                or stripped.startswith('/*')
-            ):
+            if stripped.startswith("{/*") or stripped.startswith("//") or stripped.startswith("/*"):
                 continue
             for col, text in _scan_line(line):
                 issues.append((lineno, col, text))
@@ -83,7 +84,7 @@ def self_test():
     bad = [
         '<Pitfall title="Don\'t equate "more signals" with "x">',
         '  question="为什么人们常说 MFI 是"资金流量版的 RSI"？"',
-        '  explanation="VWAP 是当日真实成交按量加权的均价。买单成本低于 VWAP 就等于"成交在当日平均流动性接受者之下"，是一条基准。"',
+        '  explanation="均价低于 VWAP 就等于"成交在均值之下"。"',
     ]
     # Patterns that MUST NOT be flagged
     good = [
@@ -118,13 +119,11 @@ def self_test():
 
 
 def main():
-    if '--self-test' in sys.argv:
+    if "--self-test" in sys.argv:
         self_test()
         return
 
-    files = sorted(
-        glob.glob('packages/content/lessons/**/*.mdx', recursive=True)
-    )
+    files = sorted(glob.glob("packages/content/lessons/**/*.mdx", recursive=True))
     total = 0
     for f in files:
         bad = scan_file(f)
@@ -141,7 +140,7 @@ def main():
             file=sys.stderr,
         )
         print(
-            "Fix tip: replace inner ASCII \" with single quotes (en) or "
+            'Fix tip: replace inner ASCII " with single quotes (en) or '
             "full-width 「」 (zh) -- see ADR M7 § fixes.",
             file=sys.stderr,
         )
@@ -150,5 +149,5 @@ def main():
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
