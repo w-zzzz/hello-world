@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 import { markLessonComplete } from '@/app/actions/progress'
+import { dispatchAchievementUnlock } from '@/components/achievement-toast'
 import { Link } from '@/i18n/navigation'
 
 interface Props {
@@ -49,6 +50,8 @@ export function MarkCompleteButton({ lessonId, isSignedIn, alreadyCompleted }: P
         level: result.newLevel,
         leveledUp: result.leveledUp,
       })
+      // Surface any newly unlocked achievements as toasts. No-op when empty.
+      dispatchAchievementUnlock(result.unlocked)
       router.refresh()
     })
   }
