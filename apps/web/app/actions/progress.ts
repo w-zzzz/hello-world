@@ -1,18 +1,31 @@
 'use server'
 
-import { getLessonRecord } from '@quant-academy/content'
+import { getLessonRecord, getLessonsByTrack } from '@quant-academy/content'
 import { checkRateLimit } from '@quant-academy/db'
 import {
+  type AchievementMeta,
   computeXpAward,
+  evaluateAchievements,
   initialStreak,
   levelForXp,
   nextStreakState,
   type StreakState,
+  type TrackLessonIndex,
 } from '@quant-academy/gamification'
-import { and, count, desc, eq, sql, sum } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, sql, sum } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth'
-import { db, lessonCompletions, streaks, xpEvents } from '@/lib/db'
+import { achievements, db, lessonCompletions, streaks, userAchievements, xpEvents } from '@/lib/db'
+
+/**
+ * Build the (track → lesson-id list) index the achievement evaluator
+ * needs. Cached at module load — the curriculum is static at build time.
+ */
+const TRACK_LESSON_INDEX: TrackLessonIndex = {
+  A: getLessonsByTrack('A').map((r) => r.meta.id),
+  B: getLessonsByTrack('B').map((r) => r.meta.id),
+  C: getLessonsByTrack('C').map((r) => r.meta.id),
+}
 
 const VALID_KINDS = [
   'lesson_complete',
@@ -36,11 +49,36 @@ export interface MarkLessonCompleteInput {
   timeSpentS?: number
 }
 
+/**
+ * Compact view of a newly unlocked achievement, surfaced to the UI so it
+ * can render a toast. Shape is the M8 cross-agent contract — see the
+ * milestone prompt; the M8-Frontend agent reads exactly these fields.
+ */
+export interface UnlockedAchievement {
+  slug: string
+  nameEn: string
+  nameZh: string
+  descriptionEn: string
+  descriptionZh: string
+  /** Lucide icon name. */
+  icon: string
+}
+
 export interface MarkLessonCompleteResult {
   xpAwarded: number
   xpTotal: number
+  /** Alias of `xpTotal` — the M8 frontend contract uses this name. */
+  totalXp: number
   newLevel: number
+  /** Alias of `newLevel` — the M8 frontend contract uses this name. */
+  level: number
   leveledUp: boolean
+  /** Current streak length after this completion. */
+  streakCurrent: number
+  /** All-time longest streak. */
+  streakLongest: number
+  /** Achievements unlocked by this completion (idempotent across replays). */
+  unlocked: UnlockedAchievement[]
   /** True when the lesson had already been XP-credited; xpAwarded will be 0. */
   alreadyCompleted?: boolean
 }
@@ -175,7 +213,75 @@ export async function markLessonComplete(
       })
     }
 
-    // 8. Recompute XP total + level. When the xp_events insert collided on
+    // 8. Evaluate achievements against the post-completion snapshot, then
+    //    persist any new unlocks. Idempotent: the user_achievements PK
+    //    (user_id, achievement_id) plus ON CONFLICT DO NOTHING guarantees
+    //    replays don't double-award. We only insert achievement xp_events
+    //    for slugs whose INSERT actually produced a row.
+    const completedRows = await tx
+      .select({ lessonId: lessonCompletions.lessonId })
+      .from(lessonCompletions)
+      .where(eq(lessonCompletions.userId, user.id))
+    const completedLessonIds = completedRows.map((r) => r.lessonId)
+
+    const alreadyRows = await tx
+      .select({ slug: achievements.slug })
+      .from(userAchievements)
+      .innerJoin(achievements, eq(achievements.id, userAchievements.achievementId))
+      .where(eq(userAchievements.userId, user.id))
+    const alreadyUnlockedSlugs = alreadyRows.map((r) => r.slug)
+
+    const newlyUnlocked = evaluateAchievements(
+      {
+        completedLessonIds,
+        streakCurrent: nextStreak.current,
+        alreadyUnlockedSlugs,
+      },
+      TRACK_LESSON_INDEX,
+    )
+
+    let achievementXpAwarded = 0
+    const actuallyUnlocked: AchievementMeta[] = []
+
+    if (newlyUnlocked.length > 0) {
+      // Resolve slug → uuid by reading from the canonical seed table. If a
+      // slug is missing (e.g. migration skipped), we skip it rather than crash.
+      const slugList = newlyUnlocked.map((a) => a.slug)
+      const rows = await tx
+        .select({ id: achievements.id, slug: achievements.slug })
+        .from(achievements)
+        .where(inArray(achievements.slug, slugList))
+      const idBySlug = new Map(rows.map((r) => [r.slug, r.id]))
+
+      for (const meta of newlyUnlocked) {
+        const achievementId = idBySlug.get(meta.slug)
+        if (!achievementId) continue
+        const inserted = await tx
+          .insert(userAchievements)
+          .values({ userId: user.id, achievementId })
+          .onConflictDoNothing({
+            target: [userAchievements.userId, userAchievements.achievementId],
+          })
+          .returning({ userId: userAchievements.userId })
+        if (inserted.length === 0) continue
+        actuallyUnlocked.push(meta)
+
+        if (meta.xpBonus > 0) {
+          // Record an `achievement`-kind XP event. ref_id = slug. Idempotency
+          // is guarded by `user_achievements` above — we only get here when
+          // the achievement row was freshly inserted.
+          await tx.insert(xpEvents).values({
+            userId: user.id,
+            kind: 'achievement',
+            amount: meta.xpBonus,
+            refId: meta.slug,
+          })
+          achievementXpAwarded += meta.xpBonus
+        }
+      }
+    }
+
+    // 9. Recompute XP total + level. When the xp_events insert collided on
     //    the partial unique index, no XP was added this call, so priorXpTotal
     //    matches xpTotal and leveledUp is false.
     const totalRow = await tx
@@ -183,7 +289,7 @@ export async function markLessonComplete(
       .from(xpEvents)
       .where(eq(xpEvents.userId, user.id))
     const xpTotal = totalRow[0]?.total ?? 0
-    const xpAwarded = xpWasAwarded ? award.total : 0
+    const xpAwarded = (xpWasAwarded ? award.total : 0) + achievementXpAwarded
     const priorXpTotal = xpTotal - xpAwarded
     const newLevel = levelForXp(xpTotal).level
     const priorLevel = levelForXp(priorXpTotal).level
@@ -194,8 +300,20 @@ export async function markLessonComplete(
     return {
       xpAwarded,
       xpTotal,
+      totalXp: xpTotal,
       newLevel,
+      level: newLevel,
       leveledUp: newLevel > priorLevel,
+      streakCurrent: nextStreak.current,
+      streakLongest: nextStreak.longest,
+      unlocked: actuallyUnlocked.map((a) => ({
+        slug: a.slug,
+        nameEn: a.nameEn,
+        nameZh: a.nameZh,
+        descriptionEn: a.descriptionEn,
+        descriptionZh: a.descriptionZh,
+        icon: a.icon,
+      })),
       alreadyCompleted: !xpWasAwarded,
     }
   })

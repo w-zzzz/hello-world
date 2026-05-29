@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialStreak, nextStreakState } from '../streak'
+import { effectiveCurrentStreak, initialStreak, nextStreakState, utcDayOf } from '../streak'
 
 describe('initialStreak', () => {
   it('starts at current=1, longest=1', () => {
@@ -58,5 +58,51 @@ describe('nextStreakState', () => {
     const prev = { current: 2, longest: 2, lastActiveDate: '2026-05-31' }
     const next = nextStreakState(prev, '2026-06-01')
     expect(next).toEqual({ current: 3, longest: 3, lastActiveDate: '2026-06-01' })
+  })
+})
+
+describe('utcDayOf', () => {
+  it('extracts the UTC calendar day from a Date', () => {
+    expect(utcDayOf(new Date('2026-05-29T10:34:00Z'))).toBe('2026-05-29')
+  })
+
+  it('crosses the midnight boundary in UTC, not local time', () => {
+    // 2026-05-29 23:30 UTC stays on the 29th regardless of process TZ.
+    expect(utcDayOf(new Date('2026-05-29T23:30:00Z'))).toBe('2026-05-29')
+    // One hour later flips to the 30th.
+    expect(utcDayOf(new Date('2026-05-30T00:30:00Z'))).toBe('2026-05-30')
+  })
+})
+
+describe('effectiveCurrentStreak', () => {
+  it('returns 0 when stored.current is already 0', () => {
+    expect(effectiveCurrentStreak({ current: 0, lastActiveDate: '2026-05-25' }, '2026-05-29')).toBe(
+      0,
+    )
+  })
+
+  it('returns the stored value when today is the same day', () => {
+    expect(effectiveCurrentStreak({ current: 5, lastActiveDate: '2026-05-29' }, '2026-05-29')).toBe(
+      5,
+    )
+  })
+
+  it('returns the stored value when today is exactly one day after lastActive', () => {
+    // The user has a live grace day — next completion will extend the streak.
+    expect(effectiveCurrentStreak({ current: 5, lastActiveDate: '2026-05-28' }, '2026-05-29')).toBe(
+      5,
+    )
+  })
+
+  it('returns 0 once the gap exceeds one day (streak lapsed)', () => {
+    expect(effectiveCurrentStreak({ current: 5, lastActiveDate: '2026-05-27' }, '2026-05-29')).toBe(
+      0,
+    )
+  })
+
+  it('tolerates clock skew where today < lastActiveDate', () => {
+    expect(effectiveCurrentStreak({ current: 5, lastActiveDate: '2026-05-30' }, '2026-05-29')).toBe(
+      5,
+    )
   })
 })

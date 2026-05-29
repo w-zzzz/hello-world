@@ -29,6 +29,13 @@
       "when": 1779962610366,
       "tag": "0003_xp_idempotency_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780012800000,
+      "tag": "0004_gamification",
+      "breakpoints": true
     }
   ]
 }

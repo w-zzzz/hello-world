@@ -39,3 +39,37 @@ export function nextStreakState(prev: StreakState, today: string): StreakState {
 export function initialStreak(today: string): StreakState {
   return { current: 1, longest: 1, lastActiveDate: today }
 }
+
+/**
+ * Format a Date as a UTC `YYYY-MM-DD` calendar day. The streak engine
+ * uses UTC midnight boundaries throughout to stay deterministic across
+ * time zones; per-user TZ awareness is a v2 concern.
+ */
+export function utcDayOf(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * Resolve a user's *current* streak value from a stored `streaks` row,
+ * relative to "today" — i.e. account for the case where the last active
+ * day was already two days ago and the persisted `current` is now stale.
+ *
+ * The persisted row is only mutated on lesson completion; if the user
+ * never returns, `current` would otherwise stay positive forever. Render
+ * and leaderboard code calls this helper before showing the number.
+ *
+ *   today === lastActive          → stored current
+ *   today === lastActive + 1      → stored current (next completion will += 1)
+ *   today > lastActive + 1        → 0 (streak has lapsed; needs a fresh start)
+ *   today < lastActive (clock skew) → stored current
+ */
+export function effectiveCurrentStreak(
+  stored: { current: number; lastActiveDate: string },
+  today: string,
+): number {
+  if (stored.current === 0) return 0
+  const lastDay = isoDay(stored.lastActiveDate)
+  const todayDay = isoDay(today)
+  if (todayDay <= lastDay + 1) return stored.current
+  return 0
+}
