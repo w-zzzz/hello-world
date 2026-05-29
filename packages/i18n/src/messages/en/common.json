@@ -121,7 +121,41 @@
     "streak": "Streak",
     "lessonsCompleted": "Lessons completed",
     "recentLessons": "Recent lessons",
-    "empty": "No lessons completed yet. Start learning!"
+    "empty": "No lessons completed yet. Start learning!",
+    "achievementsHeading": "Recent achievements",
+    "leaderboardToggleLabel": "Show me on the public leaderboard",
+    "streakHeading": "Daily streak"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "subtitle": "Earn badges as you progress through the curriculum.",
+    "locked": "Locked",
+    "unlocked": "Unlocked",
+    "unlockedAt": "Unlocked {date}",
+    "empty": "No achievements unlocked yet. Complete your first lesson to earn one.",
+    "toastTitle": "Achievement unlocked!",
+    "viewAll": "View all"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "subtitle": "Top learners by XP.",
+    "tabs": {
+      "weekly": "This week",
+      "all_time": "All time"
+    },
+    "rank": "Rank",
+    "learner": "Learner",
+    "xp": "XP",
+    "empty": "Leaderboard is empty.",
+    "you": "You",
+    "optInTitle": "Join the leaderboard?",
+    "optInBody": "Your display handle (anonymized) will appear in the public rankings.",
+    "optInCta": "Opt in",
+    "optedIn": "You're on the leaderboard."
+  },
+  "streak": {
+    "label": "{count}-day streak",
+    "tooltip": "Last active {date}. Complete a lesson today to keep your streak alive."
   },
   "lesson": {
     "markComplete": "Mark complete",

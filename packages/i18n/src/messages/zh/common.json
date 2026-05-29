@@ -121,7 +121,41 @@
     "streak": "连续学习",
     "lessonsCompleted": "已完成课程",
     "recentLessons": "最近完成的课程",
-    "empty": "还没有完成任何课程。开始学习吧！"
+    "empty": "还没有完成任何课程。开始学习吧！",
+    "achievementsHeading": "最近成就",
+    "leaderboardToggleLabel": "在公开排行榜中显示我",
+    "streakHeading": "每日连续学习"
+  },
+  "achievements": {
+    "title": "成就",
+    "subtitle": "随着课程推进，逐步解锁徽章。",
+    "locked": "未解锁",
+    "unlocked": "已解锁",
+    "unlockedAt": "{date} 解锁",
+    "empty": "暂无成就。完成你的第一节课即可解锁。",
+    "toastTitle": "解锁新成就！",
+    "viewAll": "查看全部"
+  },
+  "leaderboard": {
+    "title": "排行榜",
+    "subtitle": "按经验值排名的学习者。",
+    "tabs": {
+      "weekly": "本周",
+      "all_time": "总榜"
+    },
+    "rank": "排名",
+    "learner": "学习者",
+    "xp": "经验值",
+    "empty": "排行榜暂无数据。",
+    "you": "你",
+    "optInTitle": "加入排行榜？",
+    "optInBody": "你的显示昵称（匿名）将出现在公开排名中。",
+    "optInCta": "加入",
+    "optedIn": "你已加入排行榜。"
+  },
+  "streak": {
+    "label": "连续 {count} 天",
+    "tooltip": "上次活跃 {date}。今天完成一节课以保持连续记录。"
   },
   "lesson": {
     "markComplete": "标记完成",

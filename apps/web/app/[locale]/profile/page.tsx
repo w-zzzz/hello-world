@@ -1,10 +1,15 @@
 import type { Locale } from '@quant-academy/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@quant-academy/ui'
+import { eq } from 'drizzle-orm'
 import { BookOpen, Flame, Trophy } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { getCompletedLessons, getProfileSummary } from '@/app/actions/progress'
+import { AchievementsPreview } from '@/components/achievements-preview'
+import { LeaderboardOptIn } from '@/components/leaderboard-opt-in'
 import { LevelRing } from '@/components/level-ring'
+import { StreakIndicator } from '@/components/streak-indicator'
+import { db, streaks } from '@/lib/db'
 
 export default async function ProfilePage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
@@ -17,6 +22,20 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
   }
   const completed = await getCompletedLessons()
 
+  // Pull lastActiveDate straight from the streaks table — getProfileSummary
+  // intentionally returns just {current, longest} and we don't want to
+  // widen its action signature for what is purely a presentational tooltip.
+  const streakRow = await db
+    .select({ lastActiveDate: streaks.lastActiveDate })
+    .from(streaks)
+    .where(eq(streaks.userId, summary.user.id))
+    .limit(1)
+  const lastActiveDate = streakRow[0]
+    ? typeof streakRow[0].lastActiveDate === 'string'
+      ? streakRow[0].lastActiveDate
+      : new Date(streakRow[0].lastActiveDate as unknown as number).toISOString().slice(0, 10)
+    : null
+
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-4 py-10">
       <header className="flex flex-wrap items-center gap-6">
@@ -26,10 +45,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
           xpForNext={summary.xpForNext}
           size={120}
         />
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">{summary.user.displayName}</h1>
           <p className="font-mono text-sm text-muted-foreground">{summary.user.handle}</p>
         </div>
+        <StreakIndicator current={summary.streak.current} lastActiveDate={lastActiveDate} />
       </header>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -46,7 +66,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Flame className="size-4" aria-hidden="true" /> {t('profile.streak')}
+              <Flame className="size-4" aria-hidden="true" /> {t('profile.streakHeading')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -64,6 +84,17 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
             <div className="text-3xl font-bold tabular-nums">{summary.lessonsCompleted}</div>
           </CardContent>
         </Card>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {t('profile.achievementsHeading')}
+        </h2>
+        <AchievementsPreview limit={4} />
+      </section>
+
+      <section>
+        <LeaderboardOptIn />
       </section>
 
       <section>

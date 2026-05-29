@@ -6,7 +6,9 @@ import { notFound } from 'next/navigation'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
 import { Suspense } from 'react'
+import { AchievementToastListener } from '@/components/achievement-toast'
 import { CommandPalette } from '@/components/command-palette'
+import { NavStreak } from '@/components/nav-streak'
 import { UserMenu } from '@/components/user-menu'
 import { Link } from '@/i18n/navigation'
 import 'katex/dist/katex.min.css'
@@ -75,12 +77,18 @@ export default async function LocaleLayout({
             <Link href="/" className="font-semibold tracking-tight">
               Quant Academy
             </Link>
-            <Suspense fallback={null}>
-              <UserMenu />
-            </Suspense>
+            <div className="flex items-center gap-3">
+              <Suspense fallback={null}>
+                <NavStreak />
+              </Suspense>
+              <Suspense fallback={null}>
+                <UserMenu />
+              </Suspense>
+            </div>
           </header>
           {children}
           <CommandPalette />
+          <AchievementToastListener />
         </NextIntlClientProvider>
       </body>
     </html>
