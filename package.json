@@ -19,6 +19,7 @@
     "check:parity": "pnpm --filter @quant-academy/scripts run check:parity",
     "check:ai-prompts": "pnpm --filter @quant-academy/scripts run check:ai-prompts",
     "check:contracts": "pnpm --filter @quant-academy/scripts run check:contracts",
+    "check:mdx-attrs": "python3 scripts/check-mdx-attrs.py",
     "build:contracts": "pnpm --filter @quant-academy/scripts run build:contracts",
     "clean": "turbo run clean && rm -rf node_modules",
     "prepare": "husky"

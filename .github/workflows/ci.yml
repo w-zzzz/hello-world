@@ -34,6 +34,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Biome CI
         run: pnpm exec biome ci .
+      - name: Check MDX JSX attributes
+        run: python3 scripts/check-mdx-attrs.py
 
   lint-py:
     name: Lint (Python)
