@@ -1,0 +1,54 @@
+# Forming a testable hypothesis
+
+Every strategy that survives contact with live markets started as a sentence you could be wrong about. Track H is about shipping a strategy, and the first thing you ship is not code — it is a claim. This lesson teaches you to write a hypothesis that is specific enough to test, falsifiable enough to be honest, and grounded in a reason the edge should exist at all.
+
+The bar is higher than it sounds. Most strategy ideas, written down plainly, turn out to be either untestable, unfalsifiable, or pure pattern-chasing. Get the hypothesis right and the rest of the track — universe, prototype, costs, walk-forward — becomes a disciplined series of yes/no questions.
+
+## What makes a hypothesis testable
+
+A testable hypothesis names four things: the **market**, the **signal**, the **direction and horizon**, and the **conditions** under which it should work. Compare these two:
+
+- Bad: 'RSI below 30 makes money.'
+- Good: 'In large-cap US equities, a close with RSI(14) below 30 predicts a positive 5-day forward return, because forced sellers create a temporary liquidity discount.'
+
+The second can be checked, dated, and refuted. The first cannot — it has no horizon, no universe, no measurable claim.
+
+<KeyPoint title="The shape of a hypothesis">A usable hypothesis fits the template: in [universe], [signal] predicts [direction] over [horizon], because [economic reason], and should be stronger when [condition].</KeyPoint>
+
+## Why does this edge exist — and persist?
+
+This is the question that separates research from data-mining. Markets are competitive: if an edge is real and obvious, capital floods in and arbitrages it away. So you must answer two things.
+
+First, **why does the edge exist?** Usually it is a structural reason — someone is forced to trade for non-price reasons (margin calls, index rebalances, redemptions, risk limits), or someone is paid to bear a risk others avoid.
+
+Second, **why does it persist?** Maybe the opportunity is too small for large funds, or it lives in a constrained corner of the market, or it pays for a genuine risk that does not disappear.
+
+A worked example: oversold bounces in large caps. The hypothesis is that forced sellers under margin calls create a temporary liquidity premium. The prediction follows naturally — the effect should be **stronger in high-volatility regimes** (more forced selling) and should **decay as liquidity providers arrive**.
+
+## Turning the claim into a number
+
+A hypothesis you can test is one you can write as an expectation. Let $r_{t+h}$ be the forward return over horizon $h$ and let $S_t$ be your signal condition. The claim is simply:
+
+$$
+\mathbb{E}\!\left[\, r_{t+h} \mid S_t = 1 \,\right] > \mathbb{E}\!\left[\, r_{t+h} \mid S_t = 0 \,\right]
+$$
+
+Once it is in this form, the prototype writes itself: compute the conditional means, and check whether the difference is large enough to matter and stable enough to trust. Before you touch the [editor](/en/editor), you should already know which number would confirm the claim and which would refute it.
+
+## A regime to keep in mind
+
+Look at SPY across a calm stretch and then a volatile one. Your oversold-bounce hypothesis predicts the signal behaves differently in each — strong bounces when volatility is high, muted ones when it is low. Holding that prediction in mind before you measure is what makes the test honest.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## The cardinal sin: starting from the data
+
+<Pitfall title="Reverse-engineering noise">
+If you scan the data first, find a pattern, and then write the hypothesis to fit it, you have not discovered an edge — you have described historical noise. With enough indicators and thresholds, something always looks profitable in-sample. Write the hypothesis and its economic rationale first, then test it once. A pattern with no prior reason to exist is the textbook setup for an overfit strategy that dies the moment you trade it.
+</Pitfall>
+
+## Check yourself
+
+<Quiz id="H-01-strategy-hypothesis-q1" question="Which of these is a genuinely testable trading hypothesis?" options={['Momentum stocks tend to do well.', 'In liquid US large caps, stocks in the top decile of 12-month return outperform the bottom decile over the next month, because investors underreact to persistent news.', 'The market rewards patient investors.', 'Buy low, sell high.']} answer={1} explanation="Only the second names a universe, a signal, a direction and horizon, and an economic reason — so it can be measured and refuted. The others have no horizon, no universe, and no falsifiable claim." />
+
+<Quiz id="H-01-strategy-hypothesis-q2" question="You ran 200 indicator-threshold combinations on historical data and one showed a great backtest. What is the honest next step?" options={['Ship it — the backtest is strong.', 'Treat it as a possible pattern, then form an economic hypothesis for why it would exist and persist, and test that on fresh data.', 'Add 200 more combinations to confirm.', 'Optimize the threshold further to improve the curve.']} answer={1} explanation="Searching many combinations all but guarantees a good-looking in-sample result by chance. Without a prior economic reason and a fresh test, you are fitting noise, not finding an edge." />

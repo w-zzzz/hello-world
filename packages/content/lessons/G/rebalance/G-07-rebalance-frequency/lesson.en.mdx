@@ -1,0 +1,43 @@
+# Rebalance frequency
+
+Choosing target weights is only half the job. Markets move, so your actual weights drift away from the target every day. A position that rallies grows beyond its target; a laggard shrinks below it. Rebalancing is the act of trading back to target — and *how often* you do it is a real decision with real costs. This lesson covers the two main rebalancing schemes and the trade-off that governs the choice.
+
+## Why portfolios drift
+
+Imagine a 60/40 stock/bond book. If stocks rise 20% while bonds are flat, the equity weight climbs from 60% toward roughly 65%, and your portfolio is now riskier than you intended. Left alone, a winning asset keeps growing its share until the book no longer reflects your target risk at all. Rebalancing trims the winners and tops up the losers to restore the intended profile.
+
+## Two schemes: calendar vs threshold
+
+**Calendar rebalancing** trades on a fixed schedule — monthly, quarterly, annually — regardless of how far weights have drifted. It is simple, predictable, and easy to operate, but it can trade when little has changed (wasting cost) or wait while weights drift far (carrying unwanted risk).
+
+**Threshold (band) rebalancing** trades only when an asset's weight breaches a tolerance band around its target — say more than $\pm 5$ percentage points. It responds to actual drift: quiet markets trigger few trades, turbulent markets trigger more. It tracks the target better but requires monitoring and produces irregular, less predictable trades.
+
+The chart below shows SPY; in a 60/40 book a strong SPY run is exactly what pushes the equity sleeve past its rebalancing band.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## The core trade-off
+
+Every rebalance trade costs money — commissions, spread, and market impact. So frequency is a tug-of-war. Rebalance often and you hold tightly to your target risk, but you pay costs constantly. Rebalance rarely and you save on costs, but you let the book drift far from its intended risk for long stretches.
+
+We can frame the total cost of a rebalancing policy as the sum of two opposing terms:
+
+$$
+\text{Total cost} = \underbrace{\text{transaction costs}}_{\text{rises with frequency}} + \underbrace{\text{tracking / drift cost}}_{\text{falls with frequency}}
+$$
+
+The first term grows the more you trade; the second shrinks. The best frequency minimizes their sum — and that point depends entirely on your specific costs and how fast your assets drift. There is no universal answer.
+
+<Pitfall title="There is no universal optimal frequency">
+Rebalancing too often bleeds returns to transaction costs; rebalancing too rarely lets the book drift far from its target risk. The sweet spot is not a fixed rule like 'monthly' — it depends on your transaction costs versus how fast your weights drift. A high-cost, slow-drifting book should rebalance less; a low-cost, fast-drifting one can rebalance more.
+</Pitfall>
+
+<KeyPoint title="Frequency balances cost against drift">
+Calendar rebalancing trades on a schedule; threshold rebalancing trades when weights breach a band. More frequent rebalancing tracks the target risk tightly but pays more transaction cost; less frequent saves cost but tolerates drift. The optimum depends on cost versus drift speed.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-07-rebalance-frequency-q1" question="What is the defining feature of threshold (band) rebalancing?" options={["It trades on a fixed calendar schedule regardless of drift","It trades only when an asset's weight breaches a tolerance band around its target","It never rebalances","It rebalances continuously every second"]} answer={1} explanation="Threshold rebalancing triggers a trade only when weights drift outside a tolerance band, so it responds to actual drift rather than a fixed schedule." />
+
+<Quiz id="G-07-rebalance-frequency-q2" question="What is the central trade-off in choosing rebalancing frequency?" options={["Tax efficiency versus liquidity","Transaction costs (rise with frequency) versus drift from target risk (falls with frequency)","Number of assets versus number of trades","Expected return versus the risk-free rate"]} answer={1} explanation="More frequent rebalancing pays more transaction costs but tracks target risk tightly; less frequent saves costs but tolerates more drift. The optimum depends on your specific costs versus drift speed." />

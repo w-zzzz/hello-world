@@ -1,0 +1,49 @@
+# Risk parity
+
+Inverse-volatility weighting balanced each asset's *standalone* risk but ignored how assets move together. Risk parity is the principled fix: it uses the full covariance matrix and sizes positions so that every asset contributes an *equal share* of total portfolio risk. Instead of equal dollars or equal volatility, the goal is equal risk contribution.
+
+This lesson defines risk contribution, states the condition risk parity solves for, and confronts the macro bet it quietly takes on.
+
+## Risk contribution
+
+Total portfolio volatility is $\sigma_p = \sqrt{w^\top \Sigma w}$, where $w$ is the weight vector and $\Sigma$ the covariance matrix. A beautiful property of this formula is that total risk decomposes cleanly across assets. The risk contribution of asset $i$ is:
+
+$$
+\mathrm{RC}_i = w_i (\Sigma w)_i, \qquad \sum_{i=1}^{N} \mathrm{RC}_i = w^\top \Sigma w = \sigma_p^2
+$$
+
+The term $(\Sigma w)_i$ is asset $i$'s covariance with the whole portfolio, so $\mathrm{RC}_i$ captures not just $i$'s own volatility but how it co-moves with everything else. The contributions sum exactly to total portfolio variance — a true decomposition.
+
+## The risk-parity condition
+
+Risk parity solves for the weights that make all risk contributions equal:
+
+$$
+\mathrm{RC}_i = \frac{\sigma_p^2}{N} \quad \text{for all } i
+$$
+
+There is no closed-form solution in general, so it is found numerically (an iterative solver). Note that if all assets were uncorrelated, risk parity would collapse exactly to inverse-volatility weighting. Correlation is precisely what makes them differ: when two assets are correlated, risk parity recognizes the overlap and trims both, something inverse-vol cannot do.
+
+The chart below shows SPY; in a stock/bond risk-parity book, its equity risk would be balanced against the bond sleeve's much smaller risk contribution.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## How the weights come out
+
+Because risk parity equalizes risk rather than dollars, low-volatility assets receive *large* dollar weights — often the majority of the book. A classic stock/bond risk-parity portfolio might hold 70-80% in bonds by dollar value, because bonds are so much calmer than stocks that it takes a big dollar allocation for their risk contribution to match equities'.
+
+To then reach an equity-like *return*, practitioners often apply leverage to the whole portfolio. This is the heart of the strategy — and the source of its biggest risk.
+
+<Pitfall title="Risk parity levers up the calm assets">
+Risk parity hands large weights to low-volatility assets like bonds, and to chase equity-level returns it often levers the whole book. That worked beautifully through a 40-year bond bull market — but it is a bet that the covariance matrix (especially bond volatility and the stock-bond correlation) stays stable. When rates rise and that correlation flips positive, the levered bond sleeve can turn a defensive book into a painful one.
+</Pitfall>
+
+<KeyPoint title="Equalize risk, not dollars">
+Risk parity sets weights so every asset's risk contribution RC_i = w_i (Σw)_i is equal, using the full covariance matrix. It diversifies risk genuinely — but it leans on calm, often levered assets and assumes the covariance structure is stable.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-03-risk-parity-q1" question="What does risk parity aim to equalize across assets?" options={["The dollar weight of each asset","Each asset's standalone volatility","Each asset's contribution to total portfolio risk","Each asset's expected return"]} answer={2} explanation="Risk parity sizes positions so that every asset contributes an equal share of total portfolio risk, RC_i = w_i (Σw)_i, using the full covariance matrix." />
+
+<Quiz id="G-03-risk-parity-q2" question="Why can risk parity be fragile when interest rates rise?" options={["It holds no bonds at all","It assigns small weights to bonds","It often levers up low-volatility bonds and assumes the covariance structure stays stable","It rebalances too frequently"]} answer={2} explanation="Risk parity gives bonds large weights and frequently uses leverage. It is a bet on a stable covariance matrix; rising rates and a flipped stock-bond correlation can hurt the levered bond sleeve badly." />

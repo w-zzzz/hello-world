@@ -1,0 +1,53 @@
+# Statistical arbitrage: from pairs to baskets
+
+Pairs trading (Lesson E-04) shorts one stock and longs another when their spread stretches, betting it reverts. Statistical arbitrage — stat-arb — is the industrial version of that idea. Instead of one hand-picked pair, you build a portfolio of dozens or hundreds of positions whose *combined* exposure to broad risk is near zero, and you harvest tiny, statistically reliable reversions across the whole book.
+
+The edge per trade is minuscule. What makes stat-arb work is breadth: hundreds of weakly profitable bets whose noise diversifies away, leaving a smooth aggregate return — if, and only if, your costs are low enough.
+
+## Generalizing the spread
+
+A pair defines a one-dimensional spread: $s_t = p^A_t - \beta\, p^B_t$. A basket generalizes this. You hold weights $w_i$ across $N$ assets chosen so the portfolio is neutral to common drivers, and you trade the residual that is left over.
+
+The cleanest way to define that residual is a factor model. Decompose each asset's return into systematic factor exposures plus an idiosyncratic piece:
+
+$$
+r_{i,t} = \alpha_i + \sum_{k=1}^{K} \beta_{ik} f_{k,t} + \varepsilon_{i,t}
+$$
+
+The factors $f_{k}$ might be the market, sector, size, or value — or statistical factors extracted by PCA on the return covariance matrix. The residual $\varepsilon_{i,t}$ is the part of the move *not* explained by anything systematic. Stat-arb bets that $\varepsilon_{i,t}$ mean-reverts: when a stock has run up purely on idiosyncratic noise, fade it.
+
+## Residual reversion
+
+Once you have residuals, the signal is familiar. Cumulate each asset's residual into a residual price, z-score it, and trade against the extreme:
+
+$$
+z_{i,t} = \frac{X_{i,t} - \mu_i}{\sigma_i}, \qquad w_{i,t} = -\,g(z_{i,t})
+$$
+
+where $X_{i,t}$ is the running residual and $g$ is a monotone response (often clipped). A high positive z-score earns a short, a deep negative one a long. Summed over the universe, the longs and shorts roughly cancel on every factor — that is what "market-neutral" means in practice.
+
+## Market-neutral construction
+
+Neutrality is not a side effect; you engineer it. After forming raw signals you project out the factor exposures so the book carries no net beta to the market, no net sector tilt, and no unintended size or momentum bet. Risk that you are not paid to take is risk you remove. What remains is a bet purely on residual convergence, sized so that no single name dominates.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at SPY as the market factor. A stat-arb book aims for a return stream that looks *nothing* like this chart — flat against the index, profiting from the cross-sectional wiggles that net out of the benchmark.
+
+## Why breadth is the whole game
+
+The Fundamental Law of Active Management says your information ratio scales with the square root of the number of independent bets. A coin that pays 50.5% is worthless once; played ten thousand times with small stakes it is a business. Stat-arb is that coin. The per-trade edge after costs might be a few basis points, so you need thousands of near-independent positions turning over fast for the law of large numbers to smooth the curve.
+
+<Pitfall title="Retail costs eat the entire edge">
+Stat-arb edges are tiny per trade and depend on enormous breadth plus very low costs. Professionals trade through prime brokers at fractions of a basis point, with cheap borrow and rebates. A retail trader paying retail spreads, commissions, and stock-borrow fees on a high-turnover book of hundreds of names will watch every basis point of alpha — and then some — vanish into transaction costs. The strategy is real; the retail implementation usually is not.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Stat-arb = neutralize systematic factors, trade the mean-reverting residual across a wide basket, and rely on breadth (many small independent bets) for a smooth aggregate return. The math is easy; surviving costs and capacity is the hard part.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-09-statistical-arbitrage-q1" question="What is the role of the factor model in stat-arb?" options={["To forecast the overall market direction.","To strip out systematic factor exposure so you trade the mean-reverting idiosyncratic residual.","To pick the single best-performing stock.","To leverage the portfolio for higher returns."]} answer={1} explanation="Decomposing returns into factor exposures plus a residual lets you neutralize systematic risk and bet only on the residual reverting — the source of stat-arb alpha." />
+
+<Quiz id="E-09-statistical-arbitrage-q2" question="Why is stat-arb often impractical for retail traders?" options={["The math requires a supercomputer.","Per-trade edges are tiny, and retail spreads, commissions, and borrow costs exceed the alpha on a high-turnover book.","It is illegal for individuals.","Mean reversion never works on stocks."]} answer={1} explanation="The edge per trade is a few basis points and depends on low costs plus huge breadth. Retail transaction costs swamp that thin alpha." />

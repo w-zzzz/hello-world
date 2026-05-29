@@ -1,0 +1,47 @@
+# Take-profit and trailing stops
+
+A stop-loss caps the downside; the exit on the *winning* side decides how much of a good trade you actually keep. Take-profit targets and trailing stops are the two main tools. Get them right and your average winner dwarfs your average loser. Get them wrong — usually by exiting winners too early — and you quietly destroy the positive skew that makes a trend system profitable.
+
+This lesson covers R-multiple targets, trailing-stop mechanics, and the single most common way traders sabotage their own winners.
+
+## Thinking in R-multiples
+
+Define $R$ as your initial risk per share — the entry-to-stop distance. Every outcome can then be measured in units of $R$. A fixed take-profit at 2R means you exit when profit equals twice your initial risk. This normalizes targets across trades of different sizes and prices.
+
+Your long-run edge is captured by expectancy:
+
+$$
+E = p_{\text{win}} \cdot R_{\text{win}} - p_{\text{loss}} \cdot R_{\text{loss}}
+$$
+
+where the $R$ terms are average win and loss in R-multiples. A system can win less than half its trades and still be highly profitable if $R_{\text{win}}$ is large — which is exactly what letting winners run produces.
+
+## Fixed targets vs trailing stops
+
+A **fixed R-multiple target** (e.g. exit at 3R) gives a clean, high win-rate and easy backtesting, but it caps your upside: the trade that would have run to 10R is closed at 3R.
+
+A **trailing stop** instead follows price up and only exits when price retraces by some amount. Two common designs: a **chandelier stop** trails a multiple of ATR below the highest high since entry; an **ATR trailing stop** ratchets up as the trade moves in your favor and never moves against you. Trailing stops sacrifice some win-rate (you give back an open profit on the pullback that finally stops you) in exchange for capturing the rare huge trend.
+
+## Why trend systems need the tail
+
+Trend-following profits are famously fat-tailed: a small number of trades produce most of the gains. Letting those few run is the whole game. A trailing stop is the mechanism that keeps you in a trade you cannot predict the end of, while still defining an exit.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Find an extended uptrend on the chart. A 3R fixed target would have exited near the start of it; a chandelier stop would have ridden most of the move and exited only on the eventual sharp pullback. The difference between those two exits is the difference between an average system and a profitable one.
+
+## Common pitfalls
+
+<Pitfall title="A trailing stop set too tight caps your winners">
+The instinct to 'lock in profit' by trailing very tightly is the quiet killer of trend systems. A tight trail gets clipped by the first normal pullback, exiting you at 2R from a trade that was going to 12R. Because most of a trend strategy's total profit comes from a handful of outsized winners, cutting those winners early collapses your average win and destroys the positive skew the whole approach depends on. Trail loosely enough to survive ordinary retracements; you must tolerate giving back open profit to keep the right tail alive.
+</Pitfall>
+
+<KeyPoint title="Protect the right tail">
+Fixed R-multiple targets are simple and high win-rate but cap upside; trailing stops (chandelier/ATR) give back some win-rate to capture rare large trends. Since a few big winners drive trend profits, trail loosely — cutting winners early kills positive skew.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-05-take-profit-trailing-q1" question="A trade has an initial risk (1R) of \$4 per share. You exit with a \$12 per-share profit. What R-multiple is that?" options={["1R","2R","3R","4R"]} answer={2} explanation="R-multiple = profit / initial risk = 12 / 4 = 3R." />
+
+<Quiz id="F-05-take-profit-trailing-q2" question="Why can a very tight trailing stop hurt a trend-following system?" options={["It increases commissions beyond what the edge supports.","It exits the rare large winners early, collapsing the average win and destroying the positive skew the system relies on.","It makes the win-rate too high to be believable.","It widens the initial stop-loss automatically."]} answer={1} explanation="Trend profits are concentrated in a few outsized winners. A tight trail clips those on normal pullbacks, cutting the average win and removing the fat right tail." />

@@ -1,0 +1,45 @@
+# Turnover-aware optimization
+
+The last lesson treated rebalancing frequency as an external schedule. But there is a more elegant approach: bake the cost of trading directly into the optimization itself, so the optimizer chooses to trade only when the expected benefit outweighs the cost. This is turnover-aware optimization, and it is how serious practitioners stop a 'paper' portfolio from churning itself to death once it goes live.
+
+## Turnover is the thing you pay for
+
+Turnover measures how much you trade to move from the old weights $w_{t-1}$ to the new target $w_t$. A natural measure is the sum of absolute changes — the $\ell_1$ norm:
+
+$$
+\text{Turnover} = \| w_t - w_{t-1} \|_1 = \sum_{i=1}^{N} | w_{t,i} - w_{t-1,i} |
+$$
+
+Every unit of turnover incurs cost: spread, commission, and market impact. An optimizer that ignores $w_{t-1}$ will happily prescribe a completely different portfolio every period, racking up huge turnover for tiny, noise-driven changes in its inputs.
+
+## Add a turnover penalty
+
+The fix is to subtract a penalty proportional to turnover from the objective. Starting from the mean-variance utility:
+
+$$
+\max_{w_t} \; w_t^\top \mu - \frac{\lambda}{2} w_t^\top \Sigma w_t - \gamma \| w_t - w_{t-1} \|_1
+$$
+
+The new term $-\gamma \| w_t - w_{t-1} \|_1$ charges the optimizer for moving away from where it already is. The coefficient $\gamma$ reflects your real transaction costs. With $\gamma$ in place, the optimizer only trades when the return-and-risk improvement exceeds the cost of the trade. Small, noisy input changes no longer justify trading; the portfolio becomes 'sticky' in a good way.
+
+The chart below shows SPY; with a turnover penalty, a small wiggle in SPY's estimated return would not trigger a rebalance unless the gain beat the cost.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## No-trade bands
+
+The turnover penalty has a beautiful geometric consequence: it creates a **no-trade region** around your current weights. As long as the optimal unconstrained target stays within a band of where you already are, the optimizer leaves the position untouched — trading would cost more than it gains. Only when the target drifts outside the band does the optimizer move, and even then only to the edge of the band, not all the way. This is the rigorous version of the threshold rebalancing from the previous lesson.
+
+<Pitfall title="A paper portfolio churns itself to death">
+If you optimize ignoring transaction costs, the backtest looks great on paper but the live portfolio trades constantly, chasing tiny noise-driven changes in its inputs. Those trades bleed real money through spread and impact. Always include a turnover penalty (or explicit cost model) so the optimizer respects the cost of acting.
+</Pitfall>
+
+<KeyPoint title="Make the optimizer pay to trade">
+Adding −γ‖w_t − w_{t-1}‖₁ to the objective charges the optimizer for turnover, creating a no-trade band around current weights. The portfolio only moves when the benefit beats the cost — turning a churning paper strategy into a tradeable live one.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-08-turnover-aware-q1" question="What does the term −γ‖w_t − w_{t-1}‖₁ add to a portfolio optimization?" options={["A penalty proportional to how much the weights change from the prior period","A bonus for holding more assets","A constraint forcing equal weights","An estimate of expected returns"]} answer={0} explanation="The L1 norm of the weight change is turnover. Subtracting γ times it penalizes trading, so the optimizer only moves when the benefit exceeds the cost." />
+
+<Quiz id="G-08-turnover-aware-q2" question="What happens to a portfolio optimized while completely ignoring transaction costs?" options={["It holds perfectly still and never trades","It looks great on paper but churns constantly live, bleeding money to spread and impact","It always beats the benchmark","It cannot be computed"]} answer={1} explanation="Ignoring costs produces a 'paper' portfolio that chases tiny noise-driven input changes, trading constantly and losing real money to transaction costs once live." />

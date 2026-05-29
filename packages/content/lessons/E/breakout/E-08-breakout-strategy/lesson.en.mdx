@@ -1,0 +1,45 @@
+# Breakout strategies
+
+A breakout strategy waits for price to escape a well-defined range and bets that the escape marks the start of a new move. Where the Donchian system (E-02) defined the range purely by an N-bar high, the broader breakout family lets you draw the level any way that captures where supply and demand have been balanced: a horizontal support or resistance line, the top of a multi-week consolidation, a chart-pattern neckline. The trade is the same in spirit — buy strength as it clears the ceiling, sell weakness as it breaks the floor.
+
+The whole game is separating a *real* breakout from a *false* one.
+
+## Defining the level
+
+A breakout level is a price the market has repeatedly failed to cross. The more times price has tested a level and bounced, the more orders (stops, limits) cluster just beyond it — and the more meaningful a clean break becomes. Common ways to define the level:
+
+- **Horizontal resistance/support:** the high (or low) of a recent congestion zone.
+- **Range boundary:** the top or bottom of a sideways channel the market has traded inside.
+- **Pattern level:** the neckline of a base, the top of a triangle, a prior swing high.
+
+The entry triggers when price moves decisively beyond the level; the initial stop sits just back inside the range, so a failed breakout is cut quickly.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On the SPY chart, find a stretch where price traded sideways for several weeks, then broke out. Mark the resistance line and ask: did volume confirm the break, or did price sneak above on a quiet day and then fall back?
+
+## Volume confirmation
+
+Price alone is a weak breakout signal; **volume is the corroborating witness**. A genuine breakout — driven by real demand overwhelming the supply parked at the level — usually comes on a surge in volume. A breakout on thin volume is suspect: it may just be a few orders nudging price across a quiet level with no conviction behind it. A simple confirmation filter compares breakout-bar volume to its recent average:
+
+$$
+\text{confirmed} = \mathbf{1}\!\left[\,P_t > R \;\land\; V_t > m \cdot \overline{V}_{n}\,\right]
+$$
+
+Here $R$ is the resistance level, $\overline{V}_n$ is the average volume over the prior $n$ bars, and $m$ (e.g. 1.5–2) is the surge multiple. Both conditions must hold: a close beyond the level *and* a volume expansion.
+
+## The fakeout problem
+
+<Pitfall title="False breakouts ('fakeouts') are the default failure mode">
+The single most common way a breakout trade dies is the fakeout: price pokes just beyond the level, triggers a wave of breakout buyers (and stop orders), then immediately reverses back into the range — often a deliberate flush that hunts the stops resting beyond the level. Two defenses, used together: (1) **demand confirmation** — require a *close* beyond the level, not just an intraday spike, plus the volume surge above; intrabar pokes are cheap to fake, closes are not. (2) **Size for the failure case** — assume a meaningful fraction of your breakouts will fail, place a tight stop just inside the range, and size the position so that a fakeout is a small, survivable loss rather than a catastrophe. You cannot eliminate fakeouts; you can make them cheap.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+A breakout strategy buys a decisive move beyond a tested level and bets on continuation. Require a close beyond the level plus a volume surge to filter out fakeouts, and size every entry for the failure case — because false breakouts, not real ones, are the norm.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-08-breakout-strategy-q1" question="Why is volume confirmation used alongside the price break of a resistance level?" options={['Volume predicts the exact target of the move','A volume surge corroborates that real demand is driving the break, whereas a breakout on thin volume is likely to fail','Volume is required to compute the resistance level','High volume guarantees the trend will last a year']} answer={1} explanation="A genuine breakout reflects real demand overwhelming supply at the level, which typically shows up as a volume surge. A break on thin volume lacks conviction and is more likely a fakeout, so requiring V_t > m·avg(V) filters out weak signals." />
+
+<Quiz id="E-08-breakout-strategy-q2" question="What are the two main defenses against false breakouts ('fakeouts')?" options={['Trade larger size and remove all stops','Require a close beyond the level with volume confirmation, and size the position so a failed breakout is a small, survivable loss','Only trade breakouts on Fridays and double down on failures','Use a longer moving average and ignore volume']} answer={1} explanation="Fakeouts are the default failure mode. Requiring a confirmed close (not just an intraday poke) plus a volume surge filters many out, and sizing for the failure case with a tight stop inside the range keeps the inevitable failed breakouts small and survivable." />

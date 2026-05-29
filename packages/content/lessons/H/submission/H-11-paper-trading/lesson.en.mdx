@@ -1,0 +1,55 @@
+# Paper trading: forward testing without real money
+
+Every test so far ran on history the strategy could, in principle, have been fitted to. Paper trading breaks that loop: it runs your strategy forward, on live market data, in real time, but with simulated money. It is the last cheap check before real capital — and the first place the gap between a beautiful backtest and a messy live world becomes visible. Used correctly it validates your plumbing and your behavior. Misread, it hands you a false profit forecast.
+
+## What paper trading actually tests
+
+A backtest answers 'would this have worked?' Paper trading answers a different, narrower question: 'does this run correctly, right now, on data I have never seen?' That is genuinely valuable. It exercises the parts a backtest cannot: does your signal compute on streaming data the same way it did on a static frame, do orders fire at the right times, does the system survive a data gap or a holiday, are your position sizes what the spec says?
+
+<KeyPoint title="Paper trading is a plumbing test">Its real job is to confirm your strategy runs correctly forward in time on unseen data and behaves as your spec predicts — not to forecast profit.</KeyPoint>
+
+## Tracking expected versus realized
+
+The discipline is to log, for every signal, what you *expected* and what actually *happened*, then compare. Track the tracking error between paper equity $E^{\text{paper}}_t$ and the equity the backtest would have produced on the same dates, $E^{\text{bt}}_t$:
+
+$$
+\text{TE} = \sqrt{ \frac{1}{T} \sum_{t=1}^{T} \left( r^{\text{paper}}_t - r^{\text{bt}}_t \right)^2 }
+$$
+
+A small, stable tracking error says the live system reproduces the model — the plumbing is sound. A large or drifting one says something real is leaking: a timing mismatch, a cost you under-modeled, a signal computed differently on live data.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## The backtest-to-live gap
+
+Three forces pull realized results away from backtested ones, and all three only appear forward in time. **Latency:** the price you saw when the signal fired is not the price you transact at. **Fills:** a backtest assumes you got filled; live, your order joins a queue and may partially fill or miss. **Costs:** real commissions, financing, and especially slippage are usually worse than the round number you assumed. Paper trading lets you observe these without paying for them — but only if you are honest that a paper fill is still an optimistic fill.
+
+## How long, and what counts as a pass
+
+Run it long enough to span more than one market mood — weeks at minimum, ideally across a quiet and a busy stretch. A pass is not 'it made money.' A pass is: the system ran without breaking, the tracking error stayed small and explicable, and the strategy behaved the way your spec said it would for the regime you were in. Profit over a short paper window is mostly noise; behavior is signal.
+
+<Pitfall title="Paper fills are not real fills">
+Paper trading usually fills you at prices a real market would not give — no genuine slippage, no queue position, no impact from your own size. So treat it as a sanity check on plumbing and behavior, not a profit forecast. A paper account that prints money can still lose in production once real fills, real spreads, and real latency arrive. Believe the plumbing result; distrust the P&L.
+</Pitfall>
+
+## Where this leads
+
+Paper trading is the dress rehearsal that closes Track H's validation arc: idea, prototype, costs, walk-forward, robustness, stress, spec, AI review, and now a live-data forward run. Everything you have built — every honest number and every documented assumption — comes together in the graduation project, H-12.
+
+## Check yourself
+
+<Quiz
+  id="H-11-paper-trading-q1"
+  question="What is the primary thing paper trading is well-suited to validate?"
+  options={['The strategy will be profitable in production', 'That the system runs correctly forward on unseen data and behaves as the spec predicts', 'The exact future Sharpe ratio', 'That slippage will be zero live']}
+  answer={1}
+  explanation="Paper trading exercises plumbing and behavior on live, unseen data: signal computation, order timing, system robustness, and spec-conformant sizing. Because its fills are optimistic, it is a sanity check, not a profit forecast."
+/>
+
+<Quiz
+  id="H-11-paper-trading-q2"
+  question="Your paper-traded account is up nicely after two weeks. Why should you not treat this as evidence the strategy will be profitable live?"
+  options={['Two weeks is enough data', 'Paper fills lack real slippage, queue position, and market impact, so the P&L is optimistic and the window is mostly noise', 'Paper trading always loses money', 'Profit in paper guarantees profit live']}
+  answer={1}
+  explanation="Paper fills are optimistic: no genuine slippage, no queue, no impact. Combined with a short window dominated by noise, paper P&L is not a reliable profit forecast. Trust the plumbing and behavior result, not the headline return."
+/>

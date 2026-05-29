@@ -1,0 +1,61 @@
+# Log Returns and Why They Add
+
+Last lesson we saw that simple returns must be multiplied to compound them, which is awkward in both code and algebra. Log returns use a clever transform that turns multiplication into addition, and that is exactly why they are everywhere in quant work. This lesson covers how to compute a log return, why log returns add across time, how they relate to simple returns, and one boundary people constantly confuse: log returns add across time but they do **not** add across assets.
+
+## Definition
+
+A log return is the natural log of the price ratio:
+
+$$
+\ell_t = \ln\!\left(\frac{P_t}{P_{t-1}}\right) = \ln P_t - \ln P_{t-1}
+$$
+
+It is also called the continuously-compounded return. Its relationship to the simple return is $\ell_t = \ln(1 + r_t)$, and inversely $r_t = e^{\ell_t} - 1$.
+
+## The key property: additive across time
+
+Take the log of the product of simple growth factors and the product becomes a sum:
+
+$$
+\sum_{t=1}^{T} \ell_t = \sum_{t=1}^{T} \ln\frac{P_t}{P_{t-1}} = \ln\frac{P_T}{P_0}
+$$
+
+The intermediate terms telescope away, leaving only the endpoints. So **summing multi-period log returns gives the total log return over the whole span**. That makes many tasks elegant: N-day cumulative returns, time-series regressions, and volatility estimates are all cleaner with log returns.
+
+<KeyPoint title="Log returns add across time">$\sum_t \ell_t = \ln(P_T/P_0)$. Add up the daily log returns and you have the whole-period log return, no multiplication needed. This is the single most useful property of log returns.</KeyPoint>
+
+## For small returns, $\ell \approx r$
+
+When returns are small, a Taylor expansion gives $\ln(1+r) \approx r - r^2/2 + \cdots$, so:
+
+$$
+\ell_t \approx r_t \quad (\text{for small } r_t)
+$$
+
+Intraday and daily returns are usually a fraction of a percent, where log and simple returns are nearly identical. For $r = 1\%$, $\ell = \ln(1.01) \approx 0.995\%$, a negligible gap. But the gap grows with size: at $r = 50\%$, $\ell = \ln(1.5) \approx 40.5\%$.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+In the daily SPY series above, almost every day moves within ±2%, so log versus simple returns barely changes any conclusion. On crypto or a stock that gaps 30% in a session, the difference becomes very visible.
+
+## The boundary: do not add across assets
+
+This is the most common beginner trap. Log returns add across the **time** dimension but not across the **asset** dimension. A portfolio's one-period return is the weighted sum of its components' **simple** returns:
+
+$$
+r_{p,t} = \sum_{i} w_i \, r_{i,t}
+$$
+
+whereas $\sum_i w_i \ell_{i,t} \neq \ell_{p,t}$, because the log function is not linear, so it does not commute with a weighted sum. In short: to compound one asset over many periods, sum log returns; to combine many assets in one period, go back to weighting simple returns.
+
+<Pitfall title="Log returns cannot be weighted across assets">Weighting each stock's log return and calling the result the portfolio return is wrong. The portfolio return is the weighted sum of component **simple** returns. The correct flow: convert log returns back to simple returns $r_i = e^{\ell_i}-1$, weight them into a portfolio simple return, then convert back to log if needed. Confusing the two dimensions biases your portfolio-level backtest systematically.</Pitfall>
+
+## Summary
+
+Log returns win on being additive across time and friendly to statistical modeling; their red line is that they are not additive across assets. Remember: logs for the time dimension, simple returns for the asset dimension.
+
+## Check yourself
+
+<Quiz id="D-02-log-returns-q1" question="An asset has log returns of 0.01, −0.02, and 0.03 over three days. What is the cumulative log return?" options={['You must multiply then take a log', '0.02', 'About 0.0203', 'Cannot be determined']} answer={1} explanation="Log returns add across time: 0.01+(−0.02)+0.03=0.02. This additivity is the whole point of log returns: multi-period totals are just sums." />
+
+<Quiz id="D-02-log-returns-q2" question="To compute a two-asset portfolio's return in a single period, the correct approach is to:" options={['Weight and sum the two log returns', 'Weight and sum the two simple returns', 'Multiply the log returns', 'Average the two log returns']} answer={1} explanation="A portfolio's one-period return is the weighted sum of its components' simple returns. Log returns only add across time, not across assets, because the log is not linear." />

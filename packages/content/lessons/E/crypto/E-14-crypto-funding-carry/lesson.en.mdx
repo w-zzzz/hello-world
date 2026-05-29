@@ -1,0 +1,58 @@
+# Crypto funding-rate carry
+
+Crypto exchanges invented an instrument that does not exist in traditional markets: the *perpetual swap* (or 'perp') — a futures contract with no expiry. To keep its price tethered to the underlying spot, exchanges use a periodic payment called the *funding rate*, exchanged directly between longs and shorts. That funding rate is a recurring cash flow, and harvesting it is one of the most popular carry trades in crypto.
+
+The trade is a delta-neutral cash-and-carry: hold the asset, short the perp, and collect funding while being immune to price direction. Clean in theory. The danger, as always with carry, hides in the tail.
+
+## What the funding rate is
+
+A perpetual has no expiry to force convergence, so the exchange nudges its price toward spot with funding. When the perp trades *above* spot (longs are aggressive), longs pay shorts; when it trades below, shorts pay longs. The payment, made every 8 hours on most venues, is roughly:
+
+$$
+\text{funding payment} = \text{position notional} \times \text{funding rate}
+$$
+
+When sentiment is bullish, perps trade at a premium and funding is persistently positive — longs continuously pay shorts. That positive funding is the yield a carry trader wants to capture.
+
+## Cash-and-carry: harvesting positive funding
+
+To collect positive funding without betting on price, go market-neutral:
+
+- **Long spot** — buy the actual coin (e.g. 1 BTC).
+- **Short the perp** — sell 1 BTC of perpetual swap.
+
+Your net price exposure is near zero: if BTC drops, the spot loses but the short perp gains by the same amount. Meanwhile, as the short side of a positively funded market, you *receive* the funding payment every 8 hours. The annualized carry is just the funding rate compounded:
+
+$$
+\text{APR} \approx \left(1 + r_f\right)^{3 \times 365} - 1
+$$
+
+where $r_f$ is the per-8-hour funding rate. A modest $0.01\%$ per period compounds to roughly $11\%$ a year — and crypto funding has at times run far higher.
+
+## The basis
+
+The same idea expressed in dated futures is the *basis*: the gap between the futures price $F$ and spot $S$. A positive basis (futures above spot) is the term-structure cousin of positive funding, and it converges to zero at expiry — a locked-in carry if you hold to settlement.
+
+$$
+\text{basis} = \frac{F - S}{S}
+$$
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Crypto carry behaves like an equity carry only in calm regimes. Compare a quiet stretch on SPY to a crypto de-pegging event: the carry yield looks like a smooth bond coupon right up until the moment it doesn't.
+
+## The tail that wipes the carry
+
+<Pitfall title="Funding flips, exchanges fail, liquidations cascade">
+The carry can be erased by a single shock. Funding rates *flip sign*: in a sharp sell-off, perps trade below spot and the carry trader suddenly *pays* instead of receives. Exchange and counterparty risk is real — your collateral sits on a platform that can freeze, get hacked, or become insolvent (FTX). And a violent spike can trigger *liquidations*: if your short-perp margin is wiped before the spot leg can compensate, the supposedly delta-neutral trade blows up. A stablecoin de-peg or a funding spike can take back months of carry in a day. Size for the failure mode, not the steady coupon.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Crypto funding carry harvests the perpetual-swap funding rate via a delta-neutral cash-and-carry: long spot, short perp, collect positive funding every 8 hours. The yield is real and can be large, but funding flips sign, exchanges fail, and liquidations can wipe out the carry in a single spike or de-peg.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-14-crypto-funding-carry-q1" question="How does a cash-and-carry trade harvest positive funding while staying delta-neutral?" options={["Buy two perps and hope the price rises.","Long spot and short the perpetual swap, so price exposure cancels while you receive the funding payment.","Short spot and short the perp.","Hold only the perp with no spot."]} answer={1} explanation="Long spot plus short perp nets price exposure to near zero; as the short side of a positively funded market you receive funding every period." />
+
+<Quiz id="E-14-crypto-funding-carry-q2" question="What is the primary risk that can wipe out a crypto funding-carry trade?" options={["Funding rates are fixed and never change.","Funding can flip sign, the exchange can fail, and liquidations from a spike or de-peg can destroy the carry.","Spot and perp prices never move together.","There is no counterparty risk in crypto."]} answer={1} explanation="The carry has tail risk: funding flips negative, counterparty/exchange failure (e.g. FTX), and liquidation cascades during a spike or de-peg can erase months of yield." />

@@ -1,0 +1,51 @@
+# Inverse-volatility weighting
+
+In the last lesson we saw that equal *dollar* weighting is not equal *risk* weighting — one volatile name can dominate the book. Inverse-volatility weighting is the first and simplest fix. The idea: give each asset a weight inversely proportional to how much it bounces around. Quiet assets get more capital, jumpy assets get less, so that no single position swamps the portfolio's volatility.
+
+This lesson defines the rule, walks a numeric example, and shows the correlation blind spot it shares with 1/N.
+
+## The rule
+
+Each asset's raw weight is the reciprocal of its volatility $\sigma_i$, then we normalize so the weights sum to one:
+
+$$
+w_i = \frac{1/\sigma_i}{\sum_{j=1}^{N} 1/\sigma_j}
+$$
+
+A low-volatility asset (small $\sigma_i$) gets a large $1/\sigma_i$ and therefore more capital; a high-volatility asset gets less. The only input is each asset's volatility — far easier and more stable to estimate than expected returns.
+
+## A worked example
+
+Suppose three assets have annualized volatilities of 10%, 20%, and 40%. Their reciprocals are $1/0.10 = 10$, $1/0.20 = 5$, and $1/0.40 = 2.5$, summing to $17.5$. Normalizing:
+
+- Asset A (10% vol): $10 / 17.5 \approx 57\%$
+- Asset B (20% vol): $5 / 17.5 \approx 29\%$
+- Asset C (40% vol): $2.5 / 17.5 \approx 14\%$
+
+Notice the calmest asset gets roughly four times the weight of the wildest. Compare that to 1/N, which would have given each 33%. Inverse-vol has pulled capital away from the risky name toward the stable one — a more balanced risk profile.
+
+The intuition is that each asset's *dollar* contribution to portfolio volatility is roughly $w_i \sigma_i$. Setting $w_i \propto 1/\sigma_i$ makes that product the same for every asset, so each name pushes the portfolio around by a similar amount. This is exactly the gap we identified with 1/N in the previous lesson: equal dollars let the volatile name dominate, whereas inverse-vol deliberately shrinks it so the risk budget is shared. It is the cheapest possible step toward risk-based, rather than dollar-based, allocation.
+
+The chart below shows SPY; in a multi-sleeve book its weight would scale inversely with its measured volatility relative to the other sleeves.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## What it fixes — and what it doesn't
+
+Inverse-vol equalizes *marginal* risk per asset under one big assumption: that the assets are independent. It looks only at the diagonal of the risk picture — each asset's own volatility — and completely ignores how the assets move *together*.
+
+That is its blind spot. Correlation is invisible to this rule. If two of your assets are nearly the same trade, inverse-vol happily loads up on both as if they were separate, independent bets.
+
+<Pitfall title="Inverse-vol ignores correlations">
+Two highly correlated low-volatility assets both look attractive to this rule, so it over-weights them as if they were independent. In reality they form one concentrated bet. The portfolio is less diversified than the weights suggest. Risk parity (next lesson) closes this gap by using the full covariance matrix.
+</Pitfall>
+
+<KeyPoint title="One step beyond 1/N">
+Inverse-vol weights each asset by $1/\sigma_i$, so calmer assets hold more capital and no single name dominates volatility. It uses only volatilities — stable and easy to estimate — but still ignores correlations, so correlated assets get double-counted.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-02-inverse-vol-q1" question="Two assets have volatilities of 10% and 30%. Under inverse-volatility weighting, what is the (normalized) weight of the 10% asset?" options={["50%","25%","75%","30%"]} answer={2} explanation="Reciprocals are 1/0.10 = 10 and 1/0.30 ≈ 3.33, summing to ≈13.33. The 10% asset gets 10/13.33 ≈ 75%." />
+
+<Quiz id="G-02-inverse-vol-q2" question="What key piece of information does inverse-volatility weighting ignore?" options={["Each asset's volatility","The correlations between assets","The total number of assets","The normalization constraint"]} answer={1} explanation="Inverse-vol uses only each asset's own volatility. It ignores correlations, so two highly correlated names get over-weighted as if they were independent bets." />

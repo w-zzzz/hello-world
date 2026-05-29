@@ -1,0 +1,52 @@
+# Track G review
+
+You have now walked the full ladder of portfolio construction, from the parameter-free 1/N rule all the way up to Black-Litterman. This closing lesson ties the track together with one organizing question that runs through every method: *how much do you trust your estimates?* The more you trust them, the more sophisticated a method you can justify — and the more you can hurt yourself if that trust is misplaced.
+
+## The ladder of trust
+
+Each method we studied uses more inputs than the one before, and each new input must be estimated from noisy data:
+
+- **1/N (G-01)** — trusts nothing. No estimates at all; equal dollars.
+- **Inverse-vol (G-02)** — trusts volatilities only.
+- **Risk parity (G-03)** — trusts the full covariance matrix.
+- **MVO (G-04)** — trusts covariance *and* expected returns. The most demanding, and the most fragile.
+- **Ledoit-Wolf (G-05)** — makes the covariance estimate reliable enough to use.
+- **Black-Litterman (G-06)** — makes the expected-return estimate reliable enough to use.
+
+Reading top to bottom, you are climbing a ladder of trust in your inputs. Each rung needs more, and more *reliable*, information than the last.
+
+## Estimation error is the enemy
+
+The thread connecting the whole track is estimation error. Volatilities are the easiest to estimate well; correlations are harder; expected returns are hardest of all. That ordering explains the whole ladder. A method's robustness can be roughly captured as:
+
+$$
+\text{usable edge} = \text{theoretical edge} - \text{estimation error amplified by the method}
+$$
+
+MVO has the highest theoretical edge but amplifies error the most, which is why it needs Ledoit-Wolf and Black-Litterman as crutches. 1/N has no theoretical edge but amplifies nothing — so its *usable* edge is often competitive.
+
+The chart below shows SPY, the workhorse asset we used throughout the track.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## Rebalancing ties it off
+
+Whatever weights you choose, the rebalancing module (G-07 to G-09) governs how you maintain them: frequency trades cost against drift, turnover-aware optimization bakes cost into the objective, and the workshop made the cost-versus-risk trade-off concrete. Construction sets the target; rebalancing keeps you near it without bleeding to costs.
+
+## When to use what
+
+Use 1/N or risk parity when your estimates are weak or your universe is large and unstable. Reach for MVO with shrinkage and Black-Litterman only when you genuinely have reliable views and a clean covariance estimate. Match the method's appetite for inputs to the quality of inputs you actually have.
+
+<Pitfall title="Complexity is not edge">
+A more sophisticated optimizer is not automatically better. Because MVO amplifies estimation error, an over-fit MVO routinely loses to a robust 1/N or risk-parity book in live trading. Sophistication only pays when your inputs are reliable enough to feed it. When in doubt, prefer the robust, parameter-light method.
+</Pitfall>
+
+<KeyPoint title="Match the method to your trust in the data">
+Track G is a ladder: 1/N → inverse-vol → risk parity → MVO, ordered by how much they trust your estimates. Shrinkage and Black-Litterman exist to make those estimates trustworthy. Pick the rung your data quality can support — and remember complexity is not edge.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-10-portfolio-review-q1" question="What single question best organizes the ladder from 1/N up to Black-Litterman?" options={["How many assets do you hold?","How much do you trust your estimates of returns and risk?","What is the risk-free rate?","How often do you rebalance?"]} answer={1} explanation="Each step up the ladder uses more estimated inputs. The organizing question is how much you trust those estimates — more trust justifies more sophistication, and vice versa." />
+
+<Quiz id="G-10-portfolio-review-q2" question="Why does an over-fit MVO often lose to a robust 1/N portfolio in live trading?" options={["1/N has higher theoretical expected return","MVO amplifies estimation error, so with noisy inputs its usable edge can fall below the parameter-free baseline","1/N uses leverage","MVO cannot hold more than two assets"]} answer={1} explanation="MVO has the highest theoretical edge but amplifies estimation error the most. With unreliable inputs, the noise overwhelms the edge, so the robust, parameter-free 1/N often wins live. Complexity is not edge." />

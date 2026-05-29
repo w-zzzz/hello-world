@@ -1,0 +1,49 @@
+# Risk of ruin
+
+Every sizing rule so far has been about *growth* or *per-trade loss*. Risk of ruin asks the most fundamental question of all: what is the probability that a string of losses drives your account below a level from which you cannot recover? A system can have a genuine positive expectancy and still go bust, if you bet so large that an unlucky streak ends you before the edge plays out. Survival comes first; optimization comes second.
+
+This lesson builds the intuition, gives a working formula, and shows why even a winning system is not automatically safe.
+
+## What ruin means
+
+Define a ruin threshold — the equity level (often a percentage drawdown, sometimes zero) at which you stop trading. Risk of ruin is the probability that your equity touches that threshold at some point, given your edge and your bet size. It is a property of the *whole path*, not a single trade: even bets that are individually fine can, in sequence, walk you into ruin.
+
+## A working formula
+
+For a simplified game with edge $e$ (your advantage per bet, as a fraction) and capital expressed as $u$ betting units to the ruin threshold, the risk of ruin behaves like:
+
+$$
+\mathrm{RoR} \approx \left(\frac{1 - e}{1 + e}\right)^{u}
+$$
+
+Read it carefully. The base $\frac{1-e}{1+e}$ is below 1 whenever you have a positive edge, so RoR shrinks as $u$ grows. Two levers control survival: a bigger edge $e$ pushes the base down, and — far more powerfully — more units $u$ to the threshold puts that base to a higher power. Since $u$ is just capital divided by bet size, halving your bet size *doubles* $u$ and slashes ruin probability exponentially.
+
+## A worked example
+
+Suppose your edge is $e = 0.05$ (5%) and you size so that you have $u = 20$ units before ruin. Then:
+
+$$
+\mathrm{RoR} \approx \left(\frac{0.95}{1.05}\right)^{20} \approx (0.905)^{20} \approx 0.13
+$$
+
+A 13% chance of ruin — uncomfortably high for a 5%-edge system. Now bet half the size, so $u = 40$: RoR drops to about $(0.905)^{40} \approx 0.017$, under 2%. Same edge, far safer, simply by betting smaller.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Picture a losing streak inside one of the drawdowns above. Whether that streak ends your account depends almost entirely on how many betting units stood between you and the threshold when it began.
+
+## Common pitfalls
+
+<Pitfall title="A positive edge does not make you safe">
+The most dangerous belief in trading is that a positive-expectancy system cannot blow up. It can. If your bet size is too large relative to capital, $u$ is small, and even a modest edge leaves a non-trivial ruin probability — the unlucky streak arrives before the edge compounds. Expectancy tells you the average outcome; risk of ruin tells you whether you survive the variance around that average long enough to collect it. Always size for survival first and growth second: a smaller bet that guarantees you stay in the game beats an optimal bet that occasionally ends it.
+</Pitfall>
+
+<KeyPoint title="Survival first, optimization second">
+Risk of ruin is the path-dependent probability of hitting a no-recovery threshold. It falls exponentially as the units-to-ruin $u$ rises, and $u$ rises as bet size falls. A positive edge is necessary but not sufficient — bet small enough that an unlucky streak cannot end you before the edge pays off.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-06-risk-of-ruin-q1" question="Holding the edge fixed, what is the most effective way to reduce risk of ruin?" options={["Increase the win target on each trade.","Reduce bet size, which increases the number of units to the ruin threshold.","Trade more frequently to realize the edge faster.","Widen the stop-loss on every trade."]} answer={1} explanation="RoR ≈ ((1−e)/(1+e))^u. Smaller bets raise u, and u sits in the exponent, so ruin probability falls exponentially even with the edge unchanged." />
+
+<Quiz id="F-06-risk-of-ruin-q2" question="Can a system with genuine positive expectancy still have a meaningful risk of ruin?" options={["No — positive expectancy mathematically guarantees survival.","Yes — if bet size is too large, an unlucky losing streak can hit the ruin threshold before the edge compounds.","No — ruin only happens to negative-edge systems.","Yes, but only if commissions exceed the edge."]} answer={1} explanation="Expectancy is the long-run average; ruin is about the variance of the path. Oversized bets make a no-recovery streak likely enough to matter even when the edge is real." />

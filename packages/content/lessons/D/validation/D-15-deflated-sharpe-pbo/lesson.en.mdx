@@ -1,0 +1,49 @@
+# Deflated Sharpe and PBO: correcting for how many you tried
+
+If you try one strategy and it has a Sharpe of 2, that means something. If you try a thousand strategies and report the best one's Sharpe of 2, that means almost nothing — the best of a thousand noise generators will have a high Sharpe by chance alone. This lesson covers the two tools that put a number on that problem: the **Deflated Sharpe Ratio (DSR)** and the **Probability of Backtest Overfitting (PBO)**, both from Bailey and Lopez de Prado.
+
+## The multiple-testing problem
+
+When you search over many strategies, parameters, or universes, the maximum observed Sharpe is no longer an unbiased estimate of skill — it is the maximum of many noisy draws, which is systematically inflated. The more trials $N$ you run, the higher the best Sharpe you expect to see even if no strategy has any true edge.
+
+The expected maximum Sharpe from $N$ trials of pure noise grows with $\sqrt{\log N}$. So a Sharpe that looks impressive after one trial may be exactly what you would expect from luck after a thousand.
+
+## The Deflated Sharpe Ratio
+
+The DSR asks: given that I selected the best of $N$ trials, what is the probability the true Sharpe is positive? It deflates the observed Sharpe by the threshold you would expect from selection alone. The expected maximum Sharpe under the null (no skill) is approximately
+
+$$
+\mathbb{E}\bigl[\widehat{SR}_{\max}\bigr] \approx \sqrt{V}\left[(1-\gamma)\,\Phi^{-1}\!\Bigl(1-\tfrac{1}{N}\Bigr) + \gamma\,\Phi^{-1}\!\Bigl(1-\tfrac{1}{N e}\Bigr)\right]
+$$
+
+where $V$ is the variance of the trial Sharpes, $\gamma$ is the Euler-Mascheroni constant, and $\Phi^{-1}$ is the inverse normal CDF. The DSR is the probability that your selected Sharpe exceeds this selection-driven benchmark, also adjusting for non-normal returns (skew and kurtosis) and sample length. A DSR below 0.95 means your best strategy is not convincingly better than the luck of running many trials.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## Probability of Backtest Overfitting
+
+PBO takes a different angle. Using combinatorially symmetric cross-validation, it splits your trials into many in-sample/out-of-sample partitions and asks: how often does the configuration that ranked best in-sample rank below the median out-of-sample? That frequency is the PBO.
+
+$$
+\text{PBO} = \Pr\bigl[\text{IS-best config ranks below median OOS}\bigr]
+$$
+
+A high PBO (say above 0.5) means your selection procedure is essentially picking overfit configurations — the in-sample winner is no better than a coin flip out-of-sample. A low PBO means in-sample skill tends to carry forward.
+
+## Using them together
+
+DSR tells you whether a single reported Sharpe survives the multiple-testing correction; PBO tells you whether your whole selection process generalizes. Report both. A strategy with DSR > 0.95 and PBO < 0.2 is far more credible than a raw Sharpe of 2 from an unknown number of trials.
+
+<Pitfall title="Reporting the best of 1000 Sharpes without deflating">
+Trying many strategies and reporting only the best Sharpe — without disclosing how many you tried or deflating for it — is the single most common way quant research lies, including to its own authors. The best of 1000 random strategies will routinely show a Sharpe above 2 with zero true edge. If you cannot state your trial count $N$ and your DSR, you have not validated anything; you have run a lottery and reported the winning ticket as skill.
+</Pitfall>
+
+<KeyPoint title="Count your trials, then deflate">
+The Sharpe ratio is only meaningful relative to how many strategies you tried to find it. Track your trial count, compute the Deflated Sharpe Ratio against the selection-driven benchmark, and compute PBO to check that your selection generalizes out-of-sample. A high raw Sharpe with an undisclosed N is not evidence — it is a sampling artifact waiting to be deflated away.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-15-deflated-sharpe-pbo-q1" question="You tested 1000 strategy variants and report the best one's Sharpe of 2.1. Why is the Deflated Sharpe Ratio essential here?" options={['It makes the Sharpe larger to reward your effort','It corrects for selection: the max of 1000 noisy trials is inflated, so DSR estimates the probability the true Sharpe is actually positive after accounting for N','It converts Sharpe to Sortino','It is only needed when returns are normal']} answer={1} explanation="The best of many trials is systematically inflated. DSR deflates the observed Sharpe by the benchmark expected from selection alone, telling you whether the result survives the multiple-testing correction." />
+
+<Quiz id="D-15-deflated-sharpe-pbo-q2" question="Your strategy search yields a PBO of 0.6. What does that indicate?" options={['The strategy is 60% likely to be profitable','The in-sample best configuration ranks below the OOS median 60% of the time — your selection is mostly picking overfit configs','The Sharpe ratio is 0.6','PBO above 0.5 is always ideal']} answer={1} explanation="PBO is the probability that the in-sample winner underperforms out-of-sample. At 0.6 the selection process picks overfit configurations more often than not — the in-sample winner does not generalize." />

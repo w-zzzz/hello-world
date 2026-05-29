@@ -1,0 +1,47 @@
+# Cross-sectional momentum
+
+Cross-sectional momentum is one of the most robust anomalies in all of finance: stocks that have outperformed their peers over the past several months tend to keep outperforming over the next month, and past losers tend to keep lagging. The strategy is a *relative* bet — you rank a whole universe and bet the winners against the losers, regardless of whether the market overall goes up or down. Jegadeesh and Titman documented it formally in 1993, and it has stubbornly survived decades of out-of-sample scrutiny.
+
+This is a portfolio strategy, not a single-instrument timing rule, which is what gives it both its diversification and its peculiar tail risk.
+
+## Ranking the universe
+
+You start with a universe — say, the S&P 500 constituents. For each stock you compute a trailing return over a formation window, then rank every name by that score:
+
+$$
+r_{i}^{(12,1)} = \frac{P_{i,\,t-1}}{P_{i,\,t-12}} - 1
+$$
+
+The "12-1" convention is deliberate: you measure the return over the past 12 months but **skip the most recent month**. That one-month gap removes short-term reversal — the tendency for last month's biggest movers to bounce back — which would otherwise pollute the momentum signal. The number is the trailing medium-term return, cleaned of last-month noise.
+
+## Long the top decile, short the bottom
+
+Sort all names by their momentum score and slice into deciles (or quintiles). Then:
+
+- **Long** the top decile (the strongest past performers), equal-weighted.
+- **Short** the bottom decile (the weakest), equal-weighted.
+- **Rebalance** monthly, re-ranking and rotating holdings as the leaders and laggards change.
+
+Holding both legs makes the book roughly **dollar-neutral**: the market's overall direction largely cancels, and you isolate the spread between winners and losers — the momentum premium itself.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Why it persists
+
+There is no single accepted cause, which is part of why it survives. The leading explanations are behavioural — investors **underreact** to news, so good information diffuses into prices gradually, and **herd** into established trends — plus a risk-based story in which momentum simply compensates you for bearing a particular kind of risk. Whatever the mechanism, the empirical signal has been remarkably durable across countries, asset classes, and decades. That durability is exactly why it is a foundational archetype.
+
+## The crash that lurks in the tail
+
+<Pitfall title="Momentum crashes: rare, violent, and negatively skewed">
+Cross-sectional momentum earns small, steady profits for long stretches and then, occasionally, suffers a brutal crash. These crashes cluster at market bottoms: after a sharp decline, beaten-down stocks (which your strategy is *short*) rebound violently while former winners (which you are *long*) stall. Your short leg explodes against you and your long leg goes nowhere — a sharp reversal that can wipe out years of gains in weeks. This is the strategy's defining feature: it has **negative skew**, meaning many small wins and rare enormous losses. Backtests that report a glittering Sharpe ratio often hide this tail. Manage it with volatility scaling and by reducing exposure when market volatility spikes, when crashes are most likely.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Cross-sectional momentum ranks a universe by trailing 12-1 return, goes long the top decile and short the bottom, and rebalances monthly. It is market-neutral and durable, but it carries negative skew — rare, violent crashes after market bottoms are the price of its steady premium.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-06-momentum-cross-section-q1" question="In the '12-1' momentum signal, why is the most recent month skipped?" options={['To reduce trading commissions','To remove short-term reversal, where last month\'s biggest movers tend to bounce back and pollute the medium-term momentum signal','Because monthly data is unavailable','To make the strategy long-only']} answer={1} explanation="Skipping the most recent month strips out the short-term reversal effect. Last month's extreme movers often revert, which would contaminate the medium-term momentum being measured over the prior 12 months." />
+
+<Quiz id="E-06-momentum-cross-section-q2" question="What is a 'momentum crash' and when does it typically strike?" options={['A data-feed outage during high volume','A gradual underperformance over many years','A sharp reversal, usually after a market bottom, when beaten-down stocks (the short leg) rebound violently while past winners stall — reflecting momentum\'s negative skew','A spike that happens only in bull markets']} answer={2} explanation="Momentum crashes cluster after market bottoms: the heavily shorted losers rebound sharply while the long winners stagnate, causing large, fast losses. This negative skew — many small gains, rare huge losses — is the strategy's defining tail risk." />

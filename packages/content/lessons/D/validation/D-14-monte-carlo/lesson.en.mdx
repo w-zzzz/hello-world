@@ -1,0 +1,49 @@
+# Monte Carlo resampling: one backtest is one sample
+
+Your backtest produced a single equity curve, a single max drawdown, a single Sharpe. But your strategy met exactly one realized ordering of history. Had the same trades arrived in a different order — or had a slightly different sample of trades occurred — the numbers would differ. **Monte Carlo resampling** treats your backtest as one draw from a distribution and builds that distribution by resampling, giving you confidence intervals instead of point estimates.
+
+## Why a point estimate lies by omission
+
+A single max drawdown of −18% sounds precise. It is not a property of the strategy; it is the worst run that happened to occur in your one sample. The true question is: across plausible alternative histories, how bad could the drawdown have been? A strategy whose drawdown is −18% in the backtest but −35% at the 95th percentile of resamples is far riskier than the headline number suggests.
+
+## Bootstrapping the trade or return series
+
+The basic technique is the **bootstrap**: resample your realized returns (or per-trade P&L) with replacement to create many synthetic equity curves, then read statistics off the distribution.
+
+Given realized returns $r_1, \dots, r_n$, each bootstrap path draws $n$ samples with replacement:
+
+$$
+r^*_j \sim \text{Uniform}\{r_1, \dots, r_n\} \;\text{ with replacement}, \qquad \text{curve}^{(b)} = \prod_{j=1}^{n}\bigl(1 + r^*_j\bigr)
+$$
+
+Repeat for $b = 1, \dots, B$ (say $B = 10{,}000$). The spread of the resulting Sharpe ratios, returns, and drawdowns is your confidence interval. A 95% interval on the Sharpe that includes zero is a strategy you cannot distinguish from luck.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## What you get out
+
+Three outputs are especially useful:
+
+- **Confidence intervals** on Sharpe, CAGR, and max drawdown — so you report a range, not a single flattering number.
+- **Drawdown distribution** — the 95th-percentile drawdown is a far better risk budget than the single historical worst case.
+- **Probability of ruin or of a losing year** — directly readable as the fraction of resampled paths that breach a threshold.
+
+## The autocorrelation problem
+
+Here is the catch. Plain bootstrap assumes returns are **independent and identically distributed (iid)**. Real returns are not: volatility clusters, trends persist, regimes last for months. Shuffling returns independently destroys this structure, often making the strategy look *safer* than it is because runs of bad days get broken up.
+
+The fix is the **block bootstrap**: resample contiguous blocks of length $\ell$ rather than single observations, preserving the short-range autocorrelation within each block. Choosing $\ell$ to match the strategy's holding period or the persistence of volatility keeps the synthetic paths honest.
+
+<Pitfall title="iid resampling destroys autocorrelation and regime structure">
+The plain bootstrap quietly assumes each return is independent of the last. Financial returns violate this badly — volatility clusters and drawdowns come in streaks. Shuffling returns one at a time scatters those streaks, so the resampled drawdowns look milder than reality and your confidence intervals are too narrow. Use a block bootstrap with a block length matched to your holding period and volatility persistence; it keeps the autocorrelation intact and gives a far more honest distribution.
+</Pitfall>
+
+<KeyPoint title="Report a distribution, not a point">
+One backtest is one sample from a distribution of possible histories. Bootstrap it to get confidence intervals on Sharpe and drawdown, and prefer the block bootstrap so you do not erase the autocorrelation that makes real drawdowns deep. A Sharpe whose 95% interval straddles zero is indistinguishable from luck.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-14-monte-carlo-q1" question="Your backtest shows a max drawdown of -18%. What does Monte Carlo resampling add?" options={['It proves the drawdown will never exceed -18%','It treats the backtest as one sample and builds a distribution, so you can read, say, a -35% 95th-percentile drawdown','It removes drawdowns from the equity curve','It guarantees a higher Sharpe ratio']} answer={1} explanation="The single -18% is just the one realized worst case. Resampling produces a distribution of drawdowns; the high-percentile drawdown is a far better risk budget than the single historical number." />
+
+<Quiz id="D-14-monte-carlo-q2" question="Why is a plain iid bootstrap often too optimistic about drawdowns, and what fixes it?" options={['It uses too few resamples; run more','It assumes returns are independent, so it breaks up the streaks of bad days that create deep drawdowns; a block bootstrap preserves them','It ignores commissions','iid bootstrap is always correct for returns']} answer={1} explanation="Returns are autocorrelated — volatility and losses cluster. Shuffling one at a time destroys those clusters, understating drawdown. A block bootstrap resamples contiguous blocks, preserving short-range autocorrelation." />

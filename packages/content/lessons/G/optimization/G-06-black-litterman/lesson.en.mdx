@@ -1,0 +1,45 @@
+# Black-Litterman
+
+Ledoit-Wolf stabilized the covariance matrix; Black-Litterman tackles the harder input — expected returns $\mu$. Developed at Goldman Sachs by Fischer Black and Robert Litterman, the model starts from a sensible neutral prior (what the market is already implying) and then lets you nudge it with your own views, in proportion to how confident you are. The output is a posterior $\mu$ that produces stable, intuitive portfolios instead of the extreme bets raw MVO loves.
+
+## Start from equilibrium
+
+The clever first move is to not estimate returns from history at all. Instead, assume the market-cap-weighted portfolio is optimal, and ask: *what expected returns would make MVO choose exactly those weights?* This is **reverse optimization**. Given market weights $w_{\text{mkt}}$, the implied equilibrium returns are:
+
+$$
+\Pi = \lambda \Sigma w_{\text{mkt}}
+$$
+
+These $\Pi$ are the prior. They are anchored to observable market weights, not to noisy return averages, so they are far more stable than a historical mean. If you hold no views, MVO on $\Pi$ simply hands you the market portfolio back — a sane default.
+
+## Blend in your views
+
+You then express views as statements like 'asset A will outperform asset B by 2%', each with a confidence. Black-Litterman combines the equilibrium prior $\Pi$ with your views $Q$ using a Bayesian update, weighting each by its uncertainty:
+
+$$
+\mu_{\text{BL}} = \left[ (\tau\Sigma)^{-1} + P^\top \Omega^{-1} P \right]^{-1} \left[ (\tau\Sigma)^{-1}\Pi + P^\top \Omega^{-1} Q \right]
+$$
+
+Here $P$ maps views to assets, $\Omega$ encodes view uncertainty, and $\tau$ scales the prior's confidence. The posterior $\mu_{\text{BL}}$ tilts away from equilibrium *only* in the directions you expressed a view, and only as much as your confidence warrants. Feed $\mu_{\text{BL}}$ into MVO and you get a portfolio that looks like the market plus sensible tilts.
+
+The chart below shows SPY; in a BL model its equilibrium return would come from its market weight, then adjust if you held a view on US equities.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## Why it works
+
+Black-Litterman tames MVO's instability because the prior does the heavy lifting. Where you have no opinion, the model defaults to the market — no extreme bets on noise. Where you do, your view moves the needle gently. The result is intuitive, diversified, and far less sensitive to estimation error than feeding raw historical means into MVO.
+
+<Pitfall title="Overconfident views collapse back to concentrated MVO">
+Black-Litterman is very sensitive to the confidence you assign your views (Ω). If you mark a view as near-certain, the posterior ignores the equilibrium anchor and produces the same extreme, concentrated weights as raw MVO. BL tames estimation risk — it does not remove it. Express views with honest, humble uncertainty.
+</Pitfall>
+
+<KeyPoint title="Market prior plus disciplined views">
+Black-Litterman reverse-optimizes market weights into equilibrium returns Π, then Bayesian-blends your views to get a posterior μ. With no views it returns the market portfolio; with confident views it tilts proportionally. It tames — but does not eliminate — estimation risk.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-06-black-litterman-q1" question="What is the 'prior' in the Black-Litterman model derived from?" options={["The historical average returns of each asset","Reverse-optimizing the market-cap weights into implied equilibrium returns","A random initialization","The risk-free rate alone"]} answer={1} explanation="Black-Litterman starts from equilibrium returns Π = λΣw_mkt, obtained by reverse-optimizing the market portfolio. This anchor is far more stable than historical means." />
+
+<Quiz id="G-06-black-litterman-q2" question="What happens if you assign extremely high confidence to your views in Black-Litterman?" options={["The model ignores your views entirely","The posterior collapses back toward concentrated, MVO-like extreme weights","It guarantees higher returns","The covariance matrix becomes singular"]} answer={1} explanation="High view-confidence (very small Ω) makes the posterior ignore the equilibrium anchor, reproducing the extreme, concentrated weights of raw MVO. BL only tames estimation risk if views are expressed with humility." />

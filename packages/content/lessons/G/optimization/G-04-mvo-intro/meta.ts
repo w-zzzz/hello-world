@@ -1,0 +1,14 @@
+import { defineLesson } from '@quant-academy/content/schema'
+
+export default defineLesson({
+  id: 'G-04-mvo-intro',
+  trackId: 'G',
+  module: 'optimization',
+  order: 4,
+  difficulty: 'advanced',
+  durationMin: 22,
+  xp: 160,
+  prerequisites: [],
+  tags: ['portfolio', 'optimization'],
+  contributors: ['@quant-academy'],
+})

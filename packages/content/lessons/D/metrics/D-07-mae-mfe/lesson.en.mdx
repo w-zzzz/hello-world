@@ -1,0 +1,47 @@
+# MAE / MFE: Trade Excursions
+
+Earlier metrics cared whether a trade ended up a winner or a loser. But the **path** a trade takes while you hold it is just as informative: how far underwater did it go, and how far in profit? These are MAE (Maximum Adverse Excursion) and MFE (Maximum Favorable Excursion). They take you from outcome to path and are the core tools for tuning stops and targets. This lesson covers both definitions, how to use their distributions to set stops and targets, and an overfitting trap that is dangerously easy to fall into.
+
+## Definitions
+
+For a single trade, track the floating profit and loss at every moment from entry to exit. Then:
+
+- **MAE (Maximum Adverse Excursion)**: the largest unrealized loss seen during the holding period.
+- **MFE (Maximum Favorable Excursion)**: the largest unrealized gain seen during the holding period.
+
+For a long with entry price $P_{\text{entry}}$, the lowest price $\min P_t$ and highest price $\max P_t$ over the holding period:
+
+$$
+\mathrm{MAE} = \frac{\min_t P_t - P_{\text{entry}}}{P_{\text{entry}}}, \qquad
+\mathrm{MFE} = \frac{\max_t P_t - P_{\text{entry}}}{P_{\text{entry}}}
+$$
+
+MAE $\le 0$ (a floating loss) and MFE $\ge 0$ (a floating gain). They record the **extremes along the path**, not the final result. A trade that ends profitable may still have endured a deep MAE on the way.
+
+## Use the distribution, not one trade
+
+A single trade's MAE/MFE is not very useful; the value is in the **distribution across your whole sample**. Plot a histogram of MAE for all winning trades and you typically find that winners rarely float more than some threshold underwater. That threshold is an evidence-based stop level: set the stop a bit wider than the deepest MAE of most winners so normal noise does not shake you out.
+
+Likewise, plotting the MFE distribution tells you how far price usually runs, informing where to take profit or trail a stop.
+
+<KeyPoint title="MAE/MFE describe the extremes along the holding path">MAE is the deepest floating loss while holding; MFE is the highest floating gain. They characterize a trade's path, not its final value. Use the MAE/MFE distribution across the whole sample, not a single trade, to guide stop and target placement.</KeyPoint>
+
+## How to set stops and targets
+
+A common approach: study the MAE distribution of winning trades and find that 95% of winners never float more than −2% underwater. Set the stop around −2.5% and you balance not being shaken out by normal pullbacks against capping the per-trade loss. Conversely, if losing trades tend to have tiny MFE (they never went your way to begin with), consider exiting earlier.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Imagine going long SPY and holding for several days: the low of the period sets that trade's MAE and the high sets its MFE. Aggregate hundreds or thousands of such trades, and the shape of the distribution is what you should actually study.
+
+## The lethal trap: optimizing stops on in-sample MAE is overfitting
+
+The most tempting and most dangerous use of MAE/MFE is going back into the historical data to find the stop level that maximizes total return.
+
+<Pitfall title="Optimizing stops on in-sample MAE is curve-fitting">If you take one stretch of history and keep nudging the stop until the backtest return peaks, you are just fitting the noise of that stretch. That 'perfect' stop happens to dodge the specific deep dips of the past, but future dips will not land in the same places. MAE/MFE are descriptive statistics of the **past**; they do not bound the **future**. The right approach: derive a reasonable stop range from the in-sample MAE distribution, then validate that it still holds up on independent out-of-sample data, rather than tuning the stop to two decimal places.</Pitfall>
+
+## Check yourself
+
+<Quiz id="D-07-mae-mfe-q1" question="Which statement about MAE (Maximum Adverse Excursion) is correct?" options={['It equals the trade\'s final loss', 'It is the largest unrealized loss seen during the holding period, which can be deep even if the trade ends profitable', 'It is only defined for losing trades', 'It measures the whole portfolio\'s drawdown']} answer={1} explanation="MAE records the extreme floating loss along the holding path, independent of the final outcome. A trade that ends profitable can still have endured a deep MAE midway." />
+
+<Quiz id="D-07-mae-mfe-q2" question="What is the main problem with repeatedly tuning the stop level on the same historical data to maximize backtest return?" options={['It is too slow to compute', 'It is curve-fitting to in-sample noise; MAE/MFE describe the past and do not bound future excursions', 'The stop level expires automatically', 'MAE and MFE cannot be used together']} answer={1} explanation="Tuning stops on in-sample MAE fits historical noise; that optimal stop merely dodges the specific past dips. MAE/MFE describe the past and do not constrain the future, so robustness must be confirmed on out-of-sample data." />

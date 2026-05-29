@@ -1,0 +1,59 @@
+# Robustness checks: is this an edge, or a lucky parameter?
+
+You ran a walk-forward and the out-of-sample Sharpe held up. Good — but one clean walk-forward run is not proof. It tells you the strategy survived one slice of history with one set of parameters. Robustness checking asks the harder question: does the edge survive when you wiggle everything that was arbitrary? A real edge is a plateau you can stand on; an overfit one is a needle you happened to balance on.
+
+## Parameter sensitivity: stand on a plateau, not a spike
+
+Every strategy has knobs — a lookback window, a threshold, a stop distance. You picked specific numbers. The honest test is to perturb each one by roughly $\pm 10\%$ and re-run.
+
+Let the performance metric (say annualized Sharpe) as a function of parameter $\theta$ be $S(\theta)$. A robust strategy has a flat neighborhood:
+
+$$
+\left| \frac{S(\theta \cdot 1.1) - S(\theta \cdot 0.9)}{S(\theta)} \right| \ll 1
+$$
+
+If a $\pm 10\%$ nudge collapses a Sharpe of 1.4 down to 0.3, you did not find an edge — you found the one coordinate where noise looked like signal. Plot the metric across a grid of nearby values in the `/workshop` and look for a broad hill, not a lone tower.
+
+<KeyPoint title="Plateaus over peaks">Prefer a parameter region where many nearby settings all work over the single setting that works best. The peak is where overfitting lives; the plateau is where the edge lives.</KeyPoint>
+
+## Sub-period stability
+
+Split your full history into thirds — or by year — and compute the metric in each. A strategy that earned its entire return in one lucky six-month window and bled the rest of the time is not stable; the aggregate Sharpe just hid the truth.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at the equity curve above and imagine cutting it into three eras. Does each era contribute? Or does one bull run carry everything? You want returns that show up in most sub-periods, not one heroic stretch.
+
+## Different universes and assets
+
+If your idea is a genuine market mechanism, it should leave fingerprints beyond the exact tickers you tuned on. Test it on a neighboring universe: if you built it on US large-caps, try it on European large-caps or a different sector. The numbers will be worse — that is expected and fine. What you are checking is the sign and the shape, not a matching Sharpe. An edge that only exists on the precise basket you optimized is suspect.
+
+## Regime breakdown
+
+Tag each period by regime — high vs low volatility, trending vs ranging, rising vs falling rates — and report performance per regime. This does two jobs. It tells you when the strategy is supposed to work (which you will write into your spec in H-09), and it surfaces the regime where it quietly loses money. A trend follower that is flat-to-down in chop is honest; one that claims to make money in every regime is usually fitting noise.
+
+<Pitfall title="The lucky parameter">
+A strategy that only works at one exact parameter set, on one date range, on one universe is overfit — full stop. Robustness checking is the antidote to the parameter you got lucky with. If the edge evaporates the moment you stop holding the dial at exactly the value the optimizer chose, there was never an edge to ship.
+</Pitfall>
+
+## Putting it together
+
+Robustness is not one test, it is a habit: perturb the parameters, slice the history, swap the universe, split by regime. Each check that the edge survives is a small vote of confidence; each one it fails is a gift, because it found the fragility before your capital did. Carry the survivors into stress testing (H-08), where you stop wiggling and start hitting the strategy with real crises.
+
+## Check yourself
+
+<Quiz
+  id="H-07-robustness-checks-q1"
+  question="A strategy shows Sharpe 1.4 at its tuned lookback of 20, but Sharpe 0.3 at a lookback of 18 and 22. What does this most likely indicate?"
+  options={['A robust edge worth shipping', 'Overfitting to a lucky parameter', 'A bug in the data feed', 'Proof the lookback should be exactly 20']}
+  answer={1}
+  explanation="A metric that collapses under a small parameter perturbation is a spike, not a plateau. The performance lived at one exact coordinate, which is the signature of fitting noise rather than a real edge."
+/>
+
+<Quiz
+  id="H-07-robustness-checks-q2"
+  question="Why test a strategy on a different universe (e.g. European instead of US large-caps) even though the metrics will be worse?"
+  options={['To beat the original Sharpe', 'To check the edge has the right sign and shape beyond the exact basket you optimized', 'Because regulators require it', 'To increase the number of trades']}
+  answer={1}
+  explanation="A genuine market mechanism should leave fingerprints beyond the precise tickers you tuned on. Worse-but-still-present performance on a neighboring universe is reassuring; an edge that only exists on the optimized basket is suspect."
+/>

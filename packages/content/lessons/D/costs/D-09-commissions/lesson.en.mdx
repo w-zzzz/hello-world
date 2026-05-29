@@ -1,0 +1,53 @@
+# Commissions and fees: the toll you pay on every trade
+
+Slippage is the price the market charges you; commissions are the price your broker and the exchange charge you. They are smaller and more predictable, but they are perfectly real, and for high-frequency, small-edge strategies they are often the difference between profit and ruin. This lesson teaches you the common fee models and how to compute the edge a strategy needs just to break even.
+
+## Three ways brokers bill you
+
+Most cost schedules reduce to one of three shapes:
+
+- **Per-share**: e.g. \$0.005 per share. Cheap for high-priced stocks, expensive for penny stocks where you trade many shares per dollar.
+- **Per-trade (flat)**: e.g. \$1 per order regardless of size. Brutal for small accounts; negligible for large blocks.
+- **Basis points (bps) of notional**: e.g. 5 bps of trade value. The standard for institutions and most crypto venues; scales naturally with position size.
+
+On top of these sit exchange fees, regulatory fees (SEC, FINRA in the US), and sometimes a maker-taker rebate that pays you for adding liquidity and charges you for taking it.
+
+## Round-trip cost
+
+A position has to be opened and closed, so the cost that matters is the **round-trip**: entry fee plus exit fee. If a one-way commission is $c$ (as a fraction of notional), the round-trip is
+
+$$
+C_{\text{round-trip}} = c_{\text{in}} + c_{\text{out}} \approx 2c
+$$
+
+This is the number you compare your edge against — not the one-way fee. Beginners quote the one-way cost and quietly halve their true hurdle.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## The break-even edge
+
+For a strategy to make money, the average gross profit per trade must exceed the round-trip cost. Let $e$ be your expected gross edge per trade and $C$ the round-trip cost, both in the same units (say, bps of notional). You need
+
+$$
+e > C, \quad \text{and for a margin of safety} \quad e \ge 2C
+$$
+
+The factor of two is a practical rule: estimates of edge are noisy and optimistic, while costs are firm. If your modeled edge is only barely above costs, the live result will almost certainly land below them.
+
+## A worked example
+
+Say a mean-reversion strategy shows a 7 bps average gross profit per trade in backtest. Commissions are 1.5 bps one-way, so 3 bps round-trip; add 3 bps of modeled slippage round-trip and total cost is 6 bps. Net edge: 7 − 6 = 1 bps. Apply the $e \ge 2C$ safety rule — you would want 12 bps gross to feel comfortable, and you have 7. This strategy is **net-negative once realistic costs and noise are included**, even though the gross backtest looked positive.
+
+<Pitfall title="A tiny per-trade edge dies even at low commissions">
+It is tempting to wave away a 2 bps commission as negligible. But if your strategy's gross edge is only 5 bps per trade, that 2 bps one-way (4 bps round-trip) eats most of it — and that is before slippage. Always compute the required edge as at least twice the all-in cost. A high-turnover strategy with a thin per-trade edge is the classic way a positive backtest becomes a negative track record.
+</Pitfall>
+
+<KeyPoint title="Compare gross edge to round-trip, not one-way">
+Your hurdle is the round-trip cost (entry + exit), not the one-way commission. Demand a gross edge of at least 2x that hurdle to leave room for noisy edge estimates and unmodeled costs.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-09-commissions-q1" question="Your strategy shows 5 bps gross edge per trade. One-way commission is 2 bps and one-way slippage is 1 bps. Is it viable under the 2x safety rule?" options={['Yes — 5 bps comfortably beats 2 bps commission','No — round-trip cost is 6 bps, so you would need at least 12 bps gross','Yes — slippage and commission cancel','Cannot tell without the Sharpe ratio']} answer={1} explanation="Round-trip cost = 2*(2+1) = 6 bps. The 2x safety rule asks for >=12 bps gross edge; the strategy has 5 bps, so it is not viable." />
+
+<Quiz id="D-09-commissions-q2" question="Which commission model hurts a small retail account trading 10 shares of a \$20 stock the most?" options={['Per-share at \$0.005/share','A flat \$1 per-trade fee','5 bps of notional','All three cost exactly the same']} answer={1} explanation="Trade value is 10*\$20 = \$200. Per-share = \$0.05, bps = \$0.10, flat = \$1.00. The flat per-trade fee dominates small orders — a 50 bps drag on a \$200 trade." />

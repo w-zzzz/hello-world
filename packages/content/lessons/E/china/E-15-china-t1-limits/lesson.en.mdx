@@ -1,0 +1,54 @@
+# China A-shares: T+1 settlement & price limits
+
+A strategy that prints money on US data can be completely invalid on Chinese A-shares — not because the idea is wrong, but because the *rules of the venue* are different. The Shanghai and Shenzhen exchanges impose two mechanics with no US equivalent: **T+1 settlement** (you cannot sell a stock on the day you bought it) and **daily price limits** (a stock cannot move more than a fixed percentage in one day). Backtests that ignore these rules silently assume trades that are physically impossible.
+
+If you intend to trade A-shares, these are not footnotes — they reshape which strategies are even feasible.
+
+## T+1 settlement: no same-day round trips
+
+In the US, equities settle T+2 but you can freely day-trade — buy and sell the same name many times in one session. A-shares use **T+1**: shares you buy today only become sellable the *next* trading day. The cash from a sale settles next day too. This single rule kills an entire class of strategies:
+
+- No intraday mean-reversion that buys a dip and sells the bounce same-day.
+- No scalping or high-frequency round trips on a single position.
+- A signal that fires intraday cannot be exited until tomorrow — you carry overnight risk whether you want to or not.
+
+A backtest that assumes US-style T+0 intraday entry-and-exit is simply not tradable on A-shares. Every position is held at least overnight.
+
+## Daily price limits
+
+Each A-share has a daily limit on how far it can move from the previous close:
+
+$$
+P_t \in \left[\, P_{t-1}(1 - L),\; P_{t-1}(1 + L) \,\right]
+$$
+
+For most main-board stocks $L = 10\%$. Stocks flagged for risk (the 'ST' special-treatment designation) have a tighter $L = 5\%$. When a stock hits its upper limit it is *limit-up* (涨停); the lower limit is *limit-down* (跌停).
+
+The crucial trap: at limit-up, sellers vanish and a wall of unfilled buy orders queues at the ceiling price. You may *want* to buy, but there is nothing to buy — your order joins the queue and never fills. Symmetrically, at limit-down you cannot sell. A backtest that assumes you got filled at the limit-up open is fantasising.
+
+## STAR Market and ChiNext differences
+
+Not all boards share the $\pm 10\%$ rule. The growth-focused boards are more permissive:
+
+- **ChiNext (创业板, Shenzhen)** and the **STAR Market (科创板, Shanghai):** a wider $\pm 20\%$ daily limit, and *no* price limit at all during the first five trading days after IPO.
+- **Main boards (Shanghai/Shenzhen):** the standard $\pm 10\%$ ($\pm 5\%$ for ST stocks).
+
+Your backtest must apply the correct limit per board and per stock status, or it will model fills the exchange would never permit.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+SPY can gap 7% on an open and trade freely all day — no limit, T+0 round trips allowed. Mentally overlay A-share rules: cap each daily move at $\pm 10\%$, forbid same-day selling, and freeze the tape at any limit-up. The tradable strategy set shrinks dramatically.
+
+<Pitfall title="US-style backtests are invalid on A-shares">
+A backtest built on US assumptions — T+0 intraday round-trips, fills at any printed price — is *invalid* for A-shares. Under T+1 you cannot sell what you bought today, so every intraday mean-reversion or scalping strategy is untradable. On a limit-up day you literally cannot buy (no sellers), and on limit-down you cannot sell, yet a naive backtest happily fills both. Model T+1 and price limits explicitly, or your reported returns include trades that could never have happened.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+A-shares run on T+1 settlement (no same-day sell of a same-day buy) and daily price limits (±10% main board, ±5% ST, ±20% STAR/ChiNext). Limit-up means unfillable buys; limit-down means unfillable sells. Any backtest assuming US-style T+0 intraday trading or fills at the limit price is invalid.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-15-china-t1-limits-q1" question="Under A-share T+1 settlement, what can you NOT do?" options={["Hold a stock overnight.","Sell a stock on the same day you bought it.","Buy more than one stock per day.","Place limit orders."]} answer={1} explanation="T+1 means shares bought today are only sellable the next trading day, so same-day round trips (intraday scalping/mean-reversion) are impossible." />
+
+<Quiz id="E-15-china-t1-limits-q2" question="Why is a backtest dangerous when a main-board A-share is limit-up (+10%)?" options={["Because prices can move freely past the limit.","Because there are no sellers — your buy order queues and never fills, yet a naive backtest assumes it executes.","Because the limit is actually ±20% on the main board.","Because T+1 does not apply on limit-up days."]} answer={1} explanation="At limit-up, sellers vanish and unfilled buys stack at the ceiling. A naive backtest fills you at the limit price, modelling a trade that could not occur." />

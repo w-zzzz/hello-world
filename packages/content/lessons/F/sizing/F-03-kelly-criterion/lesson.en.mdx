@@ -1,0 +1,55 @@
+# The Kelly criterion
+
+Fixed-fractional sizing asks you to *pick* a risk fraction. The Kelly criterion answers a deeper question: given an edge, what fraction maximizes the long-run growth rate of your capital? It is the mathematically optimal bet size for compounding — and also one of the most dangerous formulas in finance if you take it literally.
+
+This lesson derives the discrete and continuous forms, works an example, and explains why almost every professional bets a *fraction* of Kelly rather than full Kelly.
+
+## The discrete Kelly formula
+
+Consider a bet that wins with probability $p$, paying $b$ to 1 on a win, and loses your stake with probability $q = 1 - p$. The growth-optimal fraction of capital to wager is:
+
+$$
+f^* = \frac{p\,b - q}{b}
+$$
+
+The numerator $p\,b - q$ is the expected profit per unit staked — your edge. Divide by the odds $b$ and you get the fraction of capital that maximizes the expected logarithm of wealth, which is the long-run compound growth rate. No edge ($p\,b = q$) gives $f^* = 0$: do not bet.
+
+## A worked example
+
+Suppose $p = 0.55$, you win 1-to-1 ($b = 1$), so $q = 0.45$.
+
+$$
+f^* = \frac{0.55 \cdot 1 - 0.45}{1} = 0.10
+$$
+
+Full Kelly says stake 10% of your capital on each such bet. That is an enormous bet — far larger than the 1–2% a fixed-fractional trader would use. Kelly maximizes growth, but it does so by accepting brutal volatility: full-Kelly equity curves routinely suffer 50% drawdowns even when the edge is real.
+
+## The continuous form
+
+For a continuously-compounded return with excess mean $\mu$ and variance $\sigma^2$, the optimal leverage is:
+
+$$
+f^* = \frac{\mu}{\sigma^2}
+$$
+
+This is the version that connects Kelly to portfolio theory: it is essentially a Sharpe-ratio-driven leverage. A higher mean edge raises the bet; higher variance lowers it sharply (note the *square* in the denominator). It is the continuous twin of the discrete formula.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Imagine running full Kelly through the drawdowns on this chart. The growth is optimal in theory, but the equity swings are large enough that most humans abandon the system at the worst possible moment.
+
+## Common pitfalls
+
+<Pitfall title="Full Kelly assumes you KNOW the edge">
+The formula takes $p$, $b$, $\mu$, and $\sigma$ as known constants. In reality you *estimate* them from noisy data, and estimation error is asymmetric: overestimating your edge makes you over-bet, and over-betting past the Kelly fraction reduces growth and can even turn a winning system into a losing one. Because your edge estimate is almost always too optimistic, full Kelly systematically over-bets. The practical fix is fractional Kelly — bet half (or a quarter) of $f^*$. Half-Kelly captures about three-quarters of the growth with roughly half the volatility, and it is far more forgiving of estimation error.
+</Pitfall>
+
+<KeyPoint title="Use fractional Kelly">
+Kelly gives the growth-optimal bet size, but full Kelly is wildly volatile and assumes a perfectly known edge. Since edges are estimated and usually overstated, bet a fraction (commonly half) of $f^*$ — you sacrifice little growth and gain large protection against over-betting.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-03-kelly-criterion-q1" question="A bet wins 60% of the time at even odds (b = 1). What is the full-Kelly fraction?" options={["0.10","0.20","0.40","0.60"]} answer={1} explanation="f* = (p·b − q)/b = (0.6·1 − 0.4)/1 = 0.20, so full Kelly stakes 20% of capital." />
+
+<Quiz id="F-03-kelly-criterion-q2" question="Why do practitioners usually bet a fraction of the Kelly amount rather than full Kelly?" options={["Because brokers cap leverage at half Kelly.","Because full Kelly always loses money.","Because the edge is estimated with error and full Kelly over-bets, producing extreme volatility; fractional Kelly keeps most of the growth with far less risk.","Because fractional Kelly grows capital faster than full Kelly."]} answer={2} explanation="The inputs are noisy estimates that tend to be optimistic, so full Kelly over-bets. Half-Kelly keeps roughly three-quarters of the growth at about half the volatility and tolerates estimation error." />

@@ -1,0 +1,66 @@
+# Writing a strategy spec: your pre-commitment device
+
+You have validated and stressed an idea. Now write it down — completely, before you trade it. A strategy spec is a short document that fixes, in advance, what the strategy is and how it is allowed to behave. It feels like paperwork. It is actually the single cheapest insurance against the most expensive mistake in trading: silently changing your strategy after a loss and calling it discretion.
+
+## What goes in the spec
+
+A good spec is one page and answers every question your future, frightened self will ask. The essential fields:
+
+- **Hypothesis** — one sentence on *why* this should make money, with an economic rationale. Not 'the backtest is good' but 'momentum persists because investors underreact to news.'
+- **Universe** — exactly which instruments, and the rule for inclusion (liquidity filter, point-in-time membership).
+- **Signals** — the precise entry and exit logic, with parameter values.
+- **Sizing** — how big each position is, and the total leverage cap.
+- **Risk limits** — per-trade stop, max position, max portfolio drawdown before you halt.
+- **Costs assumed** — the commission and slippage you backtested with, so live results can be compared honestly.
+- **Expected behavior by regime** — from your robustness work (H-07): when should this win, when should it struggle?
+- **Kill-criteria** — the specific, pre-agreed conditions under which you stop trading it.
+
+## The expected-return line
+
+The spec should carry one explicit number you commit to: the net expected return per trade. If $p$ is win probability, $W$ the average win and $L$ the average loss (both positive), and $c$ the round-trip cost, then per trade you expect:
+
+$$
+\mathbb{E}[r] = p \cdot W - (1 - p) \cdot L - c
+$$
+
+Writing this down forces honesty. If $\mathbb{E}[r]$ is only barely positive and $c$ is a guess, you now know exactly which assumption your whole strategy is leaning on.
+
+<KeyPoint title="The spec is a contract with your future self">Write it before you trade, sign it, and do not edit it mid-drawdown. Changes are allowed — but only as a new dated version, reviewed in calm, never as a panicked tweak.</KeyPoint>
+
+## Kill-criteria deserve their own paragraph
+
+Most blowups are not a single bad trade; they are a strategy that stopped working while the trader kept feeding it, hoping. Kill-criteria remove the hope. State them numerically: 'halt if rolling 3-month return is below $-X\%$', or 'halt if realized volatility exceeds $2\times$ the backtested level', or 'halt if drawdown breaches the worst-case from H-08.' Decide these in calm, because you cannot decide them in fear.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Picture your kill-line drawn across that equity curve in advance. When price approaches it, the decision is already made — you are executing a plan, not improvising under stress.
+
+## Expected behavior by regime
+
+Pull this straight from your regime breakdown. If the spec says 'this trend strategy is expected to lose modestly in choppy, range-bound markets,' then a losing month in a chop regime is the strategy working as designed — not a signal to intervene. Writing expected behavior down converts scary surprises into anticipated, tolerated outcomes.
+
+<Pitfall title="Strategy drift">
+An un-written strategy is one you will silently change after a drawdown — loosening a stop here, skipping a signal there — until it is no longer the thing you tested. This is strategy drift, and it is invisible precisely because nothing was written down to violate. The spec is your pre-commitment device: it makes drift visible, because any change is now a measurable departure from a document you signed.
+</Pitfall>
+
+## Next step
+
+With a spec in hand you can do something powerful: hand it to an adversarial reviewer and ask them to break it. That is exactly the next lesson, H-10, where you use the platform's AI deep review to red-team the strategy you just specified.
+
+## Check yourself
+
+<Quiz
+  id="H-09-strategy-spec-q1"
+  question="What is the primary purpose of writing kill-criteria into your spec before trading?"
+  options={['To satisfy a compliance form', 'To pre-commit, in calm, to the conditions for stopping — so you do not rely on hope during a drawdown', 'To increase the backtested Sharpe', 'To guarantee the strategy never loses']}
+  answer={1}
+  explanation="Kill-criteria are decided in calm because they cannot be decided in fear. They remove the temptation to keep feeding a dead strategy out of hope, turning the stop decision into the execution of a pre-made plan."
+/>
+
+<Quiz
+  id="H-09-strategy-spec-q2"
+  question="A spec field reads: 'expected to lose modestly in choppy, range-bound markets.' During a chop regime the strategy has a losing month. What does the spec tell you to do?"
+  options={['Immediately stop the strategy', 'Recognize this as the strategy working as designed, not a reason to intervene', 'Double the position size to recover', 'Delete the spec']}
+  answer={1}
+  explanation="Writing expected behavior by regime converts a scary surprise into an anticipated outcome. A losing month in the regime where you predicted losses is the strategy behaving as specified, not a malfunction requiring intervention."
+/>

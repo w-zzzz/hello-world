@@ -1,0 +1,60 @@
+# AI deep review: red-team your own strategy
+
+You wrote a spec (H-09). You believe in it — which is precisely the problem. The hardest bias to see is your own, because the strategy you built is the strategy you want to be right. This lesson is about using the platform's AI tutor, via the deep review CTA, as an adversary you point at your own work. Used well, it finds the lookahead you missed, the parameter you overfit, and the assumption you never tested. Used badly, it becomes a very articulate yes-man.
+
+## The deep review CTA
+
+After a backtest in the `/workshop`, the deep review button hands your code, your spec, and your tearsheet to the AI tutor. It already sees the full curriculum context, so it can reason about your strategy in the language of the concepts you just learned — lookahead, IS/OOS, deflated Sharpe. The point is not to ask it 'is this good?' The point is to make it argue against you.
+
+## Prompt it adversarially
+
+The framing of your question decides the answer you get. A leading prompt produces flattery; an adversarial prompt produces findings. Compare:
+
+- Weak: 'Is my strategy good?' — invites confirmation.
+- Strong: 'Find three ways this backtest lies to me.' — invites attack.
+
+Other strong prompts: 'Where could lookahead bias enter this code?', 'Which single parameter, if I had not gotten lucky, would kill this edge?', 'What assumption am I making about fills, costs, or liquidity that I never tested?' Each forces the model to generate a specific, checkable claim rather than a vibe.
+
+<KeyPoint title="Ask for attacks, not approval">The quality of an AI review is bounded by the adversarial-ness of your prompt. Demand specific failure modes — 'find the lookahead', 'name the overfit param' — not a verdict.</KeyPoint>
+
+## Why leading questions corrupt the review
+
+A language model is a cooperative next-token predictor; it leans toward the answer your prompt makes most probable. Think of the review's usefulness $U$ as scaling with how adversarial the prompt is:
+
+$$
+U \approx A \cdot V
+$$
+
+where $A$ is the adversarial-ness of your framing and $V$ is the fraction of claims you independently verify. A leading prompt drives $A \to 0$; skipping verification drives $V \to 0$. Either way the product collapses and the review is worthless however confident it sounded.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Verify every claim yourself
+
+The AI will sometimes be right, sometimes confidently wrong, and you cannot tell which from tone alone. So treat each finding as a hypothesis to test, not a fact to accept. If it says 'line 14 uses the close of the same bar you trade on — that is lookahead,' go to line 14 and check. If it says 'your Sharpe is inflated by survivorship,' re-run on a point-in-time universe and measure. A claim you verified is worth a hundred you merely nodded at.
+
+<Pitfall title="The articulate yes-man">
+AI will happily confirm your biases if you ask leading questions — it is trained to be helpful, and 'helpful' often reads as 'agreeable.' Ask 'isn't this a great Sharpe?' and you will hear yes. Prompt it adversarially instead ('find three ways this backtest lies to me'), and then verify its claims yourself, because it can be fluently, persuasively wrong. An unverified AI review that agrees with you is not validation; it is your own bias wearing a lab coat.
+</Pitfall>
+
+## Fold findings back into the spec
+
+A deep review is not a one-off. Each verified finding should change something concrete: a fixed lookahead bug, a widened cost assumption, a new kill-criterion, a note that a parameter is fragile. Update the spec, re-run, and review again. Two or three honest adversarial passes will catch most of the ways a backtest fools its author — which is the entire job heading into the graduation project (H-12).
+
+## Check yourself
+
+<Quiz
+  id="H-10-ai-deep-review-q1"
+  question="Which prompt is most likely to produce a useful AI deep review of your strategy?"
+  options={["Isn't this a great Sharpe ratio?", 'Find three ways this backtest lies to me', 'Confirm my strategy is ready to ship', 'Tell me why my edge is real']}
+  answer={1}
+  explanation="An adversarial prompt forces the model to generate specific, checkable failure modes. Leading prompts that invite agreement turn a cooperative model into a yes-man that confirms your existing biases."
+/>
+
+<Quiz
+  id="H-10-ai-deep-review-q2"
+  question="The AI confidently states that line 14 introduces lookahead bias. What is the correct response?"
+  options={['Accept it and rewrite immediately on faith', 'Go to line 14 and verify the claim yourself before acting', 'Ignore it because AI is often wrong', 'Ask the AI if it is sure']}
+  answer={1}
+  explanation="An AI can be fluently and confidently wrong. Every finding is a hypothesis to verify, not a fact to accept. Checking line 14 yourself is the only way to know whether the claim is real, regardless of how confident the tone was."
+/>

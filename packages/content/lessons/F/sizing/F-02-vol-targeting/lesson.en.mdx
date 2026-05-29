@@ -1,0 +1,49 @@
+# Volatility targeting
+
+Fixed-fractional sizing controls the loss on a single trade. Volatility targeting controls the *risk of the whole portfolio over time*. The idea: instead of holding a fixed number of shares, hold a position whose size moves inversely with how volatile the asset currently is, so that the portfolio's realized volatility stays near a constant target. When the market is calm you hold more; when it is wild you hold less.
+
+This lesson teaches the scaling rule, shows how to estimate volatility, and warns about the two ways vol targeting bites back.
+
+## The scaling rule
+
+Pick an annualized volatility target $\sigma_{\text{target}}$ — say 10% or 15%. Estimate the asset's current volatility $\sigma_t$. The portfolio weight (fraction of capital, leverage allowed) is the ratio:
+
+$$
+w_t = \frac{\sigma_{\text{target}}}{\sigma_t}
+$$
+
+If the asset's vol equals your target, you hold 100%. If the asset is twice as volatile as your target, you hold 50% — half-sized, because each dollar now carries twice the risk. If the asset is half as volatile, the rule asks you to hold 200%, i.e. 2x leverage, to bring the risk back up to target.
+
+## Estimating current volatility
+
+You need a number for $\sigma_t$. A common choice is the rolling standard deviation of daily returns over a window (e.g. 20 or 60 days), annualized:
+
+$$
+\sigma_t = \sqrt{252}\;\cdot\;\text{stdev}(r_{t-n+1},\dots,r_t)
+$$
+
+The $\sqrt{252}$ scales a daily standard deviation up to an annual one (252 trading days). Some desks instead use an exponentially weighted estimate or ATR (see Track B, B-17) as a proxy for $\sigma_t$ — the point of this lesson is not how you measure vol but what you *do* with it: divide the target by it.
+
+## Why it stabilizes risk
+
+A naive buy-and-hold portfolio has volatility that swings wildly: placid for years, then terrifying in a crisis. By shrinking exposure exactly when $\sigma_t$ rises, vol targeting flattens that profile. The realized risk you actually experience hugs the target instead of being whatever the market hands you. This makes drawdowns more uniform and leverage decisions explicit rather than accidental.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On the chart, find the high-volatility cluster around a sell-off. A vol-targeting rule would already be cutting size into that cluster — but, as the pitfall explains, not as fast as you would like.
+
+## Common pitfalls
+
+<Pitfall title="Vol estimates lag, and low vol invites over-leverage">
+Two traps. First, your $\sigma_t$ is backward-looking: it only rises *after* volatility has already spiked, so in a sudden vol explosion you are already over-exposed before the rule can de-lever you — the de-leveraging arrives a step late, into a falling market. Second, when realized vol is unusually low, $\sigma_{\text{target}}/\sigma_t$ can balloon into large leverage; a calm market that suddenly breaks then hits an over-levered book. Always cap the maximum leverage the rule may request, and treat the estimate as a lagging signal, not a live one.
+</Pitfall>
+
+<KeyPoint title="Target the risk, let size follow">
+Volatility targeting sets a constant risk budget and lets position size float as $\sigma_{\text{target}}/\sigma_t$. It stabilizes portfolio volatility, but the estimate lags reality — cap the leverage and expect the de-lever to be late in a spike.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-02-vol-targeting-q1" question="Your target volatility is 12% and the asset's estimated volatility is 24%. What weight does the rule prescribe?" options={["200% (2x leverage)","100% (fully invested)","50% (half-sized)","12%"]} answer={2} explanation="w = σ_target / σ_t = 12% / 24% = 0.5, so hold a half-sized position because the asset is twice as volatile as the target." />
+
+<Quiz id="F-02-vol-targeting-q2" question="Why can volatility targeting leave you over-exposed at the start of a crash?" options={["Because the target is set too high by default.","Because the volatility estimate is backward-looking and only rises after the spike has begun.","Because leverage is never allowed in the rule.","Because crashes always start in low-volume periods."]} answer={1} explanation="σ_t is computed from past returns, so it reacts after volatility jumps. The de-leveraging therefore arrives a step late, into an already-falling market." />

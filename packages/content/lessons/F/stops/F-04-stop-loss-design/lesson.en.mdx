@@ -1,0 +1,47 @@
+# Stop-loss design
+
+A stop-loss is the price at which you admit a trade is wrong and exit. It is the denominator in your position-sizing formula (recall F-01: shares scale with the stop distance), so where you place it does double duty — it defines your risk *and* your size. Designing stops well is therefore not a detail; it is half of risk management.
+
+This lesson covers the three main families of stop placement, the trade-off between them, and the painful ways stops fail in live markets.
+
+## Three families of stops
+
+**Fixed-percentage stops** place the exit a constant percentage below entry — say 5%. Simple and predictable, but blind to how volatile the asset is. A 5% stop is far too tight for a meme stock and absurdly wide for a Treasury ETF.
+
+**ATR-based stops** scale the stop to recent volatility. Using the Average True Range from Track B (B-17) as a volatility unit, you place the stop a multiple of ATR away. This adapts automatically: wider in turbulent markets, tighter in calm ones, so the *probability* of a random stop-out stays roughly constant across regimes.
+
+**Structural stops** place the exit just beyond a level the chart itself defines — below a support shelf, under a swing low, beneath a moving average. The logic is qualitative: if price breaks that level, the reason you entered is invalidated.
+
+## Sizing follows the stop
+
+Whatever family you choose, the stop distance feeds straight back into sizing:
+
+$$
+\text{shares} = \frac{f \cdot \text{equity}}{\text{ATR multiple} \times \text{ATR}}
+$$
+
+Here the per-share risk is an ATR-based distance rather than a flat dollar amount. A wider stop (bigger ATR or multiple) gives a smaller position; a tighter stop gives a larger one — for the same fixed-fractional risk budget. Stop placement and position size are two views of one decision.
+
+## Choosing a multiple
+
+A common starting point is a 2× to 3× ATR stop for swing trades. Too small a multiple and normal noise stops you out; too large and each loss is bigger, forcing a smaller position that may be too small to matter. The right multiple balances *staying in the trade through noise* against *keeping each loss survivable*.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On the chart, locate a clear swing low. A structural stop would sit just under it; an ATR stop would sit a volatility-scaled distance below entry. Notice how the two can disagree, and which one you would have trusted.
+
+## Common pitfalls
+
+<Pitfall title="Stops get noise-ed out, hunted, and filled at the worst price">
+Three failure modes. Stops placed too *tight* get triggered by ordinary intraday noise — whipsaw — kicking you out right before the move you wanted. Stops parked at 'obvious' round numbers (\$100, a prior low to the penny) cluster where everyone else's sit, and liquidity-seeking participants push price into those zones to trigger them — stop hunting. And a stop is a market order that fires precisely when liquidity is worst, so the fill can be well beyond your level in a fast market. Place stops at volatility- or structure-aware distances, not round numbers, and size assuming some slippage past the stop.
+</Pitfall>
+
+<KeyPoint title="The stop defines both risk and size">
+Fixed-percentage, ATR-based, and structural stops each answer 'where is my thesis wrong?' differently. ATR adapts to regime; structural respects the chart. Whatever you choose, the stop distance drives position size — and stops fail by being too tight, too obvious, or filled in thin liquidity.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-04-stop-loss-design-q1" question="What is the main advantage of an ATR-based stop over a fixed-percentage stop?" options={["It guarantees you are never stopped out.","It scales the stop distance to current volatility, keeping the chance of a random stop-out roughly constant across regimes.","It always produces a tighter stop.","It removes the need for position sizing."]} answer={1} explanation="ATR is a volatility unit, so an ATR-multiple stop widens in turbulent markets and tightens in calm ones, stabilizing the probability of a noise-driven stop-out." />
+
+<Quiz id="F-04-stop-loss-design-q2" question="Why is placing a stop exactly at a well-known round number risky?" options={["Round numbers are illegal stop levels on most exchanges.","Stops cluster there, and liquidity-seeking participants can push price into the zone to trigger them (stop hunting).","Round numbers always have zero volatility.","Brokers charge extra to execute round-number stops."]} answer={1} explanation="Obvious levels concentrate many stops in one spot. That visible liquidity attracts participants who drive price into the cluster to trigger the stops, then trade the other way." />

@@ -1,0 +1,52 @@
+# Event-driven strategies
+
+Most strategies in this track trade *prices*. Event-driven strategies trade *catalysts* — scheduled or announced corporate events that predictably move a stock: earnings reports, mergers and acquisitions, index additions and deletions, spin-offs, buybacks. The bet is that around a known event, prices behave in a statistically biased way you can position for in advance.
+
+The appeal is a clear cause. Unlike a vague trend, an earnings date is on the calendar; an index rebalance is announced weeks ahead. The catch, which we will keep returning to, is that the obvious events are crowded and the data tempts you into mining a calendar full of false patterns.
+
+## Four families of events
+
+- **Earnings.** A company reports quarterly results. The price gaps on the surprise versus consensus, then often *drifts* in the same direction for weeks — the famous post-earnings-announcement drift (PEAD).
+- **Mergers & acquisitions.** When an acquirer bids for a target, the target trades at a discount to the offer price. Merger arbitrage captures that spread, bearing the risk the deal breaks.
+- **Index rebalances.** When a stock is added to the S&P 500, index funds *must* buy it, creating predictable demand around the effective date. Front-running this flow is a classic event trade — now heavily arbitraged.
+- **Other corporate actions.** Spin-offs, buybacks, dividend changes, lock-up expiries — each has a known date and a documented average reaction.
+
+## Post-earnings-announcement drift
+
+PEAD is the most studied event anomaly. Define the standardized surprise:
+
+$$
+\text{SUE} = \frac{E_{\text{actual}} - E_{\text{expected}}}{\sigma_E}
+$$
+
+where $E$ is earnings and $\sigma_E$ is the dispersion of estimates. Stocks in the top SUE bucket tend to keep outperforming stocks in the bottom bucket for roughly 60 trading days after the announcement. The market appears to under-react to the surprise and correct slowly — a violation of strict efficiency that has persisted, though it has weakened as more capital chases it.
+
+## Sizing around the event window
+
+Event trades live in a narrow window. You measure the abnormal return — the stock's return minus what its factor model predicts — accumulated over the event window:
+
+$$
+\text{CAR} = \sum_{t=t_0}^{t_1} \left( r_{i,t} - \hat{r}_{i,t} \right)
+$$
+
+A positive average CAR across many similar events is the historical evidence for an edge. The window matters: too tight and you miss the drift; too wide and unrelated noise drowns the signal.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On a broad index like SPY, individual event effects wash out — the index is a blend of thousands of catalysts. Event strategies live at the single-name level, where one earnings gap can dominate the day.
+
+## The two hard problems
+
+<Pitfall title="Sparse events and multiple-testing bias">
+Events are sparse: a given stock reports earnings four times a year, and the clean, liquid setups are already arbitraged by funds with faster data feeds. Worse, if you mine a calendar of dozens of event types across thousands of stocks, you *will* find some that backtest beautifully purely by chance. With enough events tested, spurious winners are guaranteed. Pre-register your hypothesis, count every test you ran, and demand the edge survives out-of-sample before you believe it.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Event-driven trading positions for predictable price behavior around known catalysts — earnings (PEAD), M&A spreads, index rebalances. The edge is real but sparse, crowded, and dangerously easy to fabricate through multiple testing. Cause is clear; statistical discipline is everything.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-10-event-driven-q1" question="What does post-earnings-announcement drift (PEAD) describe?" options={["Prices fully and instantly reflect earnings surprises.","Stocks with large positive earnings surprises tend to keep outperforming for weeks after the report.","Earnings always reverse the next day.","Drift only happens before earnings, never after."]} answer={1} explanation="PEAD is the empirical tendency for high-surprise stocks to continue outperforming for roughly 60 days post-announcement — a slow market under-reaction." />
+
+<Quiz id="E-10-event-driven-q2" question="Why is multiple-testing bias a central danger in event-driven research?" options={["There are too few stocks to test on.","Testing many event types across many stocks guarantees some spurious winners by chance alone.","Events are too frequent to backtest.","Backtests of events are always pessimistic."]} answer={1} explanation="With dozens of event types times thousands of names, some patterns will backtest well purely by luck. Without counting your tests and validating out-of-sample, you mistake noise for an edge." />

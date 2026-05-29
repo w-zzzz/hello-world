@@ -1,0 +1,41 @@
+# Drift & rebalance workshop
+
+Time to put the rebalancing module together. In this worked example we start from a classic 60/40 portfolio, let it drift through a market move, and compare two rebalancing policies — calendar versus band — on the two things that matter: cost and risk. The goal is to build intuition you can carry into a real backtest on the `/workshop` page.
+
+## The setup: 60/40 drifting
+
+We begin with 60% in equities (think SPY) and 40% in bonds. Suppose over a quarter equities return +20% while bonds return 0%. Starting from \$60 equity and \$40 bond per \$100, the equity sleeve grows to \$72 and bonds stay at \$40, for a total of \$112. The new weights are:
+
+$$
+w_{\text{eq}} = \frac{72}{112} \approx 64.3\%, \qquad w_{\text{bond}} = \frac{40}{112} \approx 35.7\%
+$$
+
+The book has drifted from 60/40 to roughly 64/36. Because equities are riskier than bonds, the portfolio is now carrying *more* risk than the 60/40 design intended — a 4.3-point overweight in the riskier sleeve.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## Policy A: calendar rebalancing
+
+Under quarterly calendar rebalancing, at quarter-end we trade back to exactly 60/40 regardless of how far we drifted. We sell \$3.80 of equities (to bring \$72 down to 60% of \$112 = \$67.20) and buy \$3.80 of bonds. The turnover this period is about $2 \times 3.4\% \approx 6.8\%$ of the book. We pay cost on every scheduled date, even quarters where drift was tiny.
+
+## Policy B: band rebalancing
+
+Under a $\pm 5$-point band around the 60% equity target, we rebalance only if the equity weight leaves the 55%-65% range. Our drift to 64.3% stays *inside* the band, so policy B does **nothing** this quarter — zero turnover, zero cost. It only trades in quarters where the move is large enough to breach 65% (or 55%). Over many quarters, band rebalancing typically trades less often and at lower total cost, while keeping risk within a controlled corridor rather than exactly on target.
+
+## Comparing the two
+
+Neither policy is universally better. Calendar rebalancing holds risk tightly on target but pays cost on a fixed schedule. Band rebalancing pays less and trades less, but tolerates drift within the band, so realized risk wanders inside the corridor. The right choice depends on your transaction costs and how much risk drift you can stomach — the exact trade-off from the rebalance-frequency lesson, now made concrete. Run both on the `/workshop` page with your own assets and costs to see which wins for your situation.
+
+<Pitfall title="Do not read these numbers as a recommendation">
+This 60/40, +20% equity, ±5% band example is a teaching scaffold, not advice. The specific weights, drift, and which policy 'wins' are entirely artifacts of these made-up numbers. Real markets have multi-asset drift, changing volatility, and your own cost structure. Use the workshop to test your own scenario, not to memorize this one.
+</Pitfall>
+
+<KeyPoint title="Cost versus risk, made concrete">
+A drifting 60/40 book shows the trade-off directly: calendar rebalancing trades on schedule and holds risk on target; band rebalancing trades only on breach, paying less but tolerating in-band drift. The winner depends on your costs and risk tolerance — verify it in the workshop, do not assume.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-09-drift-rebalance-workshop-q1" question="A 60/40 book drifts to 64/36 after equities rally. Under a ±5-point band around the 60% equity target, what does the band policy do?" options={["Immediately rebalance back to 60/40","Nothing — 64% is still inside the 55%-65% band","Sell all equities","Switch to calendar rebalancing"]} answer={1} explanation="The equity weight of 64% is still within the 55%-65% band, so band rebalancing does not trade. It only acts when the weight breaches the band edge." />
+
+<Quiz id="G-09-drift-rebalance-workshop-q2" question="What is the right way to interpret the specific numbers in this workshop?" options={["As a recommended allocation to follow","As a teaching scaffold — test your own scenario in the workshop rather than memorizing these figures","As proof that band rebalancing always wins","As proof that calendar rebalancing always wins"]} answer={1} explanation="The numbers illustrate the cost-versus-risk trade-off but are artifacts of made-up assumptions. The right move is to test your own assets and costs in the workshop." />

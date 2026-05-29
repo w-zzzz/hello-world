@@ -1,0 +1,54 @@
+# Adding realistic costs
+
+Your gross prototype looked promising. Now comes the stage that kills most strategies — and is supposed to. Trading is not free. Every entry and exit pays a spread, a commission, sometimes a borrow fee, and on size, market impact. The only number that matters for shipping is the edge *after* all of it. This lesson layers in the four cost components and shows why net evaluation is the rule, not a refinement.
+
+## The four costs
+
+A realistic backtest charges your strategy on every fill:
+
+- **Commissions** — the broker's per-trade or per-share fee. Small per trade, but it scales with how often you trade.
+- **Slippage** — the gap between the price you saw and the price you got, driven mostly by the bid-ask spread.
+- **Borrow cost** — to hold a short, you rent the shares; hard-to-borrow names can cost more in fees than the trade makes.
+- **Market impact** — your own order pushes the price against you, and the impact grows with size relative to liquidity.
+
+The first two hit every strategy. The third hits shorts. The fourth hits anyone trading meaningful size — and it is the one backtests most often ignore.
+
+## Net return, written down
+
+Per round-trip trade, the net return is the gross move minus everything you paid to capture it. With cost rate $c$ (spread plus commission, as a fraction of notional) charged on entry and exit, and turnover $T$ (the fraction of the portfolio traded per period):
+
+$$
+r^{\text{net}}_t = r^{\text{gross}}_t - c \cdot T_t
+$$
+
+The lesson hiding in that equation is **turnover**. A small per-trade cost, multiplied by frequent trading, becomes a large drag. A strategy that turns over its whole book every day pays $c$ roughly every day — costs that a monthly rebalancer pays once.
+
+<KeyPoint title="Costs scale with turnover, not cleverness">A tiny per-trade cost is harmless to a slow strategy and lethal to a fast one. Always pair your cost assumption with your turnover before judging net edge.</KeyPoint>
+
+## Modeling impact honestly
+
+Commissions and spread are roughly fixed rates. Market impact is not — it grows with how aggressively you trade relative to available liquidity. A common shape is square-root impact: the cost of trading a quantity $Q$ against average daily volume $\text{ADV}$ scales like
+
+$$
+\text{impact} \approx k \cdot \sigma \cdot \sqrt{\frac{Q}{\text{ADV}}}
+$$
+
+where $\sigma$ is volatility and $k$ a constant. The takeaway is not the formula but the shape: doubling your size more than doubles per-share impact-adjusted cost. This is exactly why H-02 told you to size the universe to liquidity — impact and universe choice are the same decision viewed twice.
+
+## Gross-positive, net-negative is normal
+
+<Pitfall title="Net is the only number that ships">
+For high-turnover ideas, a strategy that is profitable gross and negative net is the rule, not the exception. The signal can be genuinely predictive and the strategy still lose money, because the edge per trade is smaller than the cost per trade. Never report, celebrate, or ship a gross number. Charge realistic commissions, spread, borrow, and impact in the [workshop](/en/workshop), and look only at the net equity curve. If the edge survives costs, you have something. If it only survives because you forgot to charge them, you have a bill waiting in live trading.
+</Pitfall>
+
+## Watch costs eat the edge
+
+The same SPY chart you used to sanity-check gross returns is where you now watch costs bite. A signal that traded a few times a year on a name this liquid pays almost nothing; the same signal trading daily on a thin name can hand its entire gross edge to the spread.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Check yourself
+
+<Quiz id="H-05-realistic-costs-q1" question="Why does turnover matter so much for net returns?" options={['Higher turnover always means higher returns.', 'Per-trade costs are paid every time you trade, so frequent trading multiplies a small cost into a large drag.', 'Turnover only affects taxes, not costs.', 'Turnover has no effect once commissions are zero.']} answer={1} explanation="Net return subtracts cost times turnover. A small per-trade cost is harmless to a slow strategy but lethal to one that retrades constantly, because the cost is incurred on every transaction." />
+
+<Quiz id="H-05-realistic-costs-q2" question="Your strategy is clearly profitable gross but slightly negative after realistic costs. What should you conclude?" options={['Ship the gross version; costs are pessimistic.', 'This is common for high-turnover ideas — only the net result counts, and as it stands the edge does not survive costs.', 'Costs are a modeling error and should be removed.', 'Add leverage to overcome the costs.']} answer={1} explanation="Gross-positive, net-negative is typical when edge per trade is smaller than cost per trade. Only the net number is shippable; here the strategy does not yet clear its own costs." />

@@ -1,0 +1,61 @@
+# Pairs trading
+
+Trend following bets that moves continue. Pairs trading bets the opposite: that two related assets which have drifted apart will be pulled back together. It is the classic market-neutral mean-reversion strategy — you are long one name and short another, so the broad market's direction roughly cancels out and you profit from the *relationship* between the two, not from where the market goes.
+
+The hard part is not the trade mechanics; it is deciding which pairs are genuinely tethered and recognizing when that tether has snapped.
+
+## Cointegration: the right kind of "moving together"
+
+Two stocks being correlated is not enough. Correlation measures whether returns move together day to day; it says nothing about whether the *prices* stay close. Two assets can be highly correlated and still wander arbitrarily far apart.
+
+What you actually need is **cointegration**: a linear combination of the two price series that is stationary — it has a stable mean and reverts to it. If $y_t$ and $x_t$ are the two prices, you estimate a hedge ratio $\beta$ (typically by regressing $y$ on $x$) and form the **spread**:
+
+$$
+s_t = y_t - \beta x_t
+$$
+
+If the pair is cointegrated, $s_t$ oscillates around a constant mean rather than drifting. That stationary spread is the tradable object.
+
+## The z-score: entry and exit on the spread
+
+You do not trade the spread in raw price units; you standardize it. Using a rolling mean $\mu$ and standard deviation $\sigma$ of the spread:
+
+$$
+z_t = \frac{s_t - \mu}{\sigma}
+$$
+
+A typical rule set:
+
+- **Entry:** when $z_t > +2$, the spread is stretched high → short $y$, long $\beta$ units of $x$. When $z_t < -2$, do the reverse.
+- **Exit:** close when $z_t$ returns toward $0$ (the spread has reverted).
+- **Stop:** bail out if $|z_t|$ keeps widening past, say, $3$ or $4$ — a sign the relationship may have broken.
+
+You are systematically betting that extreme dislocations in the spread are temporary.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Half-life: how long until reversion?
+
+Knowing a spread reverts is useless if it takes ten years. Model the spread as a mean-reverting (Ornstein–Uhlenbeck) process; the speed of reversion $\lambda$ gives a **half-life** — the expected time for a deviation to shrink by half:
+
+$$
+t_{1/2} = \frac{\ln 2}{\lambda}
+$$
+
+The half-life tells you whether the pair is tradable on your horizon and helps size the rolling window for $\mu$ and $\sigma$. A half-life of a few days suits an intraday or daily trader; a half-life of a year is effectively a buy-and-hold bet on convergence.
+
+## When the tether snaps
+
+<Pitfall title="Cointegration is not a law of nature — it breaks">
+The fatal risk in pairs trading is a structural break: the relationship that mean-reverted for years simply stops. A spread you are short at $z = +2$, expecting reversion, can instead diverge permanently. The textbook killer is a corporate event — one company in the pair gets acquired, changes its business, or goes bankrupt — and the prices that tracked each other for a decade detach forever. Your "mean-reverting" short now bleeds without bound. Always cap the loss with a stop on $|z|$, and re-test cointegration on a rolling basis rather than assuming yesterday's relationship still holds.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Pairs trading is market-neutral mean reversion on a *cointegrated* spread $s_t = y_t - \beta x_t$, traded by z-score and timed by half-life. The edge depends entirely on the spread staying stationary — and your survival depends on a stop for when it doesn't.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-04-pairs-trading-q1" question="Why is correlation insufficient to choose a pair, while cointegration is the right test?" options={['Correlation is harder to compute than cointegration','Correlation measures co-movement of returns but allows prices to drift arbitrarily far apart; cointegration guarantees a stationary, mean-reverting spread','Cointegration only applies to stocks in the same sector','Correlation can never be negative']} answer={1} explanation="Two assets can be highly correlated in returns yet have prices that wander far apart. Cointegration ensures a linear combination of the prices is stationary and reverts to a stable mean, which is what a pairs trade needs." />
+
+<Quiz id="E-04-pairs-trading-q2" question="You are short a spread at z = +2 expecting reversion, but one company in the pair gets acquired and the spread diverges permanently. What does this illustrate?" options={['That z-scores should be calculated on returns instead','That cointegration relationships can break from structural change, so a stop on |z| is essential','That the half-life was too short','That correlation was too high']} answer={1} explanation="A structural break (like an acquisition) can permanently detach a previously cointegrated pair. The mean-reversion assumption fails, the spread diverges without bound, and only a stop on |z| caps the loss." />

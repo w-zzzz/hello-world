@@ -1,0 +1,46 @@
+# Track F review: a risk checklist
+
+You now have the full risk toolkit. This lesson stitches the seven preceding lessons into one workflow you can run before every trade and every portfolio decision. The unifying theme is blunt: risk management is not a feature you add to a signal — it is the core of the system. A mediocre signal with disciplined risk control survives and compounds; a brilliant signal with sloppy sizing eventually blows up.
+
+## The checklist
+
+Walk these six steps in order. Each links back to a lesson in this track.
+
+1. **Size for survival (F-06).** Before optimizing returns, confirm your bet size leaves enough units to the ruin threshold that an unlucky streak cannot end you. Survival is the precondition for everything else.
+2. **Risk a fixed fraction per trade (F-01).** Cap the loss on any single trade at a small fraction of current equity, and derive share count from the stop distance — not from how much you want to deploy.
+3. **Target portfolio volatility (F-02).** Scale exposure inversely to current volatility so realized risk hugs a target, but cap the leverage and remember the estimate lags in a spike.
+4. **Bet a fraction of Kelly, not full (F-03).** Use the edge to inform aggressiveness, then halve it — estimation error means full Kelly over-bets.
+5. **Place structural, volatility-aware stops, and protect the right tail (F-04, F-05).** Put stops where the thesis is wrong, not on round numbers; trail loosely enough to let winners run.
+6. **Manage portfolio heat and respect correlation (F-07).** Cap total open risk, and count correlated positions as partly one bet because correlations go to 1 in a crash.
+
+## One number ties it together
+
+Every step above ultimately constrains the same quantity — the fraction of equity at risk. Whether expressed as per-trade risk $f$, portfolio heat $H$, or units-to-ruin $u$, the survival condition is the same idea:
+
+$$
+H = \sum_{i=1}^{n} r_i \;\le\; H_{\max}
+$$
+
+Keep effective heat under a cap you chose in advance, with correlation folded into the $r_i$, and no single decision in the list above can quietly take the whole account down.
+
+## Putting it on a chart
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Pick any drawdown on this chart and run the checklist against it. Was your size small enough to survive the streak (F-06)? Did portfolio heat stay capped as correlations rose (F-07)? Were stops loose enough to avoid whipsaw but tight enough to bound the loss (F-04)? The checklist is most valuable applied to the days that hurt.
+
+## Common pitfalls
+
+<Pitfall title="Treating risk as an afterthought bolted onto a signal">
+The single most common failure in retail and even professional trading is building a signal first, trading it, and only *then* thinking about sizing and stops — as if risk were a garnish. It is the opposite. The risk rules in this track determine whether your edge ever gets a chance to compound; the signal only determines the direction. A modest edge with the checklist above will outlast a strong edge run with no sizing discipline, because the undisciplined account hits ruin before the edge pays off. Design the risk layer first, then fit the signal inside it.
+</Pitfall>
+
+<KeyPoint title="Risk management is the system, not the garnish">
+Run the six-step checklist on every decision: size for survival, fixed-fractional per trade, target vol, fractional Kelly, structural stops protecting the right tail, and correlation-aware portfolio heat. The unifying constraint is keeping effective heat under a pre-set cap.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-08-risk-review-q1" question="According to the Track F checklist, which step is the precondition for all the others?" options={["Maximizing the win rate of the signal.","Sizing for survival so an unlucky streak cannot reach the ruin threshold.","Choosing the tightest possible trailing stop.","Holding as many positions as possible for diversification."]} answer={1} explanation="Survival comes first: if bet size lets a losing streak hit ruin, no amount of edge, vol targeting, or stop design matters. Everything else builds on staying in the game." />
+
+<Quiz id="F-08-risk-review-q2" question="What is the core message of Track F about how risk management relates to a trading signal?" options={["Risk management is a final cosmetic step applied after the signal is built.","Risk management is the core of the system; the signal only sets direction, while risk rules decide whether the edge survives to compound.","A strong enough signal removes the need for risk management.","Risk and signal are independent and can be designed in any order."]} answer={1} explanation="The signal gives direction; the risk layer determines survival and compounding. A modest edge with disciplined risk beats a strong edge with none, so design risk first and fit the signal inside it." />

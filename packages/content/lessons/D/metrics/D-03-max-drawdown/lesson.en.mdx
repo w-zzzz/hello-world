@@ -1,0 +1,47 @@
+# Maximum Drawdown
+
+Returns tell you how much you made; drawdown tells you how painful the worst stretch was along the way. For real traders, maximum drawdown (MDD) often decides whether you can stick with a strategy more than total return does. An equity curve that compounds at 20% a year but draws down 60% in the middle is one almost nobody holds through the bottom. This lesson defines drawdown, shows how to compute the maximum, and explains a frequently overlooked but lethal property: MDD is path-dependent and sample-length-dependent.
+
+## What is drawdown
+
+Drawdown measures how far the current equity sits below its prior peak. Let $P_t$ be equity (or price) at time $t$, and let the running peak through $t$ be $\max_{s\le t} P_s$. The drawdown at $t$ is:
+
+$$
+\mathrm{DD}_t = \frac{P_t - \max_{s\le t} P_s}{\max_{s\le t} P_s}
+$$
+
+Drawdown is always $\le 0$: it is zero whenever equity makes a new high and turns negative once it falls below the peak.
+
+## Maximum drawdown is the deepest one
+
+Maximum drawdown is the minimum (deepest trough) of the drawdown series:
+
+$$
+\mathrm{MDD} = \min_{t} \mathrm{DD}_t = \min_{t}\frac{P_t - \max_{s\le t}P_s}{\max_{s\le t}P_s}
+$$
+
+Worked example: equity runs 100 → 120 → 90 → 110. Point by point: at 100 the peak is 100, DD=0; at 120 a new high, DD=0; at 90 the peak is still 120, DD=(90−120)/120=−25%; at 110 the peak is 120, DD=(110−120)/120≈−8.3%. The deepest is −25%, so MDD = −25%. Note the peak is the highest so far and never gets revised down just because price later fell.
+
+<KeyPoint title="MDD is the deepest peak-to-trough loss">Track the running peak, compute each point's loss relative to that peak, and take the most negative one. It answers: if you bought at the worst possible high, how far underwater would you have gone?</KeyPoint>
+
+## Finding drawdowns on a chart
+
+Open the daily SPY chart below and eyeball a clear peak-to-trough decline. Drawdown is not only about how far it fell but also how long it took to reclaim the old high, the recovery time, which matters just as much for capital tie-up and psychological strain.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+A good equity curve is not one without drawdowns; it is one whose drawdowns are shallow and recover quickly. Of two strategies with the same total return, the one with shallower, faster-recovering drawdowns is more livable and more sustainable in real trading.
+
+## The lethal property: path and sample-length dependence
+
+MDD is **path-dependent**: it depends on the specific route prices took, not just the start and end. With the same total return, up-then-down and down-then-up produce completely different MDDs.
+
+More insidious is **sample-length dependence**: the longer the history you look at, the deeper the worst drawdown almost always becomes. Extend a backtest window from 3 years to 10 and the MDD typically worsens, not because the strategy degraded but because a longer window is more likely to contain a major bear market.
+
+<Pitfall title="Never compare MDD across unequal windows">MDD worsens monotonically with sample length: a longer window is more likely to sample the extreme low. Comparing one strategy's 5-year MDD of −18% against another's 20-year MDD of −35% is unfair; the second was simply observed for longer. Always align the same window when comparing MDDs, or supplement with a window-insensitive measure like annualized volatility. Likewise, MDD only describes the worst path that already happened; it does not bound how deep the future can go.</Pitfall>
+
+## Check yourself
+
+<Quiz id="D-03-max-drawdown-q1" question="An equity series runs 100 → 130 → 80 → 120. What is its maximum drawdown, approximately?" options={['−20%', 'About −38.5%', '−50%', '−33.3%']} answer={1} explanation="After the new high at 130, the fall to 80 is (80−130)/130≈−38.5% relative to the running peak of 130, the deepest trough. The later move to 120 does not change that already-realized low." />
+
+<Quiz id="D-03-max-drawdown-q2" question="How does maximum drawdown behave as the sample window lengthens?" options={['Longer windows usually give a shallower (better) MDD', 'MDD is independent of window length', 'Longer windows almost always give a deeper (worse) MDD, so you cannot compare MDD across unequal windows', 'MDD only changes during bull markets']} answer={2} explanation="MDD is path- and sample-length-dependent; a longer window is more likely to capture extreme lows, so MDD worsens almost monotonically. Comparing MDD across unequal windows is misleading." />

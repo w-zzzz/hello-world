@@ -1,0 +1,45 @@
+# Moving-average crossover
+
+The moving-average crossover is the "hello world" of trend following: a fast moving average crosses above a slow one and you go long; it crosses back below and you go flat or short. It is the first systematic strategy almost every quant codes, because the logic is trivial and the data requirement is just a price series. You met the SMA and EMA as indicators in Track B (B-01/B-02); here we turn two of them into a complete entry/exit rule.
+
+Simple does not mean good. Understanding *why* this strategy works — and when it fails badly — is more valuable than the rule itself.
+
+## The rule: sign of the gap
+
+Pick a fast lookback $f$ and a slow lookback $s$ with $f < s$ (the famous pair is 50 and 200 days). Compute both moving averages and trade the sign of their difference:
+
+$$
+\text{signal}_t = \mathrm{sign}\!\left(\mathrm{MA}^{f}_t - \mathrm{MA}^{s}_t\right)
+$$
+
+When $\text{signal}_t = +1$ you are long; when $-1$ you are flat or short. The crossing of the 50-day up through the 200-day is the celebrated **golden cross**; the 50-day falling below the 200-day is the **death cross**. These names get a lot of press, but mechanically they are nothing more than the moment the sign above flips.
+
+<IndicatorPlayground indicator="sma" />
+
+Drag the SMA window in the playground above. A short window hugs price and flips sign constantly; a long window is smooth but slow. The crossover strategy lives entirely in the tension between those two behaviours.
+
+## Why it captures trends
+
+A fast average reflects recent prices; a slow average reflects the longer backdrop. When the fast rises above the slow, recent prices are systematically higher than the longer-run level — the definition of an uptrend in progress. The crossover is a coarse but honest trend detector: it commits you to the direction the market has actually been moving, with no forecasting required.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On the SPY chart, picture a 50- and 200-day line. In the long bull runs the fast line sits cleanly above the slow line and you hold a winning long the whole way. The strategy's entire return comes from a handful of episodes like these.
+
+## The lag problem
+
+Every moving average is a backward-looking average, so a crossover always confirms a trend *after* it has begun and signals its end *after* it has turned. You buy late and sell late. In a strong, sustained trend this lag costs you only the first and last slices of the move — a price worth paying. The trouble is what happens between trends.
+
+<Pitfall title="Choppy markets generate losing whipsaws">
+In a sideways, range-bound market the fast and slow averages cross back and forth repeatedly, generating a string of buy-high, sell-low whipsaw trades that each lose a little. The strategy can be net unprofitable for years and still be working as designed — because most of the long-run return comes from a few big trends, and the choppy periods between them are a tax you pay to stay positioned for the next one. If you cannot stomach long flat-to-negative stretches, you will abandon the strategy right before the trend that would have paid for it all.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+A crossover trades the sign of (fast MA − slow MA). It lags by construction, loses small amounts to whipsaws in ranges, and earns its keep from a few large trends. The skill is surviving the boredom between them.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-03-ma-crossover-q1" question="In a 50/200 crossover system, what is a 'golden cross'?" options={['The 200-day average crossing above the 50-day average','The 50-day average crossing above the 200-day average, flipping the signal to long','Any day price closes at a new all-time high','The moment both averages have the same value for 50 days']} answer={1} explanation="A golden cross is the fast (50-day) average rising above the slow (200-day) average, which flips sign(MA_fast - MA_slow) positive and turns the system long." />
+
+<Quiz id="E-03-ma-crossover-q2" question="Why can a moving-average crossover strategy lose money for long stretches yet still be 'working as designed'?" options={['Because moving averages are computed incorrectly in flat markets','Because most of its return comes from a few large trends, while choppy ranges produce repeated small whipsaw losses between them','Because golden crosses are always followed by death crosses','Because commissions exceed any possible profit']} answer={1} explanation="The strategy is designed to capture rare large trends. Between trends, the averages whipsaw in choppy markets and produce many small losses. Those losses are the cost of staying positioned for the next big move." />

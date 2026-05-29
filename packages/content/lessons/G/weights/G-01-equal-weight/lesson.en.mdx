@@ -1,0 +1,54 @@
+# Equal weighting (1/N)
+
+Once you have picked the assets you want to hold, you face a second decision that matters at least as much: how much of each? The simplest possible answer is to split your capital evenly. With $N$ assets, every position gets the same dollar weight. It sounds almost too naive to take seriously — yet a famous study by DeMiguel, Garlappi, and Uppal (2009) found that across many datasets, no fancier optimizer reliably beat it out of sample.
+
+This lesson is the foundation of Track G. We will define the 1/N rule, see why it is so hard to beat, and expose the one assumption it quietly makes that can hurt you.
+
+## The rule
+
+Equal weighting assigns each of $N$ assets the same fraction of capital:
+
+$$
+w_i = \frac{1}{N}, \qquad \sum_{i=1}^{N} w_i = 1
+$$
+
+If you hold 5 names, each gets 20% of the book. There is nothing to estimate — no expected returns, no covariance matrix, no parameters to fit. That is precisely its strength.
+
+## Why it is hard to beat
+
+Every more sophisticated method needs *inputs*: expected returns, volatilities, correlations. Those inputs must be estimated from finite, noisy history, and the estimates carry error. A clever optimizer fed bad estimates produces confident-looking but fragile weights.
+
+The 1/N rule estimates nothing, so it has no estimation error to amplify. When the edge from optimizing is smaller than the noise in your inputs — which is common with short samples and many assets — the parameter-free baseline wins. Treat 1/N as the bar every other method in this track must clear.
+
+## A worked example
+
+Suppose you hold 4 ETFs. Equal weighting puts 25% in each:
+
+- Asset A: 25%
+- Asset B: 25%
+- Asset C: 25%
+- Asset D: 25%
+
+The chart below tracks SPY, a common building block in such a basket. Imagine pairing it with three other sleeves at 25% each — that is a complete 1/N portfolio.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## The hidden catch: equal dollars is not equal risk
+
+Here is the assumption 1/N makes silently: that splitting *dollars* evenly is a sensible way to split *risk*. It usually is not.
+
+Suppose three assets sit at 25% each, but one of them is twice as volatile as the others. That single name can contribute far more than a quarter of the portfolio's variance. Your dollar allocation looks balanced while your *risk* allocation is dominated by one position. The next two lessons (inverse-vol and risk parity) exist to fix exactly this gap.
+
+<Pitfall title="1/N ignores risk">
+An equal-dollar weight is not an equal-risk weight. If one holding is much more volatile than the others, it can dominate total portfolio variance even at the same dollar weight. You may *think* you are diversified while one name drives most of your swings.
+</Pitfall>
+
+<KeyPoint title="The baseline to beat">
+1/N estimates no parameters, so it carries no estimation error. That makes it a startlingly strong benchmark — but it allocates dollars, not risk, so a volatile name can quietly dominate the book.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-01-equal-weight-q1" question="What does the 1/N rule require you to estimate from data?" options={["Expected returns for each asset","The full covariance matrix","Nothing — every asset just gets weight 1/N","Each asset's beta to the market"]} answer={2} explanation="Equal weighting assigns w_i = 1/N to every asset. It estimates no parameters, which is exactly why it carries no estimation error." />
+
+<Quiz id="G-01-equal-weight-q2" question="You hold 4 assets at 25% each, but one is far more volatile than the rest. What is the main risk?" options={["The portfolio is under-invested","That one volatile name can dominate total portfolio variance despite the equal dollar weight","Equal weighting is mathematically impossible with 4 assets","Transaction costs will be unusually high"]} answer={1} explanation="Equal dollars is not equal risk. A single high-volatility holding can contribute most of the portfolio's variance even at the same dollar weight." />

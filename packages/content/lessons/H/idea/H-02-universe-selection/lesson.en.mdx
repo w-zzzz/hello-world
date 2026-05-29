@@ -1,0 +1,49 @@
+# Selecting your universe
+
+You have a hypothesis. The next decision is quietly one of the most consequential in the whole pipeline: which set of instruments will you test it on? This set is your **universe**, and choosing it badly is the fastest way to produce a backtest that is both spectacular and completely fake. This lesson covers liquidity filters, point-in-time membership, survivorship, and the single discipline that ties them together — only trade what you could actually trade.
+
+## The universe is part of the strategy
+
+It is tempting to treat the universe as boilerplate — 'all US stocks' — and move on to the interesting signal logic. Resist that. The universe defines what counts as an opportunity and silently shapes every statistic you compute. A momentum signal on the S&P 500 and the same signal on every microcap on the exchange are not the same strategy with different data; they are different strategies with different risk, different costs, and very different honesty.
+
+<KeyPoint title="Choose the universe before you measure">Define and freeze your universe rules as part of the hypothesis. If you reach for a wider or narrower universe after seeing weak results, you have started tuning on the test data.</KeyPoint>
+
+## Liquidity and tradability
+
+The first filter is whether you can actually transact. A stock that trades \$50,000 a day cannot absorb a \$200,000 order without moving the price against you — the fills your backtest assumes simply will not happen.
+
+A practical rule is to cap your position at a small fraction of average daily volume. If $\text{ADV}$ is average daily dollar volume and $p$ is your participation cap, your maximum tradable position is:
+
+$$
+\text{Position}_{\max} = p \times \text{ADV}, \qquad p \approx 0.01 \text{ to } 0.10
+$$
+
+Filter the universe down to names where the position size your strategy needs stays comfortably under this ceiling. Everything above the ceiling is a trade you can model but never place.
+
+## Point-in-time membership
+
+Your universe is not static — it changes through history. The S&P 500 of 2015 is not the S&P 500 of today. If you test today's index members on 2015 data, you have used information from the future: you already know which companies survived and got included.
+
+A correct backtest uses **point-in-time** membership — at each date, the universe contains exactly the names that qualified *on that date*, with no peeking ahead. Index additions, delistings, and ticker changes all have to be respected as of the date they happened.
+
+## Survivorship: the dead matter
+
+<Pitfall title="The illiquid-microcap mirage and the survivor's curse">
+Two universe traps wreck more backtests than any signal bug. First, survivorship: if your data only includes companies that still exist, you have quietly deleted every firm that went bankrupt or was delisted, and your returns are inflated by ignoring the losers. Second, the microcap mirage: a backtest on tiny illiquid names can show enormous returns that you can never capture, because the moment you place a real order the price runs away from you. Size your universe to what you can actually trade without moving the price — those eye-popping microcap returns are the market showing you a door that is painted on the wall.
+</Pitfall>
+
+Including delisted and bankrupt names is uncomfortable because it lowers your numbers, but lower honest numbers beat high fictional ones every time.
+
+## A liquid benchmark to anchor on
+
+SPY is the most liquid equity instrument in the world — effectively unlimited capacity for a retail strategy. As you look at it, ask the inverse question for each name in your candidate universe: how far down the liquidity ladder can I go before my own orders start setting the price?
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+When you promote a prototype to the [workshop](/en/workshop) for a full backtest, the universe you froze here is exactly the set that should flow through it — no quiet additions to make the curve look better.
+
+## Check yourself
+
+<Quiz id="H-02-universe-selection-q1" question="Why is point-in-time index membership important for a backtest?" options={['It makes the code run faster.', 'It prevents using future knowledge of which companies survived and got included in the index.', 'It guarantees higher returns.', 'It is only relevant for crypto.']} answer={1} explanation="Testing today's index members on old data leaks the future: you already know which firms survived and were added. Point-in-time membership uses only the names that qualified as of each date." />
+
+<Quiz id="H-02-universe-selection-q2" question="A backtest on illiquid microcaps shows a 90% annual return. What is the most likely problem?" options={['The strategy is simply excellent and should be shipped.', 'The returns are real but taxed heavily.', 'The returns are uncapturable — real orders would move the thin price against you, and survivorship may further inflate them.', 'Microcaps are always the best universe.']} answer={2} explanation="Thin names cannot absorb real orders without large slippage, so those returns are largely fictional. Size the universe to what you can trade without moving the price, and include delisted names." />

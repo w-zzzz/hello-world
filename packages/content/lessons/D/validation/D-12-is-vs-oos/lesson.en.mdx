@@ -1,0 +1,45 @@
+# In-sample vs out-of-sample: the only honest read
+
+You can always find a strategy that worked on the past — that is trivial. The question that matters is whether it works on data it has never seen. **Out-of-sample (OOS) testing** is how you ask that question honestly. This lesson explains the train/test split, why every parameter you tune inflates in-sample results, and why OOS is the only number you should trust.
+
+## The split
+
+Divide your history into two non-overlapping periods. The earlier slice is **in-sample (IS)**: you may look at it, fit on it, tune on it, stare at it as long as you like. The later slice is **out-of-sample (OOS)**: you touch it exactly once, at the end, to measure the strategy you already finalized.
+
+A common split is 70/30 or 80/20 by time. The cardinal rule is that the OOS period stays sealed until every parameter is locked. The instant you peek at OOS to make a decision, it stops being out-of-sample.
+
+$$
+\text{Data} = \underbrace{[t_0, t_1]}_{\text{in-sample: fit and tune}} \cup \underbrace{(t_1, t_2]}_{\text{out-of-sample: measure once}}
+$$
+
+## Why IS performance is inflated
+
+Every choice you make on the in-sample data — the lookback window, the threshold, the stop level, which of three indicators to include — is a **degree of freedom**. With enough degrees of freedom you can fit the noise in the IS period perfectly, and noise does not repeat. The more knobs you turn, the better IS looks and the less it means.
+
+A useful intuition: with $k$ tunable parameters searched over a grid, your best IS Sharpe is the maximum of many noisy draws, and the maximum of noise is systematically optimistic. The gap between IS and OOS performance is roughly the size of that optimism.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## The peeking trap
+
+The subtlest failure is not a single egregious peek but a thousand small ones. You test a strategy, see weak OOS, go back and adjust, re-test on the same OOS. Now your OOS has been used for tuning — it is in-sample in disguise. After a handful of such loops, your "out-of-sample" result is as overfit as the in-sample one ever was.
+
+The discipline: decide the entire strategy on IS, then run OOS once. If OOS disappoints, you do not get to re-tune on it; you go back to IS (or get fresh data) and accept that this idea may simply not work.
+
+## A concrete read
+
+Suppose IS Sharpe is 1.8 and OOS Sharpe is 0.4. The honest conclusion is not "the strategy has a Sharpe of 1.8 with some OOS weakness." It is "the strategy has a Sharpe of about 0.4, and the 1.8 was mostly fitted noise." The OOS number is the estimate of future performance; the IS number is the estimate of how well you fit the past.
+
+<Pitfall title="Every tuned parameter is a degree of freedom that inflates IS">
+It feels like progress when each tweak improves the in-sample equity curve. It is not — you are spending degrees of freedom on noise. The more parameters you optimize on IS, the more its performance overstates reality, and the wider the gap to OOS. Count your knobs: a strategy with ten tuned parameters on a few years of data has almost certainly fit noise, no matter how clean the IS curve looks.
+</Pitfall>
+
+<KeyPoint title="OOS is the only honest read">
+In-sample performance measures how well you fit the past. Out-of-sample performance estimates the future. Lock every parameter on IS, run OOS exactly once, and report the OOS number as your real expectation. If you peeked at OOS to make a choice, you no longer have an OOS result.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-12-is-vs-oos-q1" question="A strategy shows IS Sharpe 1.8 and OOS Sharpe 0.4. What is the honest expectation of future performance?" options={['About 1.8 — IS is the larger, more reliable sample','About 0.4 — OOS estimates the future; the IS 1.8 was largely fitted noise','The average, about 1.1','Cannot say without more data']} answer={1} explanation="OOS performance is the estimate of the future. The large IS-OOS gap signals that the 1.8 was mostly overfitting; ~0.4 is the honest expectation." />
+
+<Quiz id="D-12-is-vs-oos-q2" question="You run OOS, get a weak result, adjust parameters, and re-run on the same OOS period. What have you done?" options={['Properly validated the strategy','Turned the OOS period into in-sample data by using it for tuning, so it no longer measures generalization','Improved the strategy legitimately','Nothing wrong, since you only changed parameters']} answer={1} explanation="Using the OOS data to make tuning decisions contaminates it. After repeated loops it becomes as overfit as in-sample; you need fresh, untouched data to validate again." />

@@ -1,0 +1,45 @@
+# Mean-variance optimization
+
+Harry Markowitz's 1952 insight launched modern portfolio theory: don't pick assets in isolation, choose the *combination* that gives the best trade-off between expected return and risk. Mean-variance optimization (MVO) turns that idea into a single optimization problem. It is the theoretical backbone of everything in the optimization module — and, as we will see, a notorious trap when used naively.
+
+This lesson states the objective, sketches the efficient frontier, and explains why unconstrained MVO is almost never deployed raw.
+
+## The objective
+
+Given a vector of expected returns $\mu$ and a covariance matrix $\Sigma$, MVO chooses weights $w$ to maximize a utility that rewards return and penalizes variance:
+
+$$
+\max_{w} \; w^\top \mu - \frac{\lambda}{2} w^\top \Sigma w
+$$
+
+Here $\lambda$ is the risk-aversion parameter. A large $\lambda$ means you care a lot about risk and tilt toward low-variance portfolios; a small $\lambda$ chases return more aggressively. Sweeping $\lambda$ from high to low traces out a whole family of optimal portfolios.
+
+## The efficient frontier
+
+Plot every optimal portfolio in risk-return space — volatility on the x-axis, expected return on the y-axis — and they form a curve called the **efficient frontier**. Each point is a portfolio that delivers the maximum expected return for its level of risk (or equivalently, the minimum risk for its return). Any portfolio below the frontier is dominated: you could earn more for the same risk, or take less risk for the same return.
+
+The chart below shows SPY, which lies somewhere inside the frontier as a single asset; combining it with others is exactly what lets you climb toward the efficient edge.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+## The catch: MVO is an error-maximizer
+
+In theory this is the optimal answer. In practice MVO has a brutal flaw: it trusts its inputs completely, and the input it trusts most — expected returns $\mu$ — is the one we estimate worst.
+
+The optimizer behaves like a magnifying glass for estimation error. If your estimate of one asset's return is slightly too high, MVO will pour capital into it, often taking enormous long and short positions to exploit a difference that is pure noise. Tiny perturbations in $\mu$ produce wildly different, extreme weights. Michaud famously called MVO an *error-maximizer*.
+
+That is why the remaining lessons in this module exist: shrinkage (Ledoit-Wolf) to stabilize $\Sigma$, and Black-Litterman to discipline $\mu$. Practitioners also add constraints — no shorting, position caps, turnover limits — to tame the raw optimizer.
+
+<Pitfall title="MVO is an error-maximizer">
+Unconstrained MVO is almost never used raw. Tiny errors in the expected-return estimates $\mu$ produce extreme, unstable, and often un-tradeable weights, because the optimizer aggressively bets on differences that are mostly noise. Always pair MVO with robust inputs (shrinkage, Black-Litterman) and sensible constraints.
+</Pitfall>
+
+<KeyPoint title="Optimal in theory, fragile in practice">
+MVO maximizes w·μ − (λ/2)·wᵀΣw, tracing the efficient frontier of best risk-return trade-offs. But it amplifies estimation error in μ into extreme weights, so it is only useful with stabilized inputs and constraints.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-04-mvo-intro-q1" question="In the MVO objective w·μ − (λ/2)·wᵀΣw, what does the parameter λ control?" options={["The number of assets in the portfolio","How strongly variance (risk) is penalized relative to return","The total leverage allowed","The rebalancing frequency"]} answer={1} explanation="λ is the risk-aversion parameter. Larger λ penalizes variance more heavily and tilts toward lower-risk portfolios; smaller λ chases return." />
+
+<Quiz id="G-04-mvo-intro-q2" question="Why is unconstrained MVO called an 'error-maximizer'?" options={["It maximizes returns too aggressively","Tiny errors in the expected-return estimates produce extreme, unstable weights","It always loses money","It ignores the covariance matrix"]} answer={1} explanation="MVO trusts its inputs completely. Because μ is hard to estimate, small errors get amplified into huge, extreme positions, so raw MVO weights are fragile." />

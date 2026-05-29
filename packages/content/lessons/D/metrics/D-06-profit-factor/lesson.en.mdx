@@ -1,0 +1,45 @@
+# Profit Factor and Win Rate
+
+The metrics so far worked on a return series; this lesson shifts to the **per-trade** view. Profit factor (PF) and win rate are the two numbers traders quote most. But each tells only half the story, and win rate on its own is nearly meaningless. This lesson covers both definitions, how they relate through the payoff ratio, and the high-win-rate trap that catches so many people.
+
+## Profit factor
+
+Profit factor is the sum of all winning trades divided by the absolute sum of all losing trades:
+
+$$
+\mathrm{PF} = \frac{\sum \text{gains}}{\bigl\lvert \sum \text{losses} \bigr\rvert}
+$$
+
+PF above 1 means net profitable, below 1 means net losing, and exactly 1 is breakeven. If winners total \$12,000 and losers total \$8,000, then PF = 12000/8000 = 1.5: for every dollar lost, you earn \$1.50 back. A PF of 1.5 to 2.0 is generally considered robust, but interpret it alongside trade count and sample size.
+
+## Win rate and payoff ratio
+
+Win rate is the fraction of trades that are profitable: $W = \frac{\text{wins}}{\text{total trades}}$. The payoff ratio is the average win divided by the average loss: $b = \frac{\text{avg win}}{\lvert\text{avg loss}\rvert}$. These are not independent; there is an identity linking them:
+
+$$
+\mathrm{PF} = \frac{W}{1-W}\times b
+$$
+
+This expression is the key to everything: profit factor is jointly determined by win rate and payoff ratio. A low win rate can be offset by a high payoff ratio, and a high win rate can be offset by... no, a high win rate with too low a payoff ratio still loses money.
+
+<KeyPoint title="PF is set jointly by win rate and payoff ratio">$\mathrm{PF} = \frac{W}{1-W}\cdot b$. Win rate and payoff ratio are the two ends of a seesaw; only their product (PF) above 1 means the strategy actually makes money. No single number is enough to judge it.</KeyPoint>
+
+## A numeric example
+
+Trend-following strategies often have low win rates. Suppose the win rate is 35% but the average win is 4 times the average loss ($b=4$). Plugging in: $\mathrm{PF} = \frac{0.35}{0.65}\times 4 \approx 2.15$. A sub-50% win rate, yet a strong strategy, because each win dwarfs each loss.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Run a trend strategy on a long-uptrending instrument like SPY and you repeatedly experience small-loss-then-occasional-big-win rhythm. The win rate often sits below 50%, but as long as the payoff ratio is high enough, PF still clears 2.
+
+## The high-win-rate trap
+
+The most dangerous mistake is treating a high win rate as proof of a good strategy.
+
+<Pitfall title="A high win rate with huge tail losses can still have PF below 1">Imagine a strategy that wins 90% of the time but earns only a sliver per win, with the occasional (10%) huge loss. Say the average win is \$1 and the average loss is \$15; then $\mathrm{PF} = \frac{0.9}{0.1}\times\frac{1}{15} = 9\times 0.0667 = 0.6 < 1$, a long-run loser. That is the textbook profile of picking-up-pennies strategies (like naked option selling): the equity curve glides up 90% of the time, giving a powerful illusion of edge, until one black swan erases everything. So **win rate alone is meaningless**; pair it with the payoff ratio and check whether PF is genuinely above 1.</Pitfall>
+
+## Check yourself
+
+<Quiz id="D-06-profit-factor-q1" question="A strategy's winning trades total \$9,000 and its losing trades total \$6,000. What is the profit factor?" options={['0.67', '1.5', '3.0', '15000']} answer={1} explanation="Profit factor = total gains / |total losses| = 9000 / 6000 = 1.5, meaning every dollar lost earns \$1.50 back; the strategy is net profitable." />
+
+<Quiz id="D-06-profit-factor-q2" question="Is a strategy with a 90% win rate necessarily a good one?" options={['Yes, a higher win rate is always better', 'Not necessarily: if the average loss dwarfs the average win (a tiny payoff ratio), the profit factor can still be below 1 and the strategy loses long-run', 'Yes, any win rate above 50% guarantees profit', 'Cannot tell, win rate is unrelated to profit']} answer={1} explanation="Win rate alone is meaningless. PF = W/(1−W)×b. A high win rate paired with a tiny payoff ratio (small frequent wins, rare huge losses) can still give PF below 1. You must combine it with the payoff ratio." />

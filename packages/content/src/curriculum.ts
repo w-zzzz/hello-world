@@ -550,6 +550,7 @@ const TRACK_C: LessonRecord[] = [
 const TRACK_D: LessonRecord[] = [
   lesson('D', 1, {
     id: 'D-01-returns',
+    mdxReady: true,
     module: 'returns',
     difficulty: 'beginner',
     durationMin: 16,
@@ -558,6 +559,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 2, {
     id: 'D-02-log-returns',
+    mdxReady: true,
     module: 'returns',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -567,6 +569,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 3, {
     id: 'D-03-max-drawdown',
+    mdxReady: true,
     module: 'metrics',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -575,6 +578,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 4, {
     id: 'D-04-sharpe-ratio',
+    mdxReady: true,
     module: 'metrics',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -583,6 +587,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 5, {
     id: 'D-05-sortino-calmar',
+    mdxReady: true,
     module: 'metrics',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -592,6 +597,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 6, {
     id: 'D-06-profit-factor',
+    mdxReady: true,
     module: 'metrics',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -600,6 +606,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 7, {
     id: 'D-07-mae-mfe',
+    mdxReady: true,
     module: 'metrics',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -608,6 +615,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 8, {
     id: 'D-08-slippage',
+    mdxReady: true,
     module: 'costs',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -616,6 +624,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 9, {
     id: 'D-09-commissions',
+    mdxReady: true,
     module: 'costs',
     difficulty: 'beginner',
     durationMin: 14,
@@ -624,6 +633,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 10, {
     id: 'D-10-lookahead-bias',
+    mdxReady: true,
     module: 'bias',
     difficulty: 'advanced',
     durationMin: 22,
@@ -632,6 +642,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 11, {
     id: 'D-11-survivorship-bias',
+    mdxReady: true,
     module: 'bias',
     difficulty: 'advanced',
     durationMin: 22,
@@ -640,6 +651,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 12, {
     id: 'D-12-is-vs-oos',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 22,
@@ -648,6 +660,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 13, {
     id: 'D-13-walk-forward',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 24,
@@ -657,6 +670,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 14, {
     id: 'D-14-monte-carlo',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 24,
@@ -665,6 +679,7 @@ const TRACK_D: LessonRecord[] = [
   }),
   lesson('D', 15, {
     id: 'D-15-deflated-sharpe-pbo',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 25,
@@ -680,6 +695,7 @@ const TRACK_D: LessonRecord[] = [
 const TRACK_E: LessonRecord[] = [
   lesson('E', 1, {
     id: 'E-01-turtle-system',
+    mdxReady: true,
     module: 'trend-following',
     difficulty: 'intermediate',
     durationMin: 22,
@@ -688,6 +704,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 2, {
     id: 'E-02-donchian-breakout',
+    mdxReady: true,
     module: 'trend-following',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -697,6 +714,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 3, {
     id: 'E-03-ma-crossover',
+    mdxReady: true,
     module: 'trend-following',
     difficulty: 'beginner',
     durationMin: 16,
@@ -705,6 +723,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 4, {
     id: 'E-04-pairs-trading',
+    mdxReady: true,
     module: 'mean-reversion',
     difficulty: 'advanced',
     durationMin: 25,
@@ -713,6 +732,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 5, {
     id: 'E-05-bollinger-reversion',
+    mdxReady: true,
     module: 'mean-reversion',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -721,6 +741,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 6, {
     id: 'E-06-momentum-cross-section',
+    mdxReady: true,
     module: 'momentum',
     difficulty: 'advanced',
     durationMin: 24,
@@ -729,6 +750,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 7, {
     id: 'E-07-momentum-time-series',
+    mdxReady: true,
     module: 'momentum',
     difficulty: 'advanced',
     durationMin: 22,
@@ -737,6 +759,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 8, {
     id: 'E-08-breakout-strategy',
+    mdxReady: true,
     module: 'breakout',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -745,6 +768,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 9, {
     id: 'E-09-statistical-arbitrage',
+    mdxReady: true,
     module: 'stat-arb',
     difficulty: 'advanced',
     durationMin: 25,
@@ -754,6 +778,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 10, {
     id: 'E-10-event-driven',
+    mdxReady: true,
     module: 'events',
     difficulty: 'advanced',
     durationMin: 22,
@@ -762,6 +787,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 11, {
     id: 'E-11-seasonality',
+    mdxReady: true,
     module: 'events',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -770,6 +796,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 12, {
     id: 'E-12-vol-carry',
+    mdxReady: true,
     module: 'factors',
     difficulty: 'advanced',
     durationMin: 24,
@@ -778,6 +805,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 13, {
     id: 'E-13-factor-intro',
+    mdxReady: true,
     module: 'factors',
     difficulty: 'intermediate',
     durationMin: 22,
@@ -786,6 +814,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 14, {
     id: 'E-14-crypto-funding-carry',
+    mdxReady: true,
     module: 'crypto',
     difficulty: 'advanced',
     durationMin: 24,
@@ -794,6 +823,7 @@ const TRACK_E: LessonRecord[] = [
   }),
   lesson('E', 15, {
     id: 'E-15-china-t1-limits',
+    mdxReady: true,
     module: 'china',
     difficulty: 'advanced',
     durationMin: 22,
@@ -808,6 +838,7 @@ const TRACK_E: LessonRecord[] = [
 const TRACK_F: LessonRecord[] = [
   lesson('F', 1, {
     id: 'F-01-fixed-fractional',
+    mdxReady: true,
     module: 'sizing',
     difficulty: 'beginner',
     durationMin: 14,
@@ -816,6 +847,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 2, {
     id: 'F-02-vol-targeting',
+    mdxReady: true,
     module: 'sizing',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -825,6 +857,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 3, {
     id: 'F-03-kelly-criterion',
+    mdxReady: true,
     module: 'sizing',
     difficulty: 'advanced',
     durationMin: 22,
@@ -834,6 +867,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 4, {
     id: 'F-04-stop-loss-design',
+    mdxReady: true,
     module: 'stops',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -842,6 +876,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 5, {
     id: 'F-05-take-profit-trailing',
+    mdxReady: true,
     module: 'stops',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -851,6 +886,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 6, {
     id: 'F-06-risk-of-ruin',
+    mdxReady: true,
     module: 'risk-mgmt',
     difficulty: 'advanced',
     durationMin: 22,
@@ -859,6 +895,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 7, {
     id: 'F-07-portfolio-heat',
+    mdxReady: true,
     module: 'risk-mgmt',
     difficulty: 'advanced',
     durationMin: 22,
@@ -867,6 +904,7 @@ const TRACK_F: LessonRecord[] = [
   }),
   lesson('F', 8, {
     id: 'F-08-risk-review',
+    mdxReady: true,
     module: 'risk-mgmt',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -881,6 +919,7 @@ const TRACK_F: LessonRecord[] = [
 const TRACK_G: LessonRecord[] = [
   lesson('G', 1, {
     id: 'G-01-equal-weight',
+    mdxReady: true,
     module: 'weights',
     difficulty: 'beginner',
     durationMin: 14,
@@ -889,6 +928,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 2, {
     id: 'G-02-inverse-vol',
+    mdxReady: true,
     module: 'weights',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -898,6 +938,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 3, {
     id: 'G-03-risk-parity',
+    mdxReady: true,
     module: 'weights',
     difficulty: 'advanced',
     durationMin: 22,
@@ -907,6 +948,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 4, {
     id: 'G-04-mvo-intro',
+    mdxReady: true,
     module: 'optimization',
     difficulty: 'advanced',
     durationMin: 24,
@@ -915,6 +957,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 5, {
     id: 'G-05-ledoit-wolf',
+    mdxReady: true,
     module: 'optimization',
     difficulty: 'advanced',
     durationMin: 22,
@@ -924,6 +967,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 6, {
     id: 'G-06-black-litterman',
+    mdxReady: true,
     module: 'optimization',
     difficulty: 'advanced',
     durationMin: 25,
@@ -933,6 +977,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 7, {
     id: 'G-07-rebalance-frequency',
+    mdxReady: true,
     module: 'rebalance',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -941,6 +986,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 8, {
     id: 'G-08-turnover-aware',
+    mdxReady: true,
     module: 'rebalance',
     difficulty: 'advanced',
     durationMin: 22,
@@ -950,6 +996,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 9, {
     id: 'G-09-drift-rebalance-workshop',
+    mdxReady: true,
     module: 'rebalance',
     difficulty: 'advanced',
     durationMin: 25,
@@ -959,6 +1006,7 @@ const TRACK_G: LessonRecord[] = [
   }),
   lesson('G', 10, {
     id: 'G-10-portfolio-review',
+    mdxReady: true,
     module: 'rebalance',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -973,6 +1021,7 @@ const TRACK_G: LessonRecord[] = [
 const TRACK_H: LessonRecord[] = [
   lesson('H', 1, {
     id: 'H-01-strategy-hypothesis',
+    mdxReady: true,
     module: 'idea',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -981,6 +1030,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 2, {
     id: 'H-02-universe-selection',
+    mdxReady: true,
     module: 'idea',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -999,6 +1049,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 4, {
     id: 'H-04-vectorbt-prototype',
+    mdxReady: true,
     module: 'prototype',
     difficulty: 'advanced',
     durationMin: 24,
@@ -1008,6 +1059,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 5, {
     id: 'H-05-realistic-costs',
+    mdxReady: true,
     module: 'prototype',
     difficulty: 'advanced',
     durationMin: 22,
@@ -1017,6 +1069,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 6, {
     id: 'H-06-walk-forward-ship',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 24,
@@ -1025,6 +1078,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 7, {
     id: 'H-07-robustness-checks',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 24,
@@ -1034,6 +1088,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 8, {
     id: 'H-08-stress-testing',
+    mdxReady: true,
     module: 'validation',
     difficulty: 'advanced',
     durationMin: 22,
@@ -1042,6 +1097,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 9, {
     id: 'H-09-strategy-spec',
+    mdxReady: true,
     module: 'submission',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -1050,6 +1106,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 10, {
     id: 'H-10-ai-deep-review',
+    mdxReady: true,
     module: 'submission',
     difficulty: 'advanced',
     durationMin: 22,
@@ -1059,6 +1116,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 11, {
     id: 'H-11-paper-trading',
+    mdxReady: true,
     module: 'submission',
     difficulty: 'advanced',
     durationMin: 22,
@@ -1068,6 +1126,7 @@ const TRACK_H: LessonRecord[] = [
   }),
   lesson('H', 12, {
     id: 'H-12-graduation-project',
+    mdxReady: true,
     module: 'submission',
     difficulty: 'advanced',
     durationMin: 25,

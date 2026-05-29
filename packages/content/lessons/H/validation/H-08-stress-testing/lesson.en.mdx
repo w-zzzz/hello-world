@@ -1,0 +1,55 @@
+# Stress testing: what happens when the market breaks?
+
+Robustness checking (H-07) wiggled the dials under normal conditions. Stress testing does something different and scarier: it asks how your strategy behaves when the market itself breaks. Average-case performance is what a backtest advertises; tail behavior is what actually ends careers. Before you risk a dollar, you owe yourself an explicit answer to one question — what is the worst day, week, and month this thing can produce?
+
+## Replay the historical crises
+
+Backtests fit on calm years feel great and teach you nothing about fear. Re-run your strategy across the specific episodes where markets dislocated: the 2008 financial crisis, the March 2020 COVID crash, and the Q4 2018 selloff. Each has a different texture — 2008 was a slow grind, 2020-03 was a vertical gap, 2018-Q4 was a whippy bleed. If your data starts in 2010 you have never seen 2008; splice it in or test on an asset whose history reaches back far enough.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Worst-case drawdown, not average drawdown
+
+The number that matters for survival is not mean drawdown — it is the deepest one, and how long you sat underwater. Maximum drawdown over an equity curve $E_t$ is:
+
+$$
+\text{MDD} = \max_{t} \left( \frac{\max_{s \le t} E_s - E_t}{\max_{s \le t} E_s} \right)
+$$
+
+Compute it inside each crisis window, not just over the full sample, where a long calm stretch dilutes it. A strategy with a full-sample MDD of 12% might show 40% inside the 2008 window. That 40% is the number your risk limits and your stomach must actually survive.
+
+<KeyPoint title="Size to the tail, not the mean">Position sizing that is comfortable in the average month can be ruinous in the worst week. Always size against the crisis-window drawdown, not the full-sample average.</KeyPoint>
+
+## Liquidity shocks and correlations going to 1
+
+Two failure modes only appear under stress. First, liquidity: in a crash, spreads blow out and the size you could trade for free in 2017 costs you dearly in a panic. Re-run your fills assuming spreads widen, say, $3\times$ to $5\times$ and volume halves. Second, correlation breakdown: the diversification that smoothed your backtest is a fair-weather friend. In a true risk-off event, cross-asset correlations rush toward 1 and a portfolio you thought was hedged moves as one block. Stress this by forcing pairwise correlations to 1 and re-checking your worst-case loss.
+
+## Leverage under gap moves
+
+If you use leverage, the danger is not the smooth drawdown — it is the gap. An overnight or weekend gap can move price past your stop before you can act. Model a single adverse gap of, say, 10–20% against your largest position and ask: does the account survive, or does the margin call arrive first? Leverage that looks fine against continuous backtested fills can be fatal against a discontinuous jump.
+
+<Pitfall title="A benign backtest never met a crisis">
+A backtest over a calm decade (e.g. 2010–2019) has, by construction, never seen a real crisis — and so it tells you nothing about how your strategy dies. Explicitly stress the tails before risking capital: replay 2008, 2020-03, and 2018-Q4, widen spreads, force correlations to 1, and add a gap. The numbers you get there are the ones that matter, because they are the ones that will actually arrive someday.
+</Pitfall>
+
+## From stress to spec
+
+Stress testing produces concrete numbers: a worst-case drawdown, a liquidity-adjusted return, a gap-survival check. These are not academic — they become the risk limits and kill-criteria you write down in the strategy spec (H-09). A strategy you have stressed is one you can size honestly; an unstressed one is a bet that the future resembles the calmest part of the past.
+
+## Check yourself
+
+<Quiz
+  id="H-08-stress-testing-q1"
+  question="Your strategy shows a 12% max drawdown over the full 2010-2023 sample. Why is this number potentially misleading?"
+  options={['It is too high to trade', 'A long calm stretch dilutes the crisis-window drawdown, which could be far deeper', 'Drawdown should always be measured monthly', 'It proves the strategy is robust']}
+  answer={1}
+  explanation="Full-sample max drawdown is diluted by long benign periods. The drawdown inside a specific crisis window (e.g. 2008 or 2020-03) can be several times larger, and that is the number your risk limits must survive."
+/>
+
+<Quiz
+  id="H-08-stress-testing-q2"
+  question="Why force pairwise correlations toward 1 as a stress scenario?"
+  options={['It increases the Sharpe ratio', 'Diversification breaks down in true risk-off events, so a hedged-looking portfolio can move as one block', 'It is required for leverage', 'Correlations are always 1 in backtests']}
+  answer={1}
+  explanation="Cross-asset correlations rush toward 1 in genuine risk-off events. A portfolio that looked diversified in calm markets then moves as a single block, so forcing correlations to 1 reveals the true worst-case loss."
+/>

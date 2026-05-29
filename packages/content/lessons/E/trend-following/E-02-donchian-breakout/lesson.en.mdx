@@ -1,0 +1,54 @@
+# Donchian channel breakout
+
+A breakout strategy makes a simple bet: when price pushes past the highest level it has reached in a while, *something* has changed, and the move is more likely to continue than to immediately reverse. The Donchian channel turns that intuition into a precise, testable rule. You saw the channel as an indicator in Track B (B-19); here we build a tradable strategy around it.
+
+The whole strategy fits on an index card — which is both its charm and its danger.
+
+## The rule: enter on an N-bar high, exit on an M-bar low
+
+A Donchian breakout system for a long-only trend trader is:
+
+- **Entry:** buy when today's close (or high) exceeds the highest high of the prior `N` bars.
+- **Exit:** sell when price falls below the lowest low of the prior `M` bars, with `M < N`.
+
+A common pairing is a 20-bar entry channel and a 10-bar exit channel. Formally, the upper and lower channels are:
+
+$$
+U_t = \max_{1 \le i \le N} H_{t-i}, \qquad L_t = \min_{1 \le i \le M} L_{t-i}
+$$
+
+You go long when $\text{Close}_t > U_t$ and you flat the position when $\text{Close}_t < L_t$. There is no forecast, no oscillator, no opinion — only the question *are we at a new extreme?*
+
+## The chase: you are always late, on purpose
+
+By construction, a breakout entry buys *after* price has already risen to a new high. You will never buy the exact bottom. This feels uncomfortable, but it is the entire mechanism: you are paying a small, known cost (buying late) in exchange for only participating in moves that have already proven they have momentum. The strategy accepts many small losses and a few large wins; the math only works if you let the winners run via a slow exit channel.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at the SPY chart and trace it manually: mark where price first exceeds its prior 20-day high (entries) and where it first breaks its prior 10-day low (exits). Notice how the system catches the big sustained moves but gets chopped up when price oscillates inside a range.
+
+## Whipsaws and the need for a filter
+
+<Pitfall title="Range markets shred naked breakouts">
+A pure Donchian breakout has no idea whether the market is trending or ranging. In a sideways, choppy market, price repeatedly pokes above the channel (you buy), then falls back through the exit (you sell at a loss), then pokes up again — a death by a thousand whipsaws. The fix is a regime filter: only take breakouts when a longer-term trend agrees (for example, price above its 200-day moving average) or when realized volatility is expanding. The breakout supplies the timing; the filter decides whether to listen.
+</Pitfall>
+
+## Tuning the channel lengths
+
+The choice of `N` and `M` is a trade-off, not an optimization target to squeeze:
+
+- **Longer `N`** (e.g. 55 bars): fewer, higher-quality signals; you give up early gains but suffer fewer false starts.
+- **Shorter `N`** (e.g. 10 bars): more signals, faster response, but far more whipsaws.
+- **`M` controls give-back:** a tight exit (small `M`) locks profits but exits trends prematurely; a loose exit rides trends but returns more on the reversal.
+
+Resist the urge to grid-search the single best pair on past data — that is curve-fitting, and the result rarely survives out of sample (you will meet this formally in Track D).
+
+<KeyPoint title="Core idea">
+A Donchian breakout is a timing engine, not a complete edge. It mechanically buys new highs and sells new lows; its profitability lives or dies on a regime filter that keeps it out of range-bound chop.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-02-donchian-breakout-q1" question="In a 20/10 Donchian breakout system, when does a long position exit?" options={['When price closes below the lowest low of the prior 10 bars','When the RSI drops below 30','When price closes below the 20-day moving average','At a fixed profit target of 5%']} answer={0} explanation="The exit uses the shorter M-bar channel. A long is closed when price breaks below the lowest low of the prior 10 bars, while entries use the 20-bar high." />
+
+<Quiz id="E-02-donchian-breakout-q2" question="Why do naked Donchian breakouts perform poorly in range-bound markets?" options={['Because commissions are higher in ranges','Because price repeatedly triggers entries on minor highs then reverses through the exit, producing repeated whipsaw losses','Because the channel cannot be computed without a trend','Because volatility is always zero in a range']} answer={1} explanation="In a sideways market price keeps poking just above the channel (triggering a buy) then falling back through the exit (a loss), over and over. A trend or volatility filter is needed to avoid these whipsaws." />

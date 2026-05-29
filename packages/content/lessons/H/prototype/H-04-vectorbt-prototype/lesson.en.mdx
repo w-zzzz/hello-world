@@ -1,0 +1,50 @@
+# Prototyping with vectorbt
+
+In the notebook lesson you compressed the loop to a few seconds and watched where your signal flips. That browser run answers 'does the signal look alive?' It does not answer 'would this have made money, after the equity curve, the Sharpe, the drawdown?' For that you promote the same `run` function to the server, where vectorbt turns your signal array into a full portfolio in one vectorized pass. This lesson is about reading what comes back — and resisting the trap that vectorbt's speed lays for you.
+
+## From signal array to portfolio
+
+vectorbt is built on a simple idea: a backtest is array arithmetic. Your strategy already returns a `signal` array aligned to `close`. vectorbt takes those two arrays and, without any explicit loop, computes entries, exits, position sizes, and the resulting equity curve all at once.
+
+Conceptually, the strategy return on each bar is the position you held *coming into* that bar times the bar's return:
+
+$$
+r^{\text{strat}}_t = \text{signal}_{t-1} \cdot \frac{\text{close}_t - \text{close}_{t-1}}{\text{close}_{t-1}}
+$$
+
+The lag on `signal` is the whole game: you can only act on a signal *after* you have seen the close that produced it. vectorbt handles this for you when you build the portfolio from signals, but you must understand it — getting the lag wrong is the most common way a prototype lies.
+
+<KeyPoint title="Signal in, portfolio out">vectorbt's `Portfolio.from_signals` maps your aligned signal array to an equity curve in one vectorized call. Your job in the prototype is to feed it an honest, properly lagged signal and then read the stats critically.</KeyPoint>
+
+## Reading the stats
+
+Promote your code in the [workshop](/en/workshop) and vectorbt returns a stats table. The first numbers to read, in order:
+
+- **Total return and CAGR** — the headline, and the least informative on its own.
+- **Sharpe ratio** — return per unit of volatility; the first sanity check on whether the return is just leverage in disguise.
+- **Max drawdown** — the worst peak-to-trough loss; the number that decides whether you could have actually held the position.
+- **Win rate and number of trades** — context. Three trades with a great Sharpe is not evidence; it is an anecdote.
+
+Read drawdown and trade count *before* you celebrate total return. A high return with a 60% drawdown and four trades is not a strategy you can ship.
+
+## A prototype, not a verdict
+
+The prototype's job is to decide whether the idea deserves the next stage — realistic costs and walk-forward — not to bless it. Treat a clean-looking gross backtest as a hypothesis that has *survived its first test*, not as a green light. SPY here is your sanity baseline: if your clever signal cannot beat buy-and-hold on a chart like this gross of costs, it almost certainly cannot beat it net.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## The speed trap
+
+<Pitfall title="Ten thousand combos is not research">
+vectorbt makes it trivial to sweep parameters — one line can backtest 10,000 combinations of windows and thresholds in seconds. This feels like productivity. It is a multiple-testing trap. Test enough combinations and one will look brilliant by pure chance; you have not found an edge, you have found the luckiest draw in a lottery you ran yourself. Pre-register the single hypothesis and the single parameter set you committed to in H-01, run *that*, and judge it. If you must explore a range, you owe yourself a correction for the number of tries and a fresh out-of-sample check before you believe any of it.
+</Pitfall>
+
+## The honest prototype loop
+
+Put the pieces together. Iterate signal shape in the browser editor; when it looks alive, promote one pre-registered configuration to the workshop; read drawdown and trade count before total return; and record the result whether it confirms or refutes your hypothesis. A refuted prototype that you logged honestly is worth more than a swept one that you talked yourself into.
+
+## Check yourself
+
+<Quiz id="H-04-vectorbt-prototype-q1" question="Why must the signal be lagged by one bar when computing strategy returns?" options={['To make the Sharpe ratio look higher.', 'Because you can only act on a signal after observing the close that produced it; using the same-bar close is lookahead bias.', 'Because vectorbt runs faster with a lag.', 'It is optional styling.']} answer={1} explanation="A signal computed from today's close can only be traded at the next opportunity. Multiplying by the same-bar return uses information you did not have yet — classic lookahead bias." />
+
+<Quiz id="H-04-vectorbt-prototype-q2" question="You sweep 10,000 parameter combinations in vectorbt and pick the best Sharpe. What is the core problem?" options={['Nothing — picking the best result is good optimization.', 'It is a multiple-testing trap: with enough tries, a great in-sample result appears by chance and will not survive out-of-sample.', 'vectorbt cannot handle that many combos.', 'The combos use too much memory.']} answer={1} explanation="Searching thousands of combinations almost guarantees a lucky winner in-sample. Pre-register one hypothesis and test it; if you explore, correct for the number of trials and validate out-of-sample." />

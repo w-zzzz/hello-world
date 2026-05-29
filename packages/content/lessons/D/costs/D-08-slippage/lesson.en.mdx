@@ -1,0 +1,47 @@
+# Slippage: the gap between the price you saw and the price you got
+
+Every backtest quotes a price. Every live fill happens at a slightly worse one. That gap is **slippage**, and it is the single most common reason a strategy that looked brilliant in research dies the moment real money touches it. This lesson shows you how to model slippage so your backtest tells the truth before you find out the hard way.
+
+## Where slippage comes from
+
+When you send a market order, you do not trade at the mid-price on your screen. You cross the spread: a buy lifts the ask, a sell hits the bid. If your order is larger than what is resting at the top of the book, you walk further into the book and pay even more. Add latency, queue position, and the market moving while your order is in flight, and the realized fill drifts away from the quote.
+
+The three ingredients are: the **bid-ask spread**, your **order size relative to available liquidity**, and **volatility** during execution.
+
+## A spread-fraction model
+
+The simplest honest model assumes you pay some fraction of the half-spread on every fill. With mid-price $m$ and quoted spread $s$, a buy fills at
+
+$$
+\text{fill} = m + \tfrac{1}{2}\,s \cdot k, \qquad \text{a sell at} \quad \text{fill} = m - \tfrac{1}{2}\,s \cdot k
+$$
+
+where $k \ge 1$ captures how aggressively you take liquidity. A patient limit order might earn the spread ($k$ near 0 or negative); a large urgent market order in a thin name can have $k$ well above 1 because it eats multiple levels.
+
+For a rough volume-aware version, let slippage grow with the square root of participation: $\text{slip} \propto \sigma \sqrt{Q / V}$, where $Q$ is your order size and $V$ is the bar volume. Big orders in thin markets cost disproportionately more.
+
+## Why it matters most for high turnover
+
+Slippage is paid **per trade**, so its drag scales with how often you trade. A strategy that turns over its book once a year barely notices a few basis points; a strategy that trades twenty times a day pays that toll twenty times daily. The chart below is a liquid ETF — easy to fill. Now imagine the same logic on a thin small-cap.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+If your edge per trade is 8 bps and your slippage is 6 bps, you have a 2 bps strategy — not the 8 bps the naive backtest reported.
+
+## Putting a number on it
+
+Suppose SPY mid is \$500.00 with a \$0.02 spread, and you take liquidity at $k = 1$. Your buy fills at \$500.01, your later sell at \$499.99 — a 4 bps round-trip cost from spread alone, before commissions. Model it as a per-trade haircut subtracted from every entry and exit and re-run the backtest. The equity curve that survives that haircut is the one worth trusting.
+
+<Pitfall title="Filling at the close or open price">
+The deadliest assumption in a beginner backtest is that you transact at the exact close (or open) printed in the data. You cannot. That price was the last trade between two other people; your order would have moved it. Backtests that fill at the untouched close look spectacular and collapse live, especially for high-turnover or low-liquidity strategies. Always subtract a slippage estimate.
+</Pitfall>
+
+<KeyPoint title="Model slippage explicitly, then stress it">
+Pick a slippage model — even a flat half-spread fraction — and apply it to every fill. Then double it and see if the strategy still works. An edge that vanishes when slippage doubles was never robust.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-08-slippage-q1" question="In the model fill = mid + (1/2) * spread * k for a buy, what does k represent?" options={['The commission rate per share','How aggressively the order takes liquidity — larger or more urgent orders push k above 1','The number of shares outstanding','The risk-free interest rate']} answer={1} explanation="k scales the half-spread you pay. A patient limit order can have k near 0; a large urgent market order that walks the book has k well above 1." />
+
+<Quiz id="D-08-slippage-q2" question="Two strategies each have an 8 bps gross edge per trade. Strategy A trades 2x/year; Strategy B trades 20x/day. Slippage is 6 bps/trade. Which is more endangered?" options={['Strategy A — it holds positions longer','Both are equally affected','Strategy B — slippage is paid per trade, so high turnover multiplies the drag until the net edge nearly vanishes','Neither — slippage cancels out over time']} answer={2} explanation="Slippage is a per-trade cost. B pays 6 bps thousands of times, leaving roughly 2 bps net per trade; A pays it twice a year. High turnover is where slippage does the most damage." />

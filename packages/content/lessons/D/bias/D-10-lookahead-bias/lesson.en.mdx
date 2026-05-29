@@ -1,0 +1,60 @@
+# Look-ahead bias at the data and portfolio level
+
+You have already met look-ahead bias in indicator computation — centered windows, same-bar signals, the lag-by-one fix. This lesson goes a level deeper: how the future leaks into a backtest through your **data pipeline and portfolio construction**, where the bug is harder to spot because no single line of indicator code looks wrong. These leaks are quieter and, for that reason, more dangerous.
+
+## The causality rule, restated for data
+
+A backtest is honest only if every decision at time $t$ depends solely on information knowable at or before $t$. Formally, a position $w_t$ must be measurable with respect to the information set $\mathcal{F}_t$:
+
+$$
+w_t = f\bigl(\mathcal{F}_t\bigr), \qquad \mathcal{F}_t = \sigma\bigl(\text{everything observable up to and including } t\bigr)
+$$
+
+Indicator-level look-ahead breaks this inside $f$. Data-level look-ahead corrupts $\mathcal{F}_t$ itself — you think you are giving the strategy only past information, but the data set silently contains the future.
+
+## Leak 1: Restated and revised data
+
+Fundamental and macro data are revised after first release. GDP, earnings, and even adjusted closing prices get restated weeks or months later. If your backtest reads the *final, revised* value as of today and stamps it on date $t$, the strategy is trading on numbers nobody had at $t$.
+
+The fix is **point-in-time (PIT) data**: store each value with the timestamp it actually became available, and at each $t$ feed the strategy only the vintage it would have seen then.
+
+## Leak 2: Same-bar fills and aggregate timestamps
+
+A daily bar carries open, high, low, close — but the close is only known at the end of the day. Computing a signal on the close and assuming you filled *at that same close* is a look-ahead, because the moment the close exists, the trading window is over.
+
+<Compare
+  leftTitle="Wrong"
+  rightTitle="Right"
+  left={`# WRONG: decide on close, fill at the same close
+signal = close > sma200       # known only at end of day t
+fill_price = close            # but you cannot trade the close you just saw`}
+  right={`# RIGHT: decide on close t, fill at open t+1
+signal = (close > sma200).shift(1)
+fill_price = open_next         # next-bar open is the first tradable price`}
+/>
+
+The discipline: signals computed on bar $t$ execute at the **open of bar $t+1$** (or later). Lag the signal, fill on the next bar.
+
+## Leak 3: Forward-filled and look-ahead aligned panels
+
+When you build a multi-asset panel and align timestamps, a careless `fillna` or `reindex` can pull a future value backward. Resampling daily to weekly and labeling the bar with the *week-start* date while it actually contains the whole week is the same trap at the portfolio level. Every join and resample is a place the future can sneak in.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## The smell test
+
+A long-only, low-frequency, price-only strategy on liquid equities lives around a Sharpe of 0.3 to 1.0. If yours prints 4 or 5, do not celebrate — audit. Beautiful equity curves are the number-one symptom of a leak, not a reward for cleverness.
+
+<Pitfall title="A too-good equity curve means audit for look-ahead first">
+When a backtest looks too good to be true, the prior probability that you found alpha is far lower than the probability that the future leaked in. Before you tune anything, run the checklist: is the data point-in-time? Are fills on the next bar, not the deciding bar? Did any join, resample, or fillna pull a future value backward? Was the universe chosen with hindsight? Fix the leak before you fall in love with the curve.
+</Pitfall>
+
+<KeyPoint title="Corrupt data beats clean code">
+Indicator-level look-ahead lives in your formulas; data-level look-ahead lives in your information set. You can write perfectly causal indicator code and still cheat if the data feeding it is restated or misaligned. Audit the pipeline, not just the signal.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-10-lookahead-bias-q1" question="Your backtest reads today's final, revised GDP figures and applies them to dates from five years ago. What kind of look-ahead is this?" options={['Indicator-level — a centered rolling window','Data-level — revised data corrupts the information set; you must use point-in-time vintages','No bias — GDP is public information','Survivorship bias']} answer={1} explanation="The strategy uses values that did not exist at the historical date. The fix is point-in-time data: feed each date only the vintage available then, not the later revision." />
+
+<Quiz id="D-10-lookahead-bias-q2" question="A strategy decides on the daily close and books the fill at that same close. Why is this look-ahead, and what is the fix?" options={['It is not look-ahead; the close is a valid price','The close is only known at end of day, so you cannot trade it; fill at the next bar open instead','Use the high instead of the close','Add more lag to the SMA window']} answer={1} explanation="The close exists only when the trading window has ended, so filling at the deciding close is impossible. Lag the signal and execute at the next bar open." />

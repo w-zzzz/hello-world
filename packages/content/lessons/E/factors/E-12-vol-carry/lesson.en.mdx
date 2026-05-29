@@ -1,0 +1,51 @@
+# Volatility carry
+
+Carry strategies earn a return simply for holding a position through time, as long as nothing dramatic happens. Volatility carry is one of the most reliable — and most dangerous — examples. The idea: option buyers systematically pay *more* for protection than the volatility that actually shows up, so the seller of that protection collects the difference. You are paid to insure other people against market moves.
+
+It works beautifully most of the time. Then, occasionally, it detonates. Understanding both halves of that sentence is the whole lesson.
+
+## The variance risk premium
+
+Implied volatility — what option prices imply about future movement — tends to exceed the realized volatility that follows. The gap is the variance risk premium (VRP):
+
+$$
+\text{VRP} = \sigma_{\text{implied}}^2 - \sigma_{\text{realized}}^2
+$$
+
+On average over the S&P 500, this is positive: implied sits above realized most months. Investors overpay for downside protection because crashes are terrifying and they value insurance. A short-volatility position — selling options, selling variance swaps, shorting VIX futures — harvests that premium. You are the insurance company collecting steady premiums.
+
+## VIX futures and the roll
+
+The most common retail-accessible version trades VIX futures. The VIX curve is usually in *contango*: longer-dated futures trade above the spot index because the market prices in mean reversion of fear. A short position rolls *down* that curve as each contract approaches expiry and converges toward the lower spot:
+
+$$
+\text{roll yield} \approx \frac{F_{\text{near}} - F_{\text{far}}}{F_{\text{far}}}
+$$
+
+When the curve is in contango, shorting the front and rolling captures a positive carry month after month. Products built on this idea (the infamous XIV, short-VIX ETNs) delivered spectacular smooth returns — until they didn't.
+
+## The payoff shape is the warning
+
+Plot the profit of a short-vol position against the size of the next market move and you get a brutally asymmetric picture: a small, steady gain across the vast majority of quiet days, and a huge, sudden loss on the rare violent day. This is *negative skew* — many small wins, occasional catastrophic losses.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Find the calmest stretch on SPY: that is when short-vol prints money quietly. Now find the sharpest single-day drop: that is when a short-vol book can lose years of accumulated profit in hours.
+
+## February 2018: the steamroller arrives
+
+On 5 February 2018, the VIX more than doubled in a single session. Short-vol products that had compounded for years were wiped out overnight — the XIV ETN lost roughly 96% of its value and was terminated. Traders who had treated the smooth equity curve as a free lunch discovered the true cost in one afternoon.
+
+<Pitfall title="Picking up pennies in front of a steamroller">
+Vol carry is the textbook 'picking up pennies in front of a steamroller.' The strategy has huge negative skew: it makes a little, reliably, for a long time, then loses an enormous amount all at once. A backtest dominated by the calm years shows a gorgeous Sharpe ratio that completely hides the tail. Never size a short-vol position as if its smooth history is its true risk — the steamroller (February 2018, March 2020) is not in most backtests but is always on the road.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Vol carry harvests the variance risk premium (implied > realized) by selling volatility — via options, variance swaps, or rolling short VIX futures down a contango curve. The premium is real and steady, but the payoff has severe negative skew: the rare volatility spike can erase years of gains (XIV, Feb 2018). Size for the tail, not the calm.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-12-vol-carry-q1" question="What is the variance risk premium that vol carry harvests?" options={["The fee an exchange charges to trade options.","The tendency for implied volatility to exceed subsequently realized volatility, so option sellers collect the gap.","The interest earned on cash collateral.","The dividend paid by volatility ETFs."]} answer={1} explanation="Implied vol typically sits above realized vol because investors overpay for protection. Selling that overpriced volatility captures the premium." />
+
+<Quiz id="E-12-vol-carry-q2" question="What is the defining risk of a short-volatility (vol carry) strategy?" options={["It loses a little every day and never recovers.","It has severe negative skew — many small gains punctuated by rare, catastrophic losses, as in February 2018.","It cannot be backtested.","It only works in bull markets and is otherwise flat."]} answer={1} explanation="Short-vol is 'picking up pennies in front of a steamroller': steady small profits and occasional huge losses. The XIV blow-up in Feb 2018 is the canonical example." />

@@ -1,0 +1,47 @@
+# Sharpe Ratio
+
+If you could summarize a strategy with one number, the industry's most common choice is the Sharpe ratio. It measures how much excess return you earn per unit of volatility you take on, in other words risk-adjusted return. Two strategies might both compound at 15% a year, but one with a Sharpe of 2.0 rides far smoother than one with 0.5. This lesson covers how Sharpe is computed, where the annualization factor comes from, how to read it, and its most dangerous blind spot: it assumes returns are roughly Gaussian and is blind to fat tails and skew.
+
+## Definition
+
+The Sharpe ratio is the expected excess return divided by its standard deviation:
+
+$$
+\mathrm{Sharpe} = \frac{E[r] - r_f}{\sigma_r}
+$$
+
+Here $E[r]$ is the strategy's expected return, $r_f$ is the risk-free rate (such as T-bill yield), and $\sigma_r$ is the standard deviation of returns (the volatility). The numerator is what you earn above sitting in the risk-free asset; the denominator is the volatility you accept for it. Higher means more reward per unit of risk.
+
+## The annualization factor
+
+The formula above is per-period (say daily). To annualize, multiply by the square root of the number of periods per year:
+
+$$
+\mathrm{Sharpe}_{\text{ann}} = \frac{E[r] - r_f}{\sigma_r}\sqrt{N}
+$$
+
+$N$ is periods per year: daily uses $N \approx 252$ (trading days), monthly $N=12$, weekly $N=52$. Why the square root? Under the assumption of independent, identically distributed returns, the mean grows linearly with time while the standard deviation grows only with the square root of time, so the ratio scales by $\sqrt{N}$.
+
+Example: a daily mean excess return of 0.0005 and daily volatility of 0.01 give a daily Sharpe of 0.05, annualizing to about $0.05\times\sqrt{252}\approx 0.79$.
+
+<KeyPoint title="Sharpe is excess return per unit of volatility, annualized by √N">The numerator is excess return, the denominator is volatility. Annualize by multiplying by √N because the mean grows linearly with time while volatility grows only with the square root of time. Always state the frequency you annualized from, or the number is not comparable.</KeyPoint>
+
+## How to read it
+
+Rules of thumb: Sharpe below 1 is mediocre, 1 to 2 is decent, 2 to 3 is good, and above 3 should make you suspicious (usually overfitting or hidden risk). But these thresholds depend heavily on asset, frequency, and sample; high-frequency strategies naturally show higher Sharpes because they place more bets.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Buy-and-hold SPY runs a long-run annualized Sharpe of roughly 0.4 to 0.6. Any 'guaranteed' strategy claiming a long-run Sharpe of 5 should trigger suspicion, not excitement.
+
+## The lethal blind spot: fat tails and skew
+
+Sharpe uses only the first two moments of the return distribution (mean and variance), quietly assuming returns are roughly normal. But financial returns are generally fat-tailed and left-skewed: extreme losses arrive more often and larger than a normal would predict. For such distributions, standard deviation badly understates true risk, so Sharpe is overstated.
+
+<Pitfall title="Sharpe assumes roughly-Gaussian returns and flatters option-selling strategies">Picture a strategy that constantly sells deep out-of-the-money options: most days it collects a sliver of premium, the equity curve is glassy-smooth, volatility is tiny, and the Sharpe looks absurdly good, right up until one crash wipes out years of profit in a single day. That collect-small, occasionally-lose-huge profile is exactly Sharpe's blind spot: it still prints a great number the instant before the blowup. Always check skewness, kurtosis, and maximum drawdown alongside Sharpe; do not let a smooth curve hypnotize you.</Pitfall>
+
+## Check yourself
+
+<Quiz id="D-04-sharpe-ratio-q1" question="A strategy has a daily mean excess return of 0.0004 and a daily volatility of 0.008. Annualized over 252 trading days, its Sharpe ratio is about:" options={['About 0.05', 'About 0.79', 'About 12.6', 'About 1.0']} answer={1} explanation="Daily Sharpe = 0.0004/0.008 = 0.05; annualize by √252 ≈ 15.87, giving 0.05×15.87 ≈ 0.79. You multiply by the square root of the number of periods, not the number itself." />
+
+<Quiz id="D-04-sharpe-ratio-q2" question="Why can a strategy that sells out-of-the-money options show a high Sharpe yet still be dangerous?" options={['Its risk-free rate is miscalculated', 'Sharpe uses only the first two moments and assumes roughly-normal returns, but the strategy is left-skewed and fat-tailed, so volatility understates the tail-loss risk', 'The annualization factor is wrong', 'Its returns are negative']} answer={1} explanation="Sharpe relies on mean and standard deviation, implicitly assuming normality. An option-seller earns small most days and loses huge occasionally (left-skewed, fat-tailed), so volatility badly understates true risk and Sharpe stays high until the blowup." />

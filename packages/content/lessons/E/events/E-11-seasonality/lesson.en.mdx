@@ -1,0 +1,50 @@
+# Seasonality & calendar effects
+
+Some patterns in markets are tied not to price or news but to the *calendar* itself. Returns are claimed to differ by month, by week of the month, by day of the week, even by the days around holidays. These are seasonality or calendar effects, and they have famous names: sell-in-May, the turn-of-the-month effect, the Monday effect, the pre-holiday drift.
+
+They are seductive because they are simple to test and easy to explain after the fact. They are also where beginners lose the most time, because with a calendar full of buckets you are almost guaranteed to find something that looks real and isn't.
+
+## The famous calendar effects
+
+- **Sell-in-May ('sell in May and go away').** The claim that equity returns from May through October are systematically weaker than November through April.
+- **Turn-of-the-month.** Returns concentrated in the last day and first few days of each month, attributed to salary inflows and fund rebalancing.
+- **Day-of-the-week.** The historical Monday effect — average Monday returns weaker than other weekdays — and a stronger Friday.
+- **Holiday effect.** A positive drift in the days immediately before market holidays.
+
+## Reading a calendar mean-return table
+
+The standard tool is a table of average returns bucketed by calendar slot. Conceptually it looks like this — mean daily return (in basis points) by month:
+
+| Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+|----|----|----|----|----|----|----|----|----|----|----|----|
+| +4 | +1 | +3 | +5 | -1 | 0 | +3 | -1 | -3 | +2 | +6 | +5 |
+
+The eye is drawn to September's $-3$ and November's $+6$. But before trading on them, you must ask whether each cell is *statistically distinguishable from zero* given its noise. A rough significance check on a bucket mean $\bar{r}$ with sample standard deviation $s$ over $n$ observations:
+
+$$
+t = \frac{\bar{r}}{s / \sqrt{n}}
+$$
+
+Most calendar cells, run honestly, produce a $t$-statistic too small to take seriously once you account for how many cells you inspected.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Scan SPY across several years and try to *see* a reliable September dip with your own eyes. You can't — which is exactly the point. The effect, if any, is buried in noise far larger than the signal.
+
+## Why these effects fade
+
+Real or not, published calendar effects tend to weaken after publication. Once a pattern is in a paper, traders arbitrage it: they buy before the expected strong period and sell before the weak one, flattening the very effect they exploit. The pre-publication backtest looks far stronger than anything you can capture today.
+
+<Pitfall title="You will find spurious patterns">
+Most seasonal effects are weak, unstable across decades, and were stronger *before* they were published. And the search space is huge: 12 months times 5 weekdays times turn-of-month times holiday windows gives you dozens of buckets. Test enough of them and some *will* show a large average return by pure chance. Counting the tests (multiple-comparison correction) usually erases the apparent significance. Treat any calendar edge as guilty until proven robust out-of-sample.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Calendar effects (sell-in-May, turn-of-month, day-of-week, holidays) are real-looking but mostly weak, unstable, and decayed post-publication. With dozens of calendar buckets, spurious 'patterns' are guaranteed — always correct for how many slots you tested.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-11-seasonality-q1" question="Why are seasonal calendar effects especially prone to false discoveries?" options={["Calendars are hard to compute.","With dozens of buckets (months, weekdays, turn-of-month, holidays), some will show large average returns by pure chance.","Seasonal data is never available.","Markets are closed on holidays."]} answer={1} explanation="The large number of calendar buckets makes multiple-testing bias severe — some slots look significant by luck alone unless you correct for the number of tests." />
+
+<Quiz id="E-11-seasonality-q2" question="What typically happens to a calendar effect after it is published?" options={["It gets stronger as more people believe it.","It tends to weaken as traders arbitrage it away.","It stays exactly constant forever.","It becomes illegal to trade."]} answer={1} explanation="Publication invites arbitrage: traders position ahead of the expected move and flatten the effect, so post-publication returns are weaker than the original backtest." />

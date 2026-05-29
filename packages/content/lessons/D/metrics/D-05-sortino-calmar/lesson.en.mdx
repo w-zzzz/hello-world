@@ -1,0 +1,46 @@
+# Sortino and Calmar Ratios
+
+Last lesson's Sharpe ratio has a long-criticized flaw: it lumps upside and downside volatility together in the denominator. But as a trader you want as much upside volatility as you can get; penalizing it makes no sense. The Sortino and Calmar ratios exist to fix that intuition. Sortino penalizes only downside volatility; Calmar replaces volatility with maximum drawdown. This lesson covers both definitions, how they differ from Sharpe, and a subtle parameter trap.
+
+## Sortino ratio: downside only
+
+The Sortino ratio swaps Sharpe's total standard deviation for the downside deviation $\sigma_d$, which measures only the dispersion of returns that fall below a target return (the MAR, or Minimum Acceptable Return):
+
+$$
+\mathrm{Sortino} = \frac{E[r] - \mathrm{MAR}}{\sigma_d}, \quad
+\sigma_d = \sqrt{\frac{1}{N}\sum_{t}\min(r_t - \mathrm{MAR},\, 0)^2}
+$$
+
+Inside $\sigma_d$, only the shortfall below the MAR is squared and summed; returns above the MAR count as zero and incur no penalty. The MAR is commonly set to 0 or the risk-free rate. Intuitively, Sortino rewards strategies with big upside and small downside, which is exactly the asymmetry most people actually want.
+
+## Calmar ratio: drawdown in the denominator
+
+The Calmar ratio uses a different definition of risk: the absolute value of maximum drawdown:
+
+$$
+\mathrm{Calmar} = \frac{\text{annual return}}{\lvert \mathrm{MDD} \rvert}
+$$
+
+For a 24% annual return and a −30% maximum drawdown, Calmar = 0.24/0.30 = 0.8. It answers: how much annual return did the single most painful loss buy me? That maps closely to the real experience of holding an account. Calmar is typically computed over roughly 3 years of data.
+
+<KeyPoint title="The three ratios differ in their denominator">Sharpe uses total volatility, Sortino uses downside deviation, Calmar uses maximum drawdown. The numerators are similar (excess or annual return); the real difference is what each one defines as risk. Reading all three beats fixating on any single metric.</KeyPoint>
+
+## Contrasting intuition
+
+Consider two strategies with the same annual return: A swings hard in both directions but rarely falls deeply, while B is steady but occasionally takes one deep drawdown. Sharpe may penalize A (because its upside swings count in the denominator), but Sortino vindicates A; meanwhile Calmar punishes B hard for that one deep fall.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Watch SPY: the volatility from its long-run uptrend is really 'good' volatility, yet Sharpe penalizes it just like the declines. Sortino looks only at genuine downside and often produces a higher, more intuitive number than Sharpe.
+
+## The parameter trap: choosing the MAR
+
+Sortino looks objective but hides a subjective knob: the target return MAR. Whether you set MAR to 0 or to the risk-free rate materially changes which returns count as 'downside', which changes $\sigma_d$ and the final ratio.
+
+<Pitfall title="Sortino's MAR threshold changes the number a lot, so report it">Different MARs produce different Sortinos: the lower you set the MAR, the fewer returns count as downside, the smaller the downside deviation, and the better the ratio looks. That leaves room for window-dressing; someone can quietly pick a very low MAR to inflate Sortino. So whenever you report Sortino, state the MAR you used (and the frequency), or the number cannot be reproduced or compared. Likewise, Calmar depends on maximum drawdown and inherits its sample-length dependence.</Pitfall>
+
+## Check yourself
+
+<Quiz id="D-05-sortino-calmar-q1" question="What is the core difference between the Sortino ratio and the Sharpe ratio?" options={['Sortino uses maximum drawdown in the denominator', 'Sortino uses only the downside deviation below a target return (MAR) in the denominator and does not penalize upside volatility', 'Sortino does not need annualizing', 'Sortino applies only to bonds']} answer={1} explanation="Sortino replaces Sharpe's total standard deviation with downside deviation, counting only the volatility of returns below the MAR, so it does not penalize favorable upside swings." />
+
+<Quiz id="D-05-sortino-calmar-q2" question="A strategy earns 18% annually with a maximum drawdown of −36%. What is its Calmar ratio?" options={['0.5', '2.0', '−0.5', '0.18']} answer={0} explanation="Calmar = annual return / |maximum drawdown| = 0.18 / 0.36 = 0.5. Calmar uses the absolute value of maximum drawdown as its risk measure, the annual return earned per unit of deepest drawdown." />

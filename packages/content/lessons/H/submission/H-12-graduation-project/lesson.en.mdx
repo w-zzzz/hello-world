@@ -1,0 +1,63 @@
+# Graduation project: build something that won't fool you
+
+This is the capstone of the whole curriculum. Everything from market basics to portfolio construction was preparation for one deliverable: a complete, honest strategy submission. The graduation project is not graded on the size of your backtest Sharpe. It is graded on whether you can build a strategy that does not fool you — and prove, with the right artifacts, that you tried hard to break it before believing it. A modest, robust, well-documented edge is a pass. A spectacular overfit one is a failure dressed as success.
+
+## The rubric, end to end
+
+Your submission is judged against the discipline you built across Tracks A through G. Each item below maps to lessons you have already done.
+
+- **A falsifiable hypothesis with economic rationale** — one sentence on why this edge should exist, stated so it could be proven wrong (Track A foundations; H-01).
+- **Point-in-time data plus realistic costs** — no lookahead, no survivorship; commissions and slippage that resemble reality (Track D bias lessons; H-05).
+- **IS/OOS split and walk-forward** — fitted on one slice, validated on another it never saw (D-12, D-13; H-06).
+- **Robustness and stress tests** — parameter plateaus, sub-period stability, crisis replays (H-07, H-08).
+- **A written spec** — hypothesis, universe, signals, sizing, risk limits, kill-criteria (H-09).
+- **An honest tearsheet** — Sharpe, Sortino, Calmar, max drawdown, computed on out-of-sample results (Track D metrics; F-08, G-10).
+- **A deflated-Sharpe acknowledgement** — an explicit count of how many configurations you tried (D-15).
+
+## The honest tearsheet
+
+Report the core ratios on out-of-sample data, not on the period you fitted. As a reminder, the annualized Sharpe is:
+
+$$
+\text{Sharpe} = \frac{\mathbb{E}[r] - r_f}{\sigma_r} \sqrt{252}
+$$
+
+Sortino swaps $\sigma_r$ for downside deviation; Calmar divides annual return by max drawdown. Reporting all three, alongside the deepest drawdown, makes it hard to hide behind a single flattering number. A strategy that looks merely okay across every ratio is more trustworthy than one that is spectacular on Sharpe and silent on drawdown.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Deflated Sharpe: count your attempts
+
+If you tried fifty parameter sets and submitted the best, its Sharpe is inflated by selection — the more you searched, the higher the bar a real edge must clear. The deflated Sharpe ratio adjusts for exactly this multiple testing, shrinking your observed Sharpe by how many things you tried. The graduation project asks you to state that number honestly. Reporting 'I tested 3 configurations' versus '300' changes how every other number should be read, and pretending you only tried one is the most common quiet lie in strategy research.
+
+<KeyPoint title="Honest over flashy">The submission that passes is the one whose author can list, without flinching, every way they tried to break it and what survived. Documented humility beats an undocumented spectacular Sharpe every time.</KeyPoint>
+
+## Tying back to the whole journey
+
+Walk the arc you completed: Track A gave you market structure; B, the indicators; C, signal construction; D, honest backtesting and its biases; E, the strategy archetypes; F, risk and sizing; G, portfolio construction; H, the path from idea to a shipped, stressed, specified, reviewed strategy. The graduation project is where those threads braid into one artifact. Use the `/editor` to finalize the code, the `/workshop` for the out-of-sample tearsheet, and one last adversarial AI deep review to hunt the bias you are still protecting.
+
+<Pitfall title="The goal is not the highest Sharpe">
+The point of the graduation project is not the highest backtest Sharpe — it is demonstrating you can build something that won't fool you. A learner who submits a 0.8-Sharpe strategy with point-in-time data, a clean OOS split, stress tests, a spec, and an honest count of attempts has passed. A learner who submits a 3.0-Sharpe strategy that quietly overfit fifty parameters, peeked at the future, and never met a crisis has failed — even though the headline number is four times larger. Build the honest one.
+</Pitfall>
+
+## Submitting
+
+Bundle the code, the spec, the out-of-sample tearsheet, the robustness and stress results, and your attempt count. Submit the strategy you would still trust after reading it cold in a year — the one whose every claim you have personally tried to refute. That is what graduating from Quant Academy means: not that you found a money machine, but that you became the kind of researcher who would notice if you hadn't.
+
+## Check yourself
+
+<Quiz
+  id="H-12-graduation-project-q1"
+  question="Two submissions arrive. A: Sharpe 0.8, point-in-time data, clean OOS split, stress tests, a spec, and an honest count of 3 attempts. B: Sharpe 3.0, fifty quietly-tuned parameters, some lookahead, no crisis testing. Which passes the graduation rubric?"
+  options={['B, because its Sharpe is far higher', 'A, because it demonstrates an honest, robust, well-documented edge that will not fool its author', 'Neither, both Sharpes are wrong', 'Whichever has more trades']}
+  answer={1}
+  explanation="The rubric rewards a strategy that will not fool you, not the highest backtest Sharpe. A modest, robust, honestly-documented edge passes; a spectacular overfit one that peeked at the future fails despite the larger headline number."
+/>
+
+<Quiz
+  id="H-12-graduation-project-q2"
+  question="Why must the graduation submission state how many configurations were tried?"
+  options={['To pad the report length', 'Because the more configurations you searched, the more a top Sharpe is inflated by selection — the deflated Sharpe adjusts for this multiple testing', 'It has no effect on the result', 'To prove you worked hard']}
+  answer={1}
+  explanation="Selecting the best of many configurations inflates its Sharpe. The deflated Sharpe ratio shrinks the observed value by how many things were tried, so an honest attempt count is required to read every other number correctly."
+/>

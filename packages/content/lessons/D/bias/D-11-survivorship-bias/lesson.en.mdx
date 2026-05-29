@@ -1,0 +1,51 @@
+# Survivorship bias: backtesting only the winners
+
+Pull up a list of the S&P 500 today and backtest a strategy on those 500 names for the last twenty years. Your results will look great — and they will be a lie. The list contains only companies that survived to today. The Lehmans, Enrons, and WorldComs that went to zero are missing. You have quietly stacked the deck with winners. This is **survivorship bias**, and it inflates backtested returns by several percent per year.
+
+## What is actually missing
+
+A stock index is not a fixed set. Over twenty years, hundreds of names join and leave the S&P 500 through bankruptcy, delisting, acquisition, and rebalancing. A database that stores only *current* members has dropped every company that failed. Your backtest therefore never experiences the −100% returns of the names that died — it only ever holds the ones that made it.
+
+The bias compounds: failing companies often underperform for months before they vanish. By excluding them entirely, you remove both the final crash and the slow bleed that preceded it.
+
+## A point-in-time universe is the fix
+
+Let $U_t$ be the set of tradable symbols at time $t$. Honesty requires that membership at $t$ depend only on information available at $t$:
+
+$$
+U_t = h\bigl(\mathcal{F}_t\bigr)
+$$
+
+A survivorship-free backtest reconstructs $U_t$ as it actually stood on each date — including names that later delisted. When a company is removed from the index or goes bankrupt, your backtest must hold it through the decline and book the loss, exactly as a real portfolio would have.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## Estimating the damage
+
+Studies of US equity mutual funds and indices put the survivorship premium at roughly 1% to 4% per year, depending on the universe and period. For small-cap and emerging-market universes, where failure rates are higher, the bias is larger still.
+
+Suppose a strategy reports a 12% annualized return on the current S&P 500 constituents, and the survivorship premium for that universe and window is 3%. A defensible estimate of the true, point-in-time return is closer to:
+
+$$
+r_{\text{true}} \approx r_{\text{survivorship}} - \text{premium} = 12\% - 3\% = 9\%
+$$
+
+That is not a rounding error — it can be the entire difference between a strategy that beats its benchmark and one that does not.
+
+## Where it hides beyond indices
+
+Survivorship bias is not only an index problem. Free price databases often purge delisted tickers, so any universe you build by screening "all stocks that have data today" inherits the bias. Hedge-fund performance databases suffer it too: funds that blow up stop reporting and get dropped, making the surviving funds look better than the industry was.
+
+<Pitfall title="Backtesting today's index members overstates returns by years">
+Running a strategy on the *current* S&P 500 or QQQ constituents over a long history is one of the most common and most flattering mistakes in retail quant research. It silently removes every company that failed, overstating returns by several percent per year. If your data vendor only gives you current members, treat every long-horizon result with deep suspicion and seek a point-in-time constituents source before trusting it.
+</Pitfall>
+
+<KeyPoint title="Reconstruct the universe as of each date">
+The only cure is a point-in-time universe: the list of names as they actually were on date t, delisted and bankrupt names included. Hold the losers through their decline. A backtest that never loses to a bankruptcy is a backtest that never met one.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-11-survivorship-bias-q1" question="You backtest a momentum strategy on the current S&P 500 constituents from 2004 to today. What is the core flaw?" options={['The S&P 500 is too large a universe for momentum','Survivorship bias — the universe excludes companies that delisted or went bankrupt, so failed names never drag on returns','Momentum does not work on large caps','You should have used the Nasdaq 100 instead']} answer={1} explanation="Using today's members back-applied removes every company that failed before today, so the backtest never holds the losers. The fix is a point-in-time constituents list." />
+
+<Quiz id="D-11-survivorship-bias-q2" question="A strategy reports 12% annualized on current index members; the survivorship premium for the universe is about 3%. What is a defensible estimate of the true return?" options={['12% — survivorship does not affect returns','About 9% — subtract the survivorship premium','15% — add the premium','Cannot estimate without the Sharpe ratio']} answer={1} explanation="Survivorship inflates the reported figure. Subtracting the ~3% premium gives roughly 9% as a more honest point-in-time estimate." />

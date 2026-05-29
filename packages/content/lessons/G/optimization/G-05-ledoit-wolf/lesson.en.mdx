@@ -1,0 +1,41 @@
+# Ledoit-Wolf shrinkage
+
+The previous lesson showed that mean-variance optimization is only as good as its inputs, and that the covariance matrix $\Sigma$ is one of them. When you have many assets but limited history, the *sample* covariance matrix is a terrible estimate — noisy, unstable, and sometimes mathematically broken. Ledoit-Wolf shrinkage is the standard cure: pull the noisy sample estimate toward a simple, structured target. It is one of the most practically important techniques in this entire track.
+
+## Why the sample covariance fails
+
+The sample covariance matrix $S$ has roughly $N(N+1)/2$ free parameters. With 100 assets that is over 5,000 numbers to estimate. If you only have, say, 60 days of data, you are estimating thousands of parameters from a few thousand observations — and the result is dominated by noise.
+
+Worse, when the number of assets exceeds the number of observations ($N > T$), $S$ becomes **singular**: it cannot be inverted. MVO needs $\Sigma^{-1}$, so a singular or near-singular covariance makes the optimizer produce nonsense — exactly the extreme, unstable weights we warned about.
+
+## The shrinkage estimator
+
+Ledoit and Wolf proposed blending the noisy sample matrix $S$ with a structured target $F$ (for example, a constant-correlation matrix, or a scaled identity). The shrinkage estimator is a weighted average:
+
+$$
+\hat\Sigma = \delta F + (1 - \delta) S
+$$
+
+Here $\delta \in [0, 1]$ is the shrinkage intensity. At $\delta = 0$ you keep the raw sample matrix; at $\delta = 1$ you fully trust the structured target. The target $F$ has far fewer parameters, so it is stable but biased; $S$ is unbiased but noisy. Shrinking trades a little bias for a large reduction in variance — and the result is always invertible and well-conditioned.
+
+## Choosing the intensity
+
+The elegance of the method is that $\delta$ is not a guess. Ledoit and Wolf derived a formula for the **optimal** $\delta$ that minimizes expected error — it shrinks more when the sample matrix is noisier (short samples, many assets) and less when you have abundant clean data. You do not hand-tune it.
+
+The chart below shows SPY; in a 100-asset book each pairwise covariance with SPY would be one of the thousands of noisy entries that shrinkage stabilizes.
+
+<Chart symbol="SPY" height={360} intervalLabel='D' />
+
+<Pitfall title="Without shrinkage, MVO weights are garbage">
+When assets outnumber observations, the sample covariance is singular or ill-conditioned, so inverting it amplifies noise enormously. Feeding that into MVO produces wildly unstable, untradeable weights. Shrinkage (or another regularizer) is not optional for large portfolios — it is what makes the optimization usable at all.
+</Pitfall>
+
+<KeyPoint title="Bias a little to lose a lot of variance">
+Ledoit-Wolf forms Σ̂ = δF + (1−δ)S, blending the noisy sample covariance S with a structured target F. The optimal δ is derived analytically, not tuned. The result is stable, invertible, and far better behaved inside an optimizer.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="G-05-ledoit-wolf-q1" question="In Ledoit-Wolf shrinkage Σ̂ = δF + (1−δ)S, what does increasing δ do?" options={["Puts more weight on the raw sample covariance S","Puts more weight on the structured target F","Removes the covariance matrix entirely","Increases the expected return estimate"]} answer={1} explanation="δ is the shrinkage intensity. Larger δ pulls the estimate toward the structured (low-parameter, stable) target F and away from the noisy sample matrix S." />
+
+<Quiz id="G-05-ledoit-wolf-q2" question="What goes wrong with the sample covariance when the number of assets exceeds the number of observations?" options={["It becomes singular and cannot be inverted, so MVO breaks","It becomes perfectly accurate","It no longer needs estimating","It automatically equals the identity matrix"]} answer={0} explanation="With N > T the sample covariance is singular (non-invertible). Since MVO needs its inverse, the optimizer produces garbage weights without shrinkage or regularization." />

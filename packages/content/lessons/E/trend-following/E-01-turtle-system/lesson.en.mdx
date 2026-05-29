@@ -1,0 +1,47 @@
+# The Turtle trading system
+
+In 1983, commodity traders Richard Dennis and William Eckhardt made a bet: could trading be taught? They recruited a group of novices — the Turtles — handed them a fully mechanical rulebook, and let them trade real money. Many became hugely profitable. The Turtle system is the canonical worked example of a complete trend-following strategy: it specifies entry, exit, position sizing, and risk in one coherent package.
+
+You already met the Donchian channel as an indicator in Track B. This lesson uses it as the engine of a full system. The point is not the channel itself — it is how entry, sizing, pyramiding, and stops fit together into something you could actually trade.
+
+## Entry and exit: the Donchian breakout core
+
+The classic Turtle entry is a **20-day Donchian breakout**: go long when price makes a new 20-day high, go short when it makes a new 20-day low. You are not predicting the trend — you are reacting to evidence that one has begun.
+
+The exit is a shorter, opposite channel: close a long when price makes a new **10-day low**, close a short on a new 10-day high. The asymmetry is deliberate. A slow 20-day entry filters out small wiggles; a fast 10-day exit gives back less of an established trend when it turns.
+
+## Sizing with N: volatility as the ruler
+
+The Turtles sized positions not in dollars or shares first, but in **volatility units**. They defined `N` as the 20-day exponential average of the True Range — essentially the ATR you saw in Track B. `N` answers one question: how much does this market move in a normal day?
+
+Position size comes from equalizing risk across markets. With account equity $E$ and a fixed risk fraction (the Turtles used 1% per unit), the number of contracts is:
+
+$$
+\text{Unit} = \frac{0.01 \times E}{N \times \text{DollarsPerPoint}}
+$$
+
+A quiet market gets a larger position; a wild market gets a smaller one. Each position therefore risks roughly the same dollar amount per `N` of adverse move, regardless of the instrument.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Pyramiding: adding to winners
+
+The Turtles did not enter their full size at once. They added **units** as the trade moved in their favor — typically one extra unit for every $\tfrac{1}{2}N$ of further progress, up to a maximum of four units. This is pyramiding: you scale into strength, so your biggest position rides the trades that turn into the rare, enormous trends that pay for everything else.
+
+The flip side is the **2N stop**. Each unit carries a stop placed $2N$ away from its entry. As you add units, you raise the stop on the whole stack, so a reversal closes the entire position near break-even. Risk is capped; upside is left open.
+
+## Why a published edge decays
+
+<Pitfall title="A published system is a crowded system">
+The original Turtle edge was real — and then it was published, taught, and coded into thousands of retail systems. As more capital chases the same 20-day breakouts, breakouts get front-run, whipsaws multiply, and the edge thins. The lesson generalizes: any purely mechanical rule, once widely known, competes its own returns away. Treat the Turtle rules as a template for *structure*, not as a money machine to run verbatim.
+</Pitfall>
+
+<KeyPoint title="What makes it a system">
+The Turtle system is worth studying because it is complete: entry (20-day breakout), exit (10-day reverse), sizing (risk a fixed fraction per N), pyramiding (add to winners), and a hard stop (2N). A signal is not a strategy until all five are specified.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-01-turtle-system-q1" question="Why do the Turtles size positions using N (ATR) rather than a fixed number of shares?" options={['To trade more shares of expensive stocks','To equalize risk across markets so each position risks a similar dollar amount per unit of normal price movement','Because ATR predicts the direction of the next move','To minimize commission costs']} answer={1} explanation="N measures normal daily movement. Dividing a fixed risk budget by N gives quiet markets larger positions and wild markets smaller ones, so each trade risks a comparable amount." />
+
+<Quiz id="E-01-turtle-system-q2" question="What is the main risk of trading the original Turtle rules verbatim today?" options={['The math is too complex to compute','ATR can never be calculated on modern data','The edge has decayed because the system is widely published and crowded','Donchian channels only work on commodities']} answer={2} explanation="Once a mechanical edge is published and widely traded, the crowd competes it away — breakouts get anticipated and whipsaws increase. The structure remains a useful template; the literal rules no longer carry the original edge." />

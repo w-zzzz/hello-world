@@ -1,0 +1,52 @@
+# Walk-forward analysis: rolling out-of-sample, repeated
+
+A single train/test split gives you one out-of-sample read. That is honest but fragile — your conclusion rests on whichever period happened to be the test set. **Walk-forward analysis** generalizes the idea: re-fit the strategy on a training window, test it on the next untouched window, then roll forward and repeat. You end up with many stitched-together OOS segments and a far more robust estimate of how the strategy behaves over time.
+
+## Anchored vs rolling windows
+
+Walk-forward comes in two flavors that differ only in how the training window grows.
+
+- **Rolling (sliding) window**: the training window has a fixed length and slides forward, dropping the oldest data as it adds the newest. This adapts to changing regimes but forgets the distant past.
+- **Anchored (expanding) window**: the training window starts at a fixed point and grows; you always fit on all history up to the current fold. This uses more data and is more stable, but adapts to regime change more slowly.
+
+In both, the **test window is always the slice immediately after training, and you never let test data inform the fit**.
+
+## The procedure
+
+Split the timeline into $N$ consecutive folds. For each fold $i$:
+
+1. Fit (optimize parameters) on the training window ending at the fold boundary.
+2. Apply the *frozen* parameters to the next test window — pure OOS.
+3. Record the test-window returns, then roll forward to fold $i+1$.
+
+The aggregate out-of-sample return is the concatenation of all test segments:
+
+$$
+R_{\text{OOS}} = \bigcup_{i=1}^{N} r_i^{\text{test}}, \qquad r_i^{\text{test}} = \text{returns of params fit on train}_i, \text{ applied to test}_i
+$$
+
+Because no test bar ever participated in its own fit, the stitched curve is a genuine out-of-sample track record — but built from many folds, so it does not hinge on one lucky split.
+
+<Chart symbol="SPY" height={320} intervalLabel="D" />
+
+## Reading the output
+
+Two diagnostics matter most. First, the **aggregate OOS performance** (Sharpe, return, drawdown of the stitched curve) — your honest estimate of live behavior. Second, **parameter stability across folds**: if the optimal lookback jumps from 20 to 200 to 50 across consecutive folds, the strategy is chasing noise and the parameters carry no real signal. Stable parameters with steady OOS performance is the pattern you want.
+
+## A worked sketch
+
+Ten years of data, anchored, with one-year test folds starting after a three-year initial train: you get seven OOS years (years 4 through 10), each tested on parameters fit only on its own past. If the seven yearly OOS Sharpes are 0.8, 0.6, 0.9, 0.3, 0.7, 0.5, 0.8, the strategy looks genuinely robust. If they are 2.1, −0.4, 1.8, −1.1, 0.2, 1.9, −0.6, the average may look fine but the instability is a warning.
+
+<Pitfall title="Walk-forward still overfits if you re-run it many times">
+Walk-forward reduces overfitting; it does not eliminate it. If you run the entire walk-forward many times with different settings — window lengths, parameter grids, fold counts — and then report the configuration that produced the best aggregate OOS, you have overfit the walk-forward itself. The selection happened one level up. The OOS guarantee only holds for a single, pre-committed configuration; choosing among many walk-forwards reintroduces exactly the selection bias you were trying to avoid.
+</Pitfall>
+
+<KeyPoint title="Many folds beat one split, but the meta-search still counts">
+Walk-forward gives a robust OOS estimate by re-fitting and rolling forward across many folds, and it surfaces parameter instability that a single split would hide. But every walk-forward variant you try is a trial. Commit to your window scheme and grid before you look at aggregate results, or deflate for the number of variants you ran.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="D-13-walk-forward-q1" question="What is the defining feature of walk-forward analysis compared to a single train/test split?" options={['It uses more parameters','It re-fits on a training window and tests on the next untouched window, then rolls forward and repeats, stitching many OOS segments','It tests on the same data it trains on','It removes the need for out-of-sample data']} answer={1} explanation="Walk-forward repeatedly re-fits then tests forward, producing many stitched OOS segments — a more robust estimate than a single split that hinges on one lucky test period." />
+
+<Quiz id="D-13-walk-forward-q2" question="You run walk-forward 50 times with different window lengths and grids, then report the configuration with the best aggregate OOS. What is the problem?" options={['Nothing — walk-forward is overfitting-proof','You overfit the walk-forward itself; selecting the best of 50 variants reintroduces selection bias one level up','Walk-forward always needs at least 100 runs','The issue is only the window length, not the grid']} answer={1} explanation="The OOS guarantee holds for a single pre-committed configuration. Choosing the best among many walk-forward variants is selection bias at the meta level — the result is overfit again." />

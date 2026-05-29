@@ -1,0 +1,47 @@
+# Time-series momentum
+
+Cross-sectional momentum asks "which assets are beating their peers?" Time-series momentum asks a simpler, more personal question of each asset: "has *this* asset been going up or down?" If its own trailing return is positive, you go long it; if negative, you go short it — independently, asset by asset. Moskowitz, Ooi, and Pedersen documented this effect across dozens of futures markets in 2012 and found it remarkably consistent. It is the quantitative backbone of trend-following CTAs.
+
+The distinction from cross-sectional momentum matters: here there is no ranking and no peer comparison. Every asset is judged only against its own past.
+
+## The signal: the sign of your own trailing return
+
+For each asset, look back over a window (commonly 12 months) and take the sign of the return. The position for asset $i$ is:
+
+$$
+w_{i,t} = \mathrm{sign}\!\left(r_{i,\,t-k:t}\right)
+$$
+
+If the asset rose over the lookback, $w = +1$ (long); if it fell, $w = -1$ (short). Unlike cross-sectional momentum, **every asset can be long at once** (in a broad bull market) or **every asset short at once** (in a crash). The strategy has a net directional tilt that tracks the prevailing trend of its universe — which is exactly why it tends to make money in sustained market dislocations, up or down.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at SPY: a time-series momentum rule would have held long through the multi-year uptrends and flipped short during sustained declines, sitting out little in between.
+
+## Volatility scaling: the part that makes it work
+
+A raw sign signal would let a wild asset dominate the book and a quiet one contribute nothing. Time-series momentum is almost always combined with **volatility scaling** — sizing each position inversely to its volatility so every asset contributes a similar risk budget:
+
+$$
+\text{position}_{i,t} = \frac{\sigma_{\text{target}}}{\sigma_{i,t}} \cdot w_{i,t}
+$$
+
+This does two jobs. It equalizes risk across a diverse universe (equities, bonds, commodities, FX), and it automatically cuts exposure when an asset's volatility spikes — which is precisely when trends tend to break. Vol scaling is not a cosmetic add-on; it is the mechanism that keeps the strategy's risk roughly constant through time.
+
+## Turnover and crash risk
+
+Because the sign can flip whenever an asset's trailing return crosses zero, and because positions are constantly re-scaled by volatility, the strategy **trades a lot**. High turnover means transaction costs matter enormously — a strategy that looks great on paper can be net-negative after realistic slippage and commissions (you will study these in Track D).
+
+<Pitfall title="Same crash risk as momentum, amplified by turnover">
+Time-series momentum shares cross-sectional momentum's negative skew: it grinds out steady gains, then suffers sharp losses at trend reversals, especially the V-shaped bottoms where a crashing market snaps back faster than the signal can flip. Worse, its high turnover means you pay costs constantly *and* you can get whipsawed by every false reversal. The defenses are non-negotiable: volatility scaling to keep risk constant and cut exposure as vol rises, plus disciplined cost modelling so you do not deploy a strategy whose paper edge evaporates into the bid-ask spread.
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Time-series momentum trades each asset on the sign of its own trailing return, volatility-scaled so every position carries similar risk. It captures sustained trends in any direction but inherits momentum's crash risk and adds heavy turnover — making vol scaling and cost control mandatory, not optional.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-07-momentum-time-series-q1" question="How does time-series momentum differ from cross-sectional momentum?" options={['It ranks assets against each other and trades the spread','It judges each asset only against its own past trailing return, so all assets can be long (or short) at once','It only trades a single index','It ignores the direction of returns entirely']} answer={1} explanation="Time-series momentum uses the sign of each asset's own trailing return with no peer ranking. In a broad bull market every asset can be long simultaneously; in a crash every asset can be short — giving the strategy a net directional tilt." />
+
+<Quiz id="E-07-momentum-time-series-q2" question="Why is volatility scaling essential to time-series momentum?" options={['It increases turnover to generate more signals','It guarantees the strategy never loses money','It equalizes each position\'s risk contribution and automatically reduces exposure when volatility spikes, helping control the strategy\'s crash and turnover risk','It removes the need to model transaction costs']} answer={2} explanation="Vol scaling sizes positions inversely to volatility so each asset contributes similar risk and exposure is cut when volatility rises (when trends often break). It keeps total risk roughly constant and is central to managing the strategy's crash risk." />

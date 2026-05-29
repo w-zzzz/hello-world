@@ -1,0 +1,49 @@
+# Walk-forward before shipping
+
+You have a hypothesis, a frozen universe, a vectorbt prototype, and a net edge that survived realistic costs. One gate remains before you risk capital: an honest out-of-sample test. Track D taught the concepts — in-sample versus out-of-sample (D-12) and walk-forward analysis (D-13). This lesson applies them as the final shipping discipline, where the rules stop being academic and start protecting real money.
+
+## Why one more test
+
+Everything up to now happened on data you have looked at. You chose the universe, tuned the prototype, set the cost model — all while watching the same history. Even with the best intentions, that history has leaked into your decisions. The only way to estimate how the strategy performs on data it has never influenced is to hold some out, completely, and test on it exactly once.
+
+<KeyPoint title="The test set is a one-shot resource">Out-of-sample data gives you one honest estimate of live performance. The moment you use it to make a decision, it stops being out-of-sample. Spend it deliberately and only at the end.</KeyPoint>
+
+## Anchored walk-forward
+
+A single train/test split wastes data and depends on one arbitrary cut date. **Anchored walk-forward** does better: fix the start of the training window and extend it forward in steps, testing on the next unseen block each time, then growing the training set to include that block and rolling on.
+
+If $\text{IS}_k$ is the in-sample window for step $k$ and $\text{OOS}_k$ the out-of-sample block that immediately follows it, anchored walk-forward enforces:
+
+$$
+\text{IS}_k = [\,t_0,\; \tau_k\,], \qquad \text{OOS}_k = (\,\tau_k,\; \tau_{k+1}\,], \qquad \tau_k < \tau_{k+1}
+$$
+
+Each test block sits strictly *after* the data used to fit the model for that step. Concatenating the $\text{OOS}_k$ blocks gives a stitched out-of-sample track record built only from genuine forward predictions — the closest backtest can get to live trading.
+
+## Reading the walk-forward result
+
+Run the walk-forward in the [workshop](/en/workshop) and compare the stitched out-of-sample stats to your in-sample numbers. You expect some decay: out-of-sample Sharpe is almost always lower than in-sample. The questions that decide shipping:
+
+- Is the out-of-sample edge still positive **after costs**?
+- Is the decay modest, or does the strategy collapse out-of-sample? A large gap signals overfitting from the prototype stage.
+- Is performance consistent across the $\text{OOS}_k$ blocks, or driven by one lucky window?
+
+A strategy that holds up, net of costs, across multiple forward blocks has earned a shot at paper trading. SPY is your reference: a stitched out-of-sample curve that fails to beat simply holding this is not ready.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## The discipline that makes it honest
+
+<Pitfall title="Look once, then never touch">
+The instant you look at the test-set result and then go back to tweak a parameter, change the universe, or adjust costs, the test set is no longer a test set — it has become training data, and you have destroyed your only honest estimate of live performance. There is no undo. If the walk-forward disappoints, the correct move is not to re-tune until it passes; it is to return to H-01, form a new hypothesis, and earn a fresh out-of-sample window on data you have not yet spent. The discipline of looking exactly once is the entire value of the test.
+</Pitfall>
+
+## From gate to capital
+
+If the strategy clears anchored walk-forward net of costs, with modest decay and consistency across blocks, it has passed the last simulated gate. The next step is not size — it is paper trading, where live data with no real risk confirms the edge persists out of sample in real time before any capital is committed.
+
+## Check yourself
+
+<Quiz id="H-06-walk-forward-ship-q1" question="What defines anchored walk-forward analysis?" options={['Testing and training on the same period to maximize data.', 'A fixed training start that extends forward in steps, testing each next unseen block before growing the training set.', 'Randomly shuffling all data before splitting.', 'Optimizing parameters separately on the test set.']} answer={1} explanation="Anchored walk-forward fixes the training start and rolls the window forward, always testing on the block immediately after the fitted data, then expanding the training set. Each test block is genuinely out-of-sample." />
+
+<Quiz id="H-06-walk-forward-ship-q2" question="Your walk-forward result is disappointing, so you adjust a parameter and re-run on the same test data. What have you done?" options={['Improved the strategy through iteration.', 'Turned the test set into training data and lost your only honest out-of-sample estimate.', 'Nothing wrong — re-running is free.', 'Made the test more rigorous.']} answer={1} explanation="Looking at the test result and then tweaking means the test data has informed your choices. It is now training data; the only fix is a new hypothesis tested on a fresh, unspent out-of-sample window." />

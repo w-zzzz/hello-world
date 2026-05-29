@@ -1,0 +1,51 @@
+# Fixed-fractional position sizing
+
+Once you have an edge, the next question is the one that actually decides whether you survive: how much do you bet? Fixed-fractional sizing is the simplest disciplined answer. You decide in advance that any single trade may lose at most a fixed fraction of your account equity, and you let that rule determine your share count. The signal tells you *what* to trade; the sizing rule tells you *how much*.
+
+In this lesson you will learn the formula, work a numeric example, and internalize the single most expensive beginner mistake in all of position sizing.
+
+## The core rule: risk a fixed fraction
+
+Pick a risk fraction $f$ — commonly 0.5% to 2% of equity per trade. Before entering, you must know your stop: the price at which you admit the trade was wrong and exit. The distance from entry to stop, in dollars per share, is your per-share risk.
+
+The number of shares follows directly:
+
+$$
+\text{shares} = \frac{f \cdot \text{equity}}{|\,\text{entry} - \text{stop}\,|}
+$$
+
+The numerator is the dollars you are willing to lose. The denominator is how many dollars you lose per share if the stop triggers. Divide, and you get a size that caps your loss at exactly $f \cdot \text{equity}$ regardless of how far away the stop sits.
+
+## A worked example
+
+Equity is \$50,000 and you risk $f = 0.02$ (2%), so the dollar risk is \$1,000. You buy a stock at \$200 with a stop at \$190, a per-share risk of \$10.
+
+$$
+\text{shares} = \frac{0.02 \cdot 50000}{200 - 190} = \frac{1000}{10} = 100
+$$
+
+You buy 100 shares — a \$20,000 position. If the stop hits, you lose 100 × \$10 = \$1,000, exactly 2% of equity. Now suppose the stop were tighter, at \$198 (per-share risk \$2). The same \$1,000 budget buys 500 shares, a \$100,000 position. Tighter stops mean larger positions for the *same* dollar risk. The risk is constant; the notional exposure is not.
+
+## Why fractions, not fixed dollar amounts
+
+Because $f$ is a fraction of *current* equity, the rule shrinks your bets after losses and grows them after gains. After a drawdown to \$40,000, the same 2% rule risks \$800, not \$1,000. This automatic de-leveraging is the feature that keeps a losing streak from compounding into ruin, and it is why fixed-fractional sizing is the foundation the rest of Track F builds on.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at any sharp drawdown on the chart above. A fixed-dollar bettor keeps risking the same amount into the decline; a fixed-fractional bettor is automatically betting less by the time the worst of it arrives.
+
+## Common pitfalls
+
+<Pitfall title="Confusing position size with risk size">
+'Risk 2% of equity per trade' and 'put 2% of equity into the trade' are completely different rules. The first caps your *loss* at 2% using the stop distance; the second caps your *notional* at 2% and ignores the stop entirely. Beginners who conflate them often risk 20% or more per trade without realizing it — a wide stop on a 2%-notional position can still be a tiny risk, while a 2%-notional rule applied as if it were a risk rule blows accounts. Always size from the stop distance.
+</Pitfall>
+
+<KeyPoint title="Size from the stop, scale with equity">
+Fixed-fractional sizing fixes the *dollar risk per trade* as a fraction of current equity, then derives share count from the stop distance. It automatically de-levers in drawdowns and re-levers in recoveries.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-01-fixed-fractional-q1" question="Equity is \$100,000 and you risk 1% per trade. You enter at \$50 with a stop at \$48. How many shares?" options={["100 shares","500 shares","1,000 shares","2,000 shares"]} answer={1} explanation="Dollar risk = 1% × 100,000 = \$1,000. Per-share risk = 50 − 48 = \$2. Shares = 1,000 / 2 = 500." />
+
+<Quiz id="F-01-fixed-fractional-q2" question="Why does fixed-fractional sizing reduce position sizes during a losing streak?" options={["Because the broker forces smaller orders after losses.","Because the risk fraction is applied to current equity, which has shrunk.","Because volatility always rises during losing streaks.","Because the stop distance automatically widens."]} answer={1} explanation="The risk budget is f × current equity. As equity falls, the same fraction is a smaller dollar amount, so the rule de-levers on its own." />

@@ -1,0 +1,49 @@
+# Portfolio heat
+
+Per-trade sizing keeps any single loss small. But you rarely hold one position. Portfolio heat is the total open risk across *all* your positions at once — and it is the number that decides how bad your worst day can get. A book of ten trades, each risking a 'safe' 1%, feels diversified. Whether it actually is depends entirely on how those ten move together.
+
+This lesson defines heat, shows how correlation changes the math, and explains the crash scenario that catches over-extended traders.
+
+## Defining heat
+
+Portfolio heat is the sum of the open risk on every position — for each, the dollars you would lose if its stop triggered, expressed as a fraction of equity:
+
+$$
+H = \sum_{i=1}^{n} r_i
+$$
+
+where $r_i$ is position $i$'s risk as a fraction of equity. If you hold 8 positions each risking 1%, your nominal heat is 8%. Many traders set a heat cap — a maximum total open risk, say 6% — and stop adding positions once it is reached, no matter how good the next signal looks. The cap bounds the loss on a day when *everything* goes wrong at once.
+
+## Correlation changes everything
+
+The simple sum $H = \sum r_i$ assumes positions move independently. They do not. If positions are correlated, their risks add up faster than the sum suggests, because they tend to lose together. A rough portfolio-risk expression for two equal positions with correlation $\rho$ is:
+
+$$
+\sigma_p^2 = r_1^2 + r_2^2 + 2\,\rho\,r_1 r_2
+$$
+
+When $\rho = 0$ the cross term vanishes and risks combine in quadrature (less than the linear sum). When $\rho = 1$ the two positions are effectively one doubled position, and the risk is the *full* linear sum. Correlation is the dial between 'diversified' and 'one big bet wearing ten costumes.'
+
+## Heat budgeting in practice
+
+Because correlated positions consume more real risk than their nominal sum, a sound rule counts correlated trades as partly the same trade. Three long tech stocks in an uptrend are not three independent 1% bets; treat them closer to one 2–3% bet. Set your heat cap on *effective* risk, group positions by what actually drives them, and leave room for the correlations you cannot see.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+During the broad sell-offs on this chart, almost every equity fell together. A portfolio of 'diversified' long stocks behaved like a single leveraged bet on SPY — that is correlation going to 1 in real time.
+
+## Common pitfalls
+
+<Pitfall title="Ten 1% positions are not 10% when they are correlated">
+The fatal assumption is that summing nominal risks gives your true exposure. If your ten positions are correlated — and in a crisis nearly all risk assets are — they do not lose a little independently; they lose together. Worse, correlations are not stable: in a crash they converge toward 1, so the diversification you counted on evaporates exactly when you need it. Ten 'independent' 1% bets can deliver a 10%-plus loss in a single coordinated move. Budget heat on effective, correlation-aware risk, and assume correlations rise under stress.
+</Pitfall>
+
+<KeyPoint title="Heat is correlation-weighted, not a simple sum">
+Portfolio heat is total open risk across positions. Independent risks combine in quadrature; correlated risks add closer to linearly, and in a crash correlations go to 1 so losses approach the full sum. Cap effective heat, group correlated trades, and leave margin for correlation spikes.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="F-07-portfolio-heat-q1" question="You hold five positions, each risking 1.5% of equity at its stop. What is your nominal portfolio heat?" options={["1.5%","6%","7.5%","15%"]} answer={2} explanation="Nominal heat is the simple sum of per-position risks: 5 × 1.5% = 7.5%. (True risk is higher if the positions are correlated.)" />
+
+<Quiz id="F-07-portfolio-heat-q2" question="Why is summing nominal per-position risks misleading in a market crash?" options={["Because stops stop working during crashes.","Because correlations rise toward 1 in a crash, so positions lose together and total loss approaches the full linear sum rather than a diversified, smaller figure.","Because commissions spike and dominate the loss.","Because heat is irrelevant once positions are open."]} answer={1} explanation="The simple sum assumes independence. Under stress correlations converge to 1, so the diversification benefit disappears and the portfolio behaves like one large concentrated bet." />

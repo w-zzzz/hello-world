@@ -1,0 +1,55 @@
+# Factor investing: an introduction
+
+Why does one stock earn more than another over the long run? The single-stock answer is messy, but a powerful idea organizes it: returns are driven by a handful of common *factors* — measurable characteristics that have historically been rewarded. Value, size, momentum, quality, low-volatility. Factor investing builds portfolios that deliberately tilt toward these characteristics and collects the premium associated with each.
+
+This lesson introduces the cross-section of returns — why stocks differ — and how a long-short factor portfolio isolates a single characteristic's payoff.
+
+## The factor model
+
+The workhorse equation decomposes each asset's return into factor exposures plus a residual:
+
+$$
+r_i = \alpha_i + \sum_{k} \beta_{ik} f_k + \epsilon_i
+$$
+
+Here $f_k$ is the return of factor $k$, $\beta_{ik}$ is asset $i$'s exposure (loading) to that factor, $\alpha_i$ is return unexplained by the factors, and $\epsilon_i$ is idiosyncratic noise. The Capital Asset Pricing Model is the one-factor special case ($f$ = the market). Factor investing says one factor is not enough: several characteristics independently command premiums.
+
+## The classic factors
+
+- **Value.** Cheap stocks (low price-to-book, low price-to-earnings) have historically outperformed expensive ones.
+- **Size.** Smaller-cap stocks have, over long horizons, earned more than mega-caps (with higher risk).
+- **Momentum.** Recent winners (past 3 to 12 months) tend to keep winning over the next few months.
+- **Quality.** Profitable, low-debt, stable-earnings firms outperform junky ones.
+- **Low-volatility.** Lower-risk stocks have delivered surprisingly strong risk-adjusted returns — a long-standing anomaly.
+
+## Building a long-short factor portfolio
+
+To isolate a factor's payoff you sort the universe by the characteristic, go long the top fraction and short the bottom, and hold the *spread*. For a quintile sort:
+
+$$
+f_k = \bar{r}_{\text{top quintile}} - \bar{r}_{\text{bottom quintile}}
+$$
+
+Long the cheapest 20% and short the most expensive 20%, and your portfolio return is the value premium itself — neutral to the market, exposed only to the value characteristic. This long-short construction is how academics measure factor returns and how factor funds harvest them.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+SPY is pure *market* factor — one big beta with no tilt. A factor portfolio aims to add return streams that are partly independent of this line, so the blend is smoother than the market alone.
+
+## The factor zoo problem
+
+Once researchers learned that publishing a factor is rewarded, the literature exploded into hundreds of claimed factors — the 'factor zoo.' Most are statistical artifacts.
+
+<Pitfall title="The factor zoo and p-hacking">
+Hundreds of factors have been published, but many do not replicate out of sample. With thousands of candidate signals tested against the same few decades of data, some will clear a $t > 2$ bar purely by chance — classic p-hacking. When a 'factor' is re-tested on fresh data or a different market, a large fraction of the original premium vanishes. Demand an economic rationale, out-of-sample evidence, and a higher significance bar before trusting any factor beyond the few that have survived decades of scrutiny (value, momentum, size, quality, low-vol).
+</Pitfall>
+
+<KeyPoint title="Core idea">
+Factor investing explains the cross-section of returns as exposure to common characteristics ($r_i = \alpha_i + \sum_k \beta_{ik} f_k + \epsilon_i$). Long-short sorts isolate each premium (value, size, momentum, quality, low-vol). Beware the factor zoo: most published factors are p-hacked and fail to replicate.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-13-factor-intro-q1" question="In the model r_i = alpha_i + sum_k beta_ik f_k + epsilon_i, what does beta_ik represent?" options={["The factor's own return.","Asset i's exposure (loading) to factor k.","The risk-free rate.","The idiosyncratic noise of asset i."]} answer={1} explanation="Beta_ik is asset i's sensitivity to factor k. The factor return is f_k; epsilon_i is the idiosyncratic residual." />
+
+<Quiz id="E-13-factor-intro-q2" question="What is the 'factor zoo' problem?" options={["There are too few factors to build a portfolio.","Hundreds of published factors exist, but many are p-hacked artifacts that fail to replicate out of sample.","Factors only work in zoos of small stocks.","All factors are guaranteed to persist forever."]} answer={1} explanation="Testing thousands of signals on the same data guarantees chance winners. Many published factors don't survive out-of-sample, so demand economic rationale and fresh-data evidence." />

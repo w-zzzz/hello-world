@@ -1,0 +1,53 @@
+# Bollinger mean reversion
+
+Bollinger Bands draw a moving average with a volatility envelope above and below it. The mean-reversion strategy built on them is intuitive: when price stretches all the way to the upper band it is "too high" relative to recent behaviour and should snap back; when it touches the lower band it is "too low" and should bounce. You fade the extreme. You met the bands as an indicator in Track B (B-04/B-05); here we make a tradable rule out of them — and confront the one assumption that makes or breaks it.
+
+## The band: a moving average plus volatility
+
+The bands are built from an $n$-period moving average and the rolling standard deviation $\sigma$ of price, with a width multiplier $k$ (commonly 20 and 2):
+
+$$
+\text{Upper}_t = \mathrm{MA}_t + k\,\sigma_t, \qquad \text{Lower}_t = \mathrm{MA}_t - k\,\sigma_t
+$$
+
+Because the width scales with $\sigma$, the envelope breathes — it widens when the market is volatile and tightens when it is calm. A touch of the band is therefore not a fixed-percentage move; it is a move that is large *relative to current volatility*. That self-adjusting quality is what makes the bands appealing for mean reversion.
+
+<IndicatorPlayground indicator="bollinger" />
+
+Adjust the period and multiplier above. Notice how often price visits the bands in a quiet range, and how it can *ride* the upper band for weeks once a trend kicks in — a preview of the central pitfall.
+
+## The rule: fade the touch, exit at the middle
+
+A long-only mean-reversion version:
+
+- **Entry:** buy when price closes at or below the lower band (an oversold stretch).
+- **Exit:** sell when price reverts to the middle band (the moving average).
+- **Optional stop:** exit if price closes a further $k'\sigma$ below entry, capping the loss when the bounce never comes.
+
+The logic is that in a sideways market, deviations of $2\sigma$ are statistically rare and tend to be corrected. You are harvesting the oscillation around a stable mean.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Regime is everything
+
+<Pitfall title="Band-touch reversion is destroyed by trends">
+The reversion logic silently assumes the mean is *stable*. In a trending market it is not — and fading band touches becomes a way to stand in front of a freight train. The canonical cautionary tale: from 2003 to 2007 a buy-the-lower-band, sell-the-middle system on SPY looked spectacular, quietly buying every dip in a grinding bull market. Then 2008 arrived. Price did not touch the lower band and bounce; it slammed through the lower band and kept falling for months, while the strategy bought again and again into a collapse. Mean reversion without a regime filter does not have a bad year — it blows up. You must gate the strategy: only fade touches when a trend filter (e.g. a flat 200-day average, or low ADX) says the market is ranging, and stand aside when it says the market is trending.
+</Pitfall>
+
+## Making it robust
+
+Practical defenses against the trend trap:
+
+- **Regime filter:** require the longer-term trend to be flat before taking reversion trades.
+- **Hard stop:** never trade reversion without a stop; an "oversold" market can get far more oversold.
+- **Asymmetric sizing:** size for the failure case, not the typical case, because the rare trend-blowup loss dwarfs the many small reversion wins.
+
+<KeyPoint title="Core idea">
+Bollinger reversion fades $2\sigma$ band touches back to the mean. It works beautifully in range regimes and detonates in trends. The strategy is only as good as the regime filter that decides when to switch it off.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="E-05-bollinger-reversion-q1" question="Why does the Bollinger band width 'breathe', widening and narrowing over time?" options={['Because the moving-average period changes automatically','Because the bands are set at a fixed percentage from price','Because the band width is a multiple of the rolling standard deviation of price, which rises in volatile markets and falls in calm ones','Because volume is added to the calculation']} answer={2} explanation="The bands are MA ± k·sigma. Since sigma is the rolling standard deviation, the envelope widens when volatility rises and narrows when it falls, so a band touch reflects a move that is large relative to current volatility." />
+
+<Quiz id="E-05-bollinger-reversion-q2" question="A lower-band-buy / middle-band-sell system on SPY thrived from 2003–2007 then blew up in 2008. What is the core lesson?" options={['The band multiplier should always be 3 instead of 2','Mean reversion assumes a stable mean and is destroyed in trends, so it needs a regime filter and a hard stop','The moving-average period was too long','Bollinger Bands cannot be used on ETFs']} answer={1} explanation="Fading band touches assumes the mean is stable. When 2008 turned the market into a sustained downtrend, price blew through the lower band repeatedly and the strategy bought into a collapse. A regime filter and stop are essential to avoid the trend trap." />
