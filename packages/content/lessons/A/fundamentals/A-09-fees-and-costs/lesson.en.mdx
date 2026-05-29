@@ -1,0 +1,51 @@
+# Fees, commissions, and taxes
+
+A backtest that ignores trading costs is a story about a market that does not exist. Every time you trade you pay — in commission, in the spread you cross, in taxes and fees, and in slippage when your order moves the price. These costs are small per trade and lethal in aggregate. This lesson teaches you to add them up and compute the move you need just to break even.
+
+## The pieces of a round-trip cost
+
+A single round trip (buy then sell) accumulates several costs:
+
+- **Commission** — what your broker charges. Quoted per-share (e.g. \$0.005/share), per-trade (a flat ticket fee), or in basis points (bps) of notional. One bps is 0.01%.
+- **Bid-ask spread** — you buy at the ask and sell at the bid, so you 'pay' roughly half the spread on each side just to transact. This is a real cost even when no commission applies.
+- **Exchange and regulatory fees** — small per-trade charges (in the US, the SEC fee on sales, plus exchange/clearing fees).
+- **China stamp duty (印花税)** — a tax charged on the *sell* side of A-share trades, plus small **transfer fees (过户费)**. These are mandatory and asymmetric (sell only).
+- **Slippage** — the gap between the price you expected and the price you got, because your order ate into the book. We preview it here and study it properly in Track D.
+
+## Working a number
+
+Express every cost as a fraction $c$ of notional for **one side** of the trade. Suppose:
+
+- commission 1 bps = 0.0001
+- half-spread 2 bps = 0.0002
+- fees + tax 2 bps = 0.0002
+
+Then one-way cost $c = 0.0005$ (5 bps). A full round trip costs about $2c = 0.001$, i.e. **10 bps**. To merely break even, the price must move in your favor by at least the round-trip cost:
+
+$$
+r_{\text{breakeven}} \ge 2c
+$$
+
+So with $c = 5$ bps you need the trade to gain **10 bps gross** before you see a single cent of profit. The chart below trades with no daily limit, but every fill on it still carries these costs.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## Costs scale with turnover
+
+The break-even hurdle is *per round trip*. A strategy that trades once a month pays $2c$ once a month; one that trades ten times a day pays it twenty times a day. Holding period and cost are inseparable — which is exactly why the timeframe choice from A-06 matters financially, not just stylistically.
+
+## Common pitfalls
+
+<Pitfall title="Ignoring costs in a high-frequency idea">
+A signal with a 5 bps gross edge and a 10 bps round-trip cost is a **guaranteed loser** — no matter how clean the backtest equity curve looks gross of fees. The edge has to clear $2c$ with room to spare. This is the single most common way beginner strategies die: they optimize a gross signal and never subtract the cost of acting on it. Track D's D-08 and D-09 build slippage and commission models that make this honest.
+</Pitfall>
+
+<KeyPoint title="Model costs before you celebrate">
+Every round trip pays commission + spread + fees/taxes + slippage. Add them as a one-way fraction $c$; you need gross return $\ge 2c$ just to break even. China adds a sell-side stamp duty. If your edge does not beat $2c$ comfortably, you do not have an edge.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-09-fees-and-costs-q1" question="One-way cost is 4 bps (commission + half-spread + fees). What gross return must a round-trip trade earn just to break even?" options={['4 bps', '8 bps', '2 bps', '0 bps — costs net out']} answer={1} explanation="Break-even requires gross return at least 2c. With one-way c = 4 bps, the round trip must gain 8 bps before any profit appears." />
+
+<Quiz id="A-09-fees-and-costs-q2" question="Which cost in A-share trading is charged only when you sell, not when you buy?" options={['The bid-ask spread', 'Broker commission', 'Stamp duty (印花税)', 'Slippage']} answer={2} explanation="China's stamp duty (印花税) is levied on the sell side of A-share trades. Spread, commission, and slippage apply on both sides of a round trip." />

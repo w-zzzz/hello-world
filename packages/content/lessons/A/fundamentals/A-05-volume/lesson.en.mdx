@@ -1,0 +1,60 @@
+# Volume: the weight behind price
+
+In Lesson A-01 we said volume is the weight of evidence behind each price. In A-04 you learned to read a single candle's four prices — but a candle hides one thing it desperately needs context for: how many people were actually involved. That number is **volume**, and it usually lives as a row of bars under the price chart. This lesson is about reading those bars and resisting the most common mistake beginners make with them.
+
+## What volume measures
+
+Volume is simply the number of shares (or contracts) that changed hands during a period:
+
+- A daily candle with volume 80 million means 80 million shares traded that day.
+- Each unit of volume is one share bought *and* sold — every trade has two sides. So volume never tells you direction on its own; it tells you **participation**.
+
+Plotted under the price, volume bars let you see at a glance whether a given candle happened on a crowded floor or an empty one. A big price move on tiny volume and the same move on huge volume are very different events.
+
+## Relative volume: is this a lot?
+
+Raw volume is hard to judge — is 80 million a lot? It depends on the stock. So we compare today's volume to a recent average. Let $V_t$ be the volume in the current period and $\overline{V}_n$ the average volume over the previous $n$ periods. Relative volume is:
+
+$$
+\mathrm{RVOL}_t = \frac{V_t}{\overline{V}_n}, \qquad \overline{V}_n = \frac{1}{n}\sum_{i=1}^{n} V_{t-i}
+$$
+
+An $\mathrm{RVOL}$ of 1.0 means a perfectly average period. An $\mathrm{RVOL}$ of 3.0 means three times the usual participation — something got people's attention. This single ratio is far more useful than the raw number, because it is comparable across stocks and across time.
+
+## Volume confirms or questions a move
+
+The classic use of volume is as a second opinion on a price move:
+
+- A breakout to new highs **on rising volume** has broad participation — more traders are agreeing to transact at the new level.
+- The same breakout **on falling volume** is thinner: fewer participants, easier to reverse, more likely a drift than a decision.
+- A sharp move on conspicuously low volume should make you suspicious — it may be a few orders pushing a quiet book, not a genuine shift in opinion.
+
+Volume does not predict; it weights. It tells you how much conviction stood behind what price already did.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the chart and look at the volume bars beneath the candles. Find the highest-volume day on screen. Was the price candle that day large or small? Did the move that started there continue, or fade?
+
+## A worked example
+
+Suppose a stock averages $\overline{V}_n = 2{,}000{,}000$ shares per day. Today it trades $V_t = 9{,}000{,}000$ shares and closes up 1%. Then:
+
+$$
+\mathrm{RVOL}_t = \frac{9{,}000{,}000}{2{,}000{,}000} = 4.5
+$$
+
+That is a heavy-participation day. A modest 1% gain on 4.5x volume tells a different story than a 1% gain on average volume: a lot of shares changed hands to produce only a small net move. Many buyers met many sellers — high conviction on *both* sides, ending near a draw.
+
+<Pitfall title="High volume is not directional">
+It is tempting to read 'huge volume' as 'huge buying'. But every share sold is a share bought — volume is symmetric. A record-volume day can close completely flat, because heavy volume measures *participation and conviction*, not which way price will go. Volume answers 'how many people cared?', never 'which side won?'. To infer direction you still have to look at where the candle closed, and even then, carefully.
+</Pitfall>
+
+<KeyPoint title="Volume is weight, not direction">
+Volume is the size of the crowd behind a price move. Use relative volume to judge whether a period is busy or quiet, and use it to confirm or question what price did — never as a direction signal on its own.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-05-volume-q1" question="A stock normally trades 2 million shares a day. Today it trades 10 million. What is its relative volume (RVOL), and what does it mean?" options={['0.2 — far below average participation.', '5.0 — five times the usual participation, so unusually high interest today.', '5.0 — the price will definitely rise tomorrow.', '8.0 — the difference between today and the average.']} answer={1} explanation="RVOL = 10M / 2M = 5.0, meaning five times normal participation. It signals heavy interest, but says nothing on its own about future direction." />
+
+<Quiz id="A-05-volume-q2" question="A stock posts its highest-volume day of the year but closes almost exactly where it opened. What does the volume tell you?" options={['Strong buyers clearly won the day.', 'The data must be wrong — high volume always moves price.', 'There was intense participation and conviction on both sides, which roughly cancelled out.', 'Volume is irrelevant on flat days.']} answer={2} explanation="Volume measures participation, not direction. A flat close on record volume means heavy buying met heavy selling — lots of conviction on both sides, netting near zero." />

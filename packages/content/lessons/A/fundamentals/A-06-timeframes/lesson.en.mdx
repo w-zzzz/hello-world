@@ -1,0 +1,55 @@
+# Timeframes and resampling
+
+You now know how to read one candle (A-04) and the volume beneath it (A-05). But every candle is drawn over *some* period — and you, the analyst, choose that period. The same market plotted at 1-minute, daily, and weekly looks like three different stories. This lesson is about how those views relate to one another, how a higher-timeframe bar is built from lower ones, and how to pick a timeframe on purpose instead of by accident.
+
+## The same market, three timeframes
+
+A **timeframe** is the period each candle covers. Switch a chart from daily to weekly and the data has not changed at all — only how it is grouped.
+
+- On a **1-minute** chart you see every intraday wiggle: noise, microstructure, the spread breathing.
+- On a **daily** chart each candle is one trading session; intraday detail is gone, swings of days to weeks become visible.
+- On a **weekly** chart each candle is five sessions; only the big structural trend remains.
+
+Lower timeframes show more detail and more noise. Higher timeframes show less detail and more structure. Neither is more 'true' — they are different resolutions of the same underlying tape.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+## How a higher bar aggregates lower bars
+
+Here is the key mechanical idea: a higher-timeframe candle is built — **resampled** — from the lower-timeframe candles it spans. If a weekly bar covers five daily bars, its four prices and its volume come from those five days like this:
+
+$$
+O = O_{\text{first}}, \quad H = \max_i H_i, \quad L = \min_i L_i, \quad C = C_{\text{last}}, \quad V = \sum_i V_i
+$$
+
+In words: the **open** is the first child bar's open, the **high** is the maximum of all the highs, the **low** is the minimum of all the lows, the **close** is the last child bar's close, and the **volume** is the sum. This same rule turns minutes into hours, hours into days, days into weeks. It is exactly how a charting library or a `pandas` resample produces the candle you see.
+
+## A worked resample
+
+Suppose a week has five daily bars with these (O, H, L, C, V):
+
+- Mon (100, 103, 99, 102, 5)
+- Tue (102, 105, 101, 104, 6)
+- Wed (104, 104, 98, 99, 9)
+- Thu (99, 101, 97, 100, 7)
+- Fri (100, 106, 100, 105, 8)
+
+The weekly bar is: open 100 (Monday's open), high 106 (Friday's high, the max), low 97 (Thursday's low, the min), close 105 (Friday's close), volume 35 (the sum). Five candles collapse into one — detail lost, structure kept.
+
+## Choosing a timeframe on purpose
+
+The right timeframe is not the prettiest one — it is the one that matches your **holding period**. If you intend to hold positions for weeks, a 1-minute chart is mostly noise to you; the daily or weekly view is where your decisions live. If you scalp for minutes, the weekly chart is irrelevant to your entries. Decide your holding period first, then let it pick your timeframe.
+
+<Pitfall title="Timeframe shopping confirms your bias">
+A trap that catches almost everyone: you have a position or an opinion, the chart in front of you disagrees, so you zoom in or out until *some* timeframe finally looks bullish — then you trust that one. This is 'timeframe shopping', and it is just confirmation bias with a zoom slider. Any noisy series will look like an uptrend on *some* scale. The fix is procedural: choose your timeframe from your strategy's holding period BEFORE you look at the chart, and commit to it. The timeframe is an input to your decision, not an output you tune until you like the answer.
+</Pitfall>
+
+<KeyPoint title="Timeframe is a choice, made first">
+Higher bars aggregate lower bars by first-open, max-high, min-low, last-close, summed-volume. Pick the timeframe that matches your holding period before you look — never zoom around hunting for the view that agrees with you.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-06-timeframes-q1" question="A weekly candle is built from its five daily candles. How is the weekly HIGH determined?" options={['It is the high of the last (Friday) daily candle.', 'It is the maximum of the five daily highs.', 'It is the average of the five daily highs.', 'It is the sum of the five daily highs.']} answer={1} explanation="When resampling, the higher-timeframe high is the maximum of the child highs (and the low is the minimum). Open is the first open, close is the last close, volume is the sum." />
+
+<Quiz id="A-06-timeframes-q2" question="What is 'timeframe shopping' and why is it dangerous?" options={['Comparing brokers to find the lowest fees per timeframe.', 'Zooming in and out until you find a chart that confirms what you already believe.', 'Trading multiple timeframes at once to diversify.', 'Switching to a faster timeframe to reduce commissions.']} answer={1} explanation="Timeframe shopping means changing the chart scale until one view agrees with your bias — confirmation bias in disguise. Choose your timeframe from your holding period before you look, and commit to it." />

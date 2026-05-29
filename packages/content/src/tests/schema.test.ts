@@ -78,26 +78,12 @@ describe('CURRICULUM', () => {
     expect(getLessonsByTrack('H')).toHaveLength(12)
   })
 
-  it('marks the expected lessons as mdxReady', () => {
+  it('marks every lesson as mdxReady', () => {
+    // The full curriculum is authored: every lesson in every track is ready.
     const ready = CURRICULUM.lessons.filter((l) => l.mdxReady).map((l) => l.meta.id)
-    // After M9 every lesson is authored EXCEPT Track A's tail (A-04..A-10):
-    // Track A first three + all of Tracks B/C/D/E/F/G/H.
-    const ids = (t: 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H') =>
-      getLessonsByTrack(t).map((l) => l.meta.id)
-    const expected = [
-      'A-01-what-is-market',
-      'A-02-price-spread',
-      'A-03-order-types',
-      ...ids('B'),
-      ...ids('C'),
-      ...ids('D'),
-      ...ids('E'),
-      ...ids('F'),
-      ...ids('G'),
-      ...ids('H'),
-    ]
-    expect(ready).toEqual(expected)
-    expect(ready).toHaveLength(103)
+    const all = CURRICULUM.lessons.map((l) => l.meta.id)
+    expect(ready).toEqual(all)
+    expect(ready).toHaveLength(110)
   })
 
   it('has unique lesson ids', () => {

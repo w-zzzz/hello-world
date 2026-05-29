@@ -1,0 +1,49 @@
+# US vs China A-share markets
+
+So far Track A has described "the market" as if it works the same everywhere. It does not. The rules that decide *when* you can trade, *how fast* you can round-trip, and *which* directions you are even allowed to bet differ from country to country. Get this wrong and a strategy that looks brilliant in a backtest can be flat-out illegal — or mechanically impossible — in the market you actually trade.
+
+This lesson contrasts two of the biggest equity markets a quant will meet: US equities and China A-shares. The goal is not to memorize regulations but to feel how microstructure shapes what your code is allowed to do.
+
+## Settlement: T+0 intraday vs T+1
+
+In US equities you can buy and sell the same share within the same session as many times as you like (subject to pattern-day-trader rules on margin). Effectively the position is yours the instant the trade fills, so intraday round-trips are normal.
+
+China A-shares settle **T+1**: shares bought today cannot be sold until the next trading day. Cash from a sale is also not withdrawable until T+1. This single rule deletes an entire family of strategies — anything that opens and closes a long position inside one day simply cannot run on A-shares.
+
+## Price limits: free float vs daily caps
+
+US stocks have no fixed daily price limit. Circuit breakers can halt the whole market on extreme moves, but an individual name can rise or fall 30% in a day if the orders are there.
+
+China A-shares enforce a **daily price limit** — typically $\pm 10\%$ for main-board names (and $\pm 5\%$ for stocks under special treatment, wider bands on STAR/ChiNext). When a stock is "limit-up," sellers vanish and the order book is one-sided:
+
+$$
+P^{\text{high}}_t \le (1 + \ell)\, C_{t-1}, \qquad \ell = 0.10
+$$
+
+where $C_{t-1}$ is the prior close and $\ell$ is the limit fraction. On a limit-up day you often *cannot buy at all* — there is no offer to lift.
+
+## Shorting and lot sizes
+
+Shorting US equities is broadly available: borrow the shares, sell, buy back later. China restricts shorting heavily — only designated securities, through margin-trading accounts, with limited borrow. For most retail A-share traders, "going short" is not an option.
+
+Order size differs too. China trades in a **lot** (一手) of 100 shares: buy orders must be in multiples of 100. US markets allow single-share and even fractional orders.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+The US ETF above trades continuously with no daily cap; an A-share chart would show flat-topped or flat-bottomed days whenever a limit binds.
+
+## Common pitfalls
+
+<Pitfall title="Assuming US microstructure applies everywhere">
+A backtest that round-trips intraday is fine on US equities but **illegal on A-shares** under T+1 — the engine fills a sell that could never happen. Worse, on a limit-up day your "buy" fills at a price where no real seller existed. If you trade A-shares, your backtest must enforce T+1 holding and refuse fills against a locked limit. Track E's E-15 builds these mechanics out in detail.
+</Pitfall>
+
+<KeyPoint title="Microstructure is part of the strategy">
+Settlement (T+0 vs T+1), price limits ($\pm10\%$), shorting access, and lot size are not trivia — they decide which strategies are even *possible*. Always know the rules of the market you are coding for, not the market you read about.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-07-us-vs-china-q1" question="A strategy buys at 10:00 and sells the same shares at 14:00 the same day. On which market can it run as written?" options={['China A-shares only', 'US equities — but not China A-shares under T+1', 'Both markets identically', 'Neither market allows intraday selling']} answer={1} explanation="US equities settle effectively T+0 for trading purposes, so an intraday round-trip is normal. China A-shares settle T+1: shares bought today cannot be sold until the next session, so this strategy cannot run there." />
+
+<Quiz id="A-07-us-vs-china-q2" question="A China main-board stock opens limit-up (+10%). What is the realistic problem for a buyer?" options={['Commissions double on limit days', 'There may be no offers to buy against, so the order cannot fill', 'The price can still fall 30% the same day', 'Short sellers force the price back down instantly']} answer={1} explanation="At limit-up the book is one-sided — holders refuse to sell at the capped price, so a buyer often cannot get filled at all. The daily band also prevents a further rise beyond +10%." />

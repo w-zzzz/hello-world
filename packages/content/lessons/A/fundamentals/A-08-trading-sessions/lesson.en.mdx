@@ -1,0 +1,49 @@
+# Trading sessions and hours
+
+A market is not "on" uniformly all day. It opens, it closes, and in between, liquidity rises and falls in a predictable shape. When your orders fill, how wide the spread is, and how violently price gaps overnight all depend on *which part of the session* you are trading. This lesson maps the trading day so you stop treating every minute as if it were the same.
+
+## Regular hours, pre-market, and post-market
+
+US equities trade **regular hours** roughly 09:30–16:00 ET. Around that sit **pre-market** and **post-market** sessions where trading continues but with far thinner volume and wider spreads. Most retail strategies should assume they execute in regular hours only — fills outside them are unreliable.
+
+China A-shares split the day into a **morning session** (09:30–11:30) and an **afternoon session** (13:00–15:00) with a **lunch break** in between. Nothing trades over lunch, so price simply resumes when the afternoon opens.
+
+## The open and close auctions
+
+The session does not begin with continuous trading. It begins with an **opening auction**: orders accumulate, and a single clearing price is computed that maximizes matched volume. The **closing auction** does the same at the end and produces the official closing price — the number used for index calculation, NAVs, and most settlement.
+
+These auctions matter to quants because the official close is an auction print, not the last continuous trade. If your strategy assumes it can transact "at the close," it really means *in the closing auction*.
+
+## Why liquidity is U-shaped
+
+Plot volume against time-of-day and you get a **U-shape**: heavy at the open, thin through midday, heavy again into the close.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+The open is busy because overnight news and queued orders all hit at once; the close is busy because funds rebalance to the official price. Midday is quiet — spreads widen and a large order moves price more. Liquidity, not just price, is a variable you should model.
+
+## Overnight gaps
+
+Price does not move continuously across the close-to-open boundary. The **overnight gap** is the difference between today's open and yesterday's close:
+
+$$
+g_t = O_t - C_{t-1}
+$$
+
+News released while the market is shut gets absorbed all at once at the next open. A stop-loss does *not* protect you across a gap: if you set a stop at \$98 and the stock gaps down to open at \$92, you are filled near \$92, not \$98. Holding overnight is a different risk profile from intraday.
+
+## Common pitfalls
+
+<Pitfall title="Trading the first and last few minutes naively">
+The opening auction and the first minutes after it are the most volatile, widest-spread part of the day. Many beginner 'edges' are really just measuring the noisy open — and they evaporate once you require fills a few minutes later at a normal spread. If a backtest's profit comes entirely from the 09:30 print, be suspicious: those fills are the hardest to actually obtain.
+</Pitfall>
+
+<KeyPoint title="When you trade is part of how you trade">
+Liquidity is U-shaped: deep at the open and close, thin midday. The official close is an auction, not the last tick. And stops cannot protect you across an overnight gap $g_t = O_t - C_{t-1}$. Pick your execution window deliberately.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-08-trading-sessions-q1" question="During which part of a typical US session is liquidity usually thinnest and the spread widest?" options={['The opening auction', 'Midday (around lunch)', 'The closing auction', 'It is constant all day']} answer={1} explanation="Volume follows a U-shape — heavy at the open and close, thin in the middle of the day. Midday is when spreads widen and a large order has the most price impact." />
+
+<Quiz id="A-08-trading-sessions-q2" question="You hold a long position overnight with a stop at \$98. Bad news drops after the close and the stock opens at \$92. What happens?" options={['The stop fills you out at \$98 as planned', 'The stop is ignored until price returns to \$98', 'You are filled near the \$92 open — the gap jumped your stop', 'The exchange refunds the difference']} answer={2} explanation="Price gaps discontinuously from yesterday's close to today's open. A stop only triggers once the market reopens, so you fill near \$92, not \$98 — stops do not protect across overnight gaps." />

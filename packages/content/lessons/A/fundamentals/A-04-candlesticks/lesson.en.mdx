@@ -1,0 +1,61 @@
+# Reading a candlestick chart
+
+In the last lesson you learned how an order becomes a fill. Every fill prints a price, and over a fixed window — a minute, a day, a week — those prices get compressed into a single drawing: the candlestick. Almost every chart you will ever look at as a quant is a wall of these candles. This lesson is about reading one candle honestly, before you ever try to read patterns into a row of them.
+
+A candle is not a signal. It is a four-number summary of what happened in one period. Learn to see those four numbers and you will already be ahead of most people staring at the same screen.
+
+## The four numbers: OHLC
+
+Each candle summarizes one period with four prices:
+
+- **Open (O)** — the first traded price of the period.
+- **High (H)** — the highest price reached.
+- **Low (L)** — the lowest price reached.
+- **Close (C)** — the last traded price of the period.
+
+Two simple quantities describe the shape of any candle:
+
+$$
+\text{range} = H - L, \qquad \text{body} = |C - O|
+$$
+
+The **range** is the full vertical extent of the candle — total ground covered. The **body** is the distance between open and close — the net result. The difference between them lives in the **wicks** (also called shadows), the thin lines above and below the body.
+
+## Body vs wicks
+
+The body is drawn as a filled rectangle from open to close. The wicks are thin lines stretching to the high and the low.
+
+- A **long body** means open and close were far apart: the period had a decisive net move.
+- A **small body** means price ended near where it began, regardless of how far it travelled in between.
+- A **long upper wick** means price pushed up but was sold back down before the close — buyers tried, sellers answered.
+- A **long lower wick** means price dropped but was bought back up before the close.
+
+So a candle with a tiny body and two long wicks travelled a long range but went nowhere net — a tug-of-war that ended in a draw.
+
+## Bullish vs bearish, and the doji
+
+Colour encodes direction. By convention a **bullish** candle (close above open) is drawn hollow or green; a **bearish** candle (close below open) is filled or red. That single bit of colour tells you the sign of $C - O$, nothing more.
+
+A **doji** is a candle whose open and close are almost equal, so the body nearly vanishes. It says the period opened and closed at the same place: indecision, or balance between buyers and sellers. A doji after a long run is often read as hesitation — but read, not obeyed.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Open the chart above and practise naming what you see: find a long-bodied green day, a long upper wick, and a near-doji. For each, say out loud what the four numbers must have been.
+
+## What one candle can and cannot tell you
+
+A single candle is a low-information event. It tells you four prices and nothing about *why*. It does not show the order book, the spread, who was buying, or whether the volume was real. A dramatic-looking candle on a thin, illiquid tape can be one large order — not a crowd.
+
+<Pitfall title="Candlestick patterns are widely over-trusted">
+Named patterns — hammer, engulfing, shooting star — feel like signals because they have memorable shapes and names. But a single candle, or even a pair, is a tiny sample. The same shape that 'works' in an uptrend fails in a chop. What actually matters is context: the prevailing trend, whether the candle sits at a meaningful level, and whether volume confirms it. The shape is the least informative part. Treat patterns as a vocabulary for describing what happened, not as a recipe for predicting what happens next.
+</Pitfall>
+
+<KeyPoint title="Read the numbers, not the name">
+Every candle is just open, high, low, close over one period. Body shows the net move, wicks show the rejected extremes. Before you name a pattern, ask what the four numbers are and what context surrounds them.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-04-candlesticks-q1" question="A daily candle has a very small body and a long lower wick. Which description fits best?" options={['Price trended steadily down all day and closed near the low.','Price fell during the day but was bought back up, closing near where it opened.','Price never moved — open, high, low, and close were identical.','Price gapped up at the open and held the gain into the close.']} answer={1} explanation="A long lower wick with a small body means price dropped intraday but recovered before the close, so open and close end up close together. The wick records the rejected low." />
+
+<Quiz id="A-04-candlesticks-q2" question="Why should you be cautious about acting on a single 'hammer' candlestick pattern?" options={['Hammers only form on weekly charts, so daily ones are invalid.','A single candle is a low-information event; context like trend, level, and volume matters more than the shape.','Green candles are always more reliable than red ones.','The pattern is illegal to trade on most exchanges.']} answer={1} explanation="One candle summarizes just four prices. The named shape is the least informative part — the surrounding trend, the level it forms at, and confirming volume carry far more signal." />

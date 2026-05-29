@@ -83,6 +83,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 4, {
     id: 'A-04-candlesticks',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 15,
@@ -92,6 +93,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 5, {
     id: 'A-05-volume',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 14,
@@ -101,6 +103,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 6, {
     id: 'A-06-timeframes',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 15,
@@ -110,6 +113,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 7, {
     id: 'A-07-us-vs-china',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 16,
@@ -119,6 +123,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 8, {
     id: 'A-08-trading-sessions',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 14,
@@ -128,6 +133,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 9, {
     id: 'A-09-fees-and-costs',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 15,
@@ -137,6 +143,7 @@ const TRACK_A: LessonRecord[] = [
   }),
   lesson('A', 10, {
     id: 'A-10-market-review',
+    mdxReady: true,
     module: 'fundamentals',
     difficulty: 'beginner',
     durationMin: 18,

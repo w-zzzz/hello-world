@@ -1,0 +1,51 @@
+# Track A review: the foundation everything builds on
+
+You have reached the end of Track A. Before you move on to indicators, signals, backtests, and full strategies, it is worth pausing to assemble the pieces into one mental model. Everything later in this curriculum — every moving average, every Sharpe ratio, every portfolio weight — sits on top of the handful of truths you learned here. If the foundation is shaky, nothing built on it can stand.
+
+## What a market actually is
+
+A market matches buyers and sellers. It does not hand down a "true price" — prices are produced by orders meeting in a book under transparent rules. Volume is the weight of evidence behind each price. You are always trading against a specific counterparty, never against an abstraction called "the market."
+
+## How price information reaches you
+
+Candlesticks and volume compress a stream of trades into something you can read: open, high, low, close, plus the size behind the move. But a candle hides the order book, the spread, and who was on the other side. A chart is summarized history, not the whole truth — read it with that humility.
+
+## Timeframe must match holding period
+
+The timeframe you analyze has to match how long you actually intend to hold. Studying a 1-minute chart to make a multi-week decision (or vice versa) is a category error. Holding period also drives cost, since each round trip pays the cost hurdle again.
+
+## Microstructure and costs are not optional
+
+Different markets play by different rules: US equities round-trip intraday with no daily cap; China A-shares settle T+1 with $\pm10\%$ price limits and restricted shorting. And every trade pays. Expressing one-way cost as a fraction $c$, the move you need just to break even is:
+
+$$
+r_{\text{breakeven}} \ge 2c
+$$
+
+This single inequality is the bridge from Track A into honest backtesting. A gross edge that does not clear $2c$ is not an edge.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Look at the chart one last time with everything Track A taught you: candles are summarized history, volume is evidence, the close is an auction print, and every fill on it would carry real cost.
+
+## Common pitfalls
+
+<Pitfall title="Rushing past fundamentals to chase indicators">
+The most common beginner blowup is not a bad indicator — it is ignoring the basics. Traders skip straight to RSI and MACD, then lose money to costs they never modeled, microstructure they never checked (T+1, price limits), or a timeframe that does not match their real holding period. Indicators are decoration on a structure. Get the structure right first.
+</Pitfall>
+
+<KeyPoint title="Track A checklist — carry this into every strategy">
+Before you trust any backtest, confirm all six:
+- Markets match buyers and sellers; nobody decrees the price.
+- Prices come from orders; volume is the weight behind them.
+- Candles + volume summarize history — they are not the full order book.
+- Your analysis timeframe matches your intended holding period.
+- You know your market's microstructure (T+0 vs T+1, price limits, shorting).
+- Costs are modeled: gross return must clear $2c$ to break even.
+</KeyPoint>
+
+## Check yourself
+
+<Quiz id="A-10-market-review-q1" question="According to Track A, what most often causes beginner strategies to blow up?" options={['Choosing RSI instead of MACD', 'Ignoring costs, microstructure, or a holding-period/timeframe mismatch', 'Not using enough indicators at once', 'Trading liquid large-caps instead of small-caps']} answer={1} explanation="Blowups trace back to fundamentals: unmodeled costs, ignored microstructure (T+1, price limits), or a timeframe that does not match the real holding period — not the specific indicator chosen." />
+
+<Quiz id="A-10-market-review-q2" question="Which statement best captures Track A's view of a candlestick chart?" options={['It shows the complete order book and every counterparty', 'It is summarized history — useful, but it hides the spread, the book, and who traded', 'It states the true value of the asset', 'It guarantees the next price move']} answer={1} explanation="A candle compresses open/high/low/close plus volume. It is summarized history and must be read with humility — it omits the order book, the spread, and the counterparties behind each move." />
