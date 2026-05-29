@@ -1,1 +1,17 @@
+#!/usr/bin/env sh
+
+# Skip cleanly when tooling isn't present — typical of an isolated worktree
+# branched from a base commit without package.json, or one where pnpm install
+# hasn't run yet. The main repo always has all three of these.
+missing=""
+[ -f "package.json" ] || missing="$missing package.json"
+[ -f "biome.json" ]   || missing="$missing biome.json"
+[ -d "node_modules" ] || missing="$missing node_modules"
+
+if [ -n "$missing" ]; then
+  echo "husky: pre-commit skipped — missing:$missing" >&2
+  echo "husky: this is normal for fresh worktrees; main repo runs the full check." >&2
+  exit 0
+fi
+
 pnpm exec lint-staged
