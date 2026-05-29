@@ -29,24 +29,20 @@ export function StreakIndicator({ current, lastActiveDate, compact = false, clas
   const displayDate = lastActiveDate ?? '—'
 
   return (
-    <span
-      className={['relative inline-flex items-center', className].filter(Boolean).join(' ')}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-    >
-      <span
-        tabIndex={0}
+    <span className={['relative inline-flex items-center', className].filter(Boolean).join(' ')}>
+      <button
+        type="button"
         aria-describedby={tooltipId}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
         className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300"
       >
         <Flame className="size-3.5" aria-hidden="true" />
-        {!compact && (
-          <span className="tabular-nums">{t('label', { count: current })}</span>
-        )}
+        {!compact && <span className="tabular-nums">{t('label', { count: current })}</span>}
         {compact && <span className="sr-only">{t('label', { count: current })}</span>}
-      </span>
+      </button>
       <span
         id={tooltipId}
         role="tooltip"

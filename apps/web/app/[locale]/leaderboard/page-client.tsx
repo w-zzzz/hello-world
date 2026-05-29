@@ -133,10 +133,7 @@ export function LeaderboardPageClient({ currentUserHandle }: Props) {
                 return (
                   <tr
                     key={`${entry.rank}-${entry.handle}`}
-                    className={[
-                      'border-b last:border-b-0',
-                      isMe ? 'bg-brand-500/5' : '',
-                    ].join(' ')}
+                    className={['border-b last:border-b-0', isMe ? 'bg-brand-500/5' : ''].join(' ')}
                   >
                     <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
                       #{entry.rank}

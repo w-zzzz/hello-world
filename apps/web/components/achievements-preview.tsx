@@ -3,11 +3,8 @@
 import { ArrowRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
+import { type AchievementListItem, AchievementsGrid } from '@/components/achievements-grid'
 import { Link } from '@/i18n/navigation'
-import {
-  type AchievementListItem,
-  AchievementsGrid,
-} from '@/components/achievements-grid'
 
 interface Props {
   limit?: number
@@ -46,8 +43,7 @@ export function AchievementsPreview({ limit = 4 }: Props) {
   if (items === null) {
     return (
       <div className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
-        {/* using a dot to indicate the loader without taxing the i18n bundle */}
-        …
+        {/* using a dot to indicate the loader without taxing the i18n bundle */}…
       </div>
     )
   }

@@ -90,10 +90,7 @@ export function AchievementsGrid({ achievements, limit, className }: Props) {
   return (
     <ul
       aria-labelledby={headingId}
-      className={[
-        'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4',
-        className,
-      ]
+      className={['grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4', className]
         .filter(Boolean)
         .join(' ')}
     >

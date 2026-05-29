@@ -2,10 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
-import {
-  type AchievementListItem,
-  AchievementsGrid,
-} from '@/components/achievements-grid'
+import { type AchievementListItem, AchievementsGrid } from '@/components/achievements-grid'
 
 type LoadState =
   | { kind: 'loading' }
@@ -34,7 +31,10 @@ export function AchievementsPageClient() {
         }
         const body = (await res.json()) as { achievements?: AchievementListItem[] }
         if (!cancelled) {
-          setState({ kind: 'ready', items: Array.isArray(body.achievements) ? body.achievements : [] })
+          setState({
+            kind: 'ready',
+            items: Array.isArray(body.achievements) ? body.achievements : [],
+          })
         }
       } catch {
         if (!cancelled) setState({ kind: 'error' }) // network failure → distinct from empty

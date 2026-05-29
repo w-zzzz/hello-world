@@ -3,11 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { getCurrentUser } from '@/lib/auth'
 import { LeaderboardPageClient } from './page-client'
 
-export default async function LeaderboardPage({
-  params,
-}: {
-  params: Promise<{ locale: Locale }>
-}) {
+export default async function LeaderboardPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params
   setRequestLocale(locale)
   const t = await getTranslations({ locale })

@@ -58,12 +58,7 @@ export function LeaderboardOptIn({ initialOptedIn = false }: Props) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4 text-sm">
         <span className="text-muted-foreground">{t('optedIn')}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={pending}
-          onClick={() => toggle(false)}
-        >
+        <Button variant="ghost" size="sm" disabled={pending} onClick={() => toggle(false)}>
           {t('optInCta')}
         </Button>
       </div>

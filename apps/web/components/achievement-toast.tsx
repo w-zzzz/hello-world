@@ -45,7 +45,9 @@ const AUTO_DISMISS_MS = 5000
  * lowercase slug first. We treat the namespace as an icon map and fall
  * back to <Award /> when the requested icon doesn't exist.
  */
-function resolveIcon(name: string): React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }> {
+function resolveIcon(
+  name: string,
+): React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }> {
   const key = name.charAt(0).toUpperCase() + name.slice(1)
   const lib = LucideIcons as unknown as Record<string, unknown>
   const candidate = lib[key]
@@ -88,11 +90,9 @@ export function AchievementToastListener() {
 
   useEffect(() => {
     if (items.length === 0) return
-    const timers = items.map((it) =>
-      window.setTimeout(() => dismiss(it.id), AUTO_DISMISS_MS),
-    )
+    const timers = items.map((it) => window.setTimeout(() => dismiss(it.id), AUTO_DISMISS_MS))
     return () => {
-      timers.forEach((id) => window.clearTimeout(id))
+      for (const id of timers) window.clearTimeout(id)
     }
   }, [items, dismiss])
 
