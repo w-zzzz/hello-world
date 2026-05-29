@@ -40,7 +40,7 @@ The hard lesson: on the same dataset, **no single period is best**. The best per
 
 Every new quant goes through a phase of grid-searching the smoothing parameter to find "the optimum." It always exists in-sample. It rarely survives out-of-sample. The reason is structural: the optimum is a function of the regime, and the regime changes. A parameter that looks brilliant on 2017–2019 looks foolish on 2020 and again on 2022.
 
-<Pitfall title="The "perfect smoothing parameter" is a mirage">
+<Pitfall title="The 'perfect smoothing parameter' is a mirage">
 There is no period that is robustly optimal across regimes. Searching for one — and reporting the in-sample winner — is one of the most reliable ways to deceive yourself with a backtest. Robust strategies are deliberately **un-clever** about smoothing: round numbers, picked a priori, justified on signal-processing grounds, not on backtest Sharpe.
 </Pitfall>
 

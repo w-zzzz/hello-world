@@ -1,0 +1,83 @@
+# ADX and the Directional Movement Index (DMI)
+
+Most indicators answer "which way is price going, and how hard?" Welles Wilder's 1978 Directional Movement System asks a different question: **is there a trend here at all?** Its DMI lines tell you **direction**, and ADX tells you **strength**. Together they help you decide whether trend-following is even the right tool today.
+
+## Directional Movement: distilling direction from highs and lows
+
+Wilder's first idea was to compress "today's direction" into two numbers. Compare today's high and low against yesterday's:
+
+$$
++\mathrm{DM}_t = \begin{cases} H_t - H_{t-1}, & \text{if } H_t - H_{t-1} > L_{t-1} - L_t \text{ and positive} \\ 0, & \text{otherwise} \end{cases}
+$$
+
+$$
+-\mathrm{DM}_t = \begin{cases} L_{t-1} - L_t, & \text{if } L_{t-1} - L_t > H_t - H_{t-1} \text{ and positive} \\ 0, & \text{otherwise} \end{cases}
+$$
+
+If today's high is more above yesterday's high than today's low is below yesterday's low, the excess becomes $+\mathrm{DM}$; otherwise the symmetric case gives $-\mathrm{DM}$. The two are never both positive — each bar votes for one direction or neither.
+
+## From DM to DI: the Directional Indicators
+
+Raw DM is noisy bar-to-bar, so Wilder normalizes by ATR (average true range) and smooths over $n$ periods (the canonical $n = 14$):
+
+$$
++\mathrm{DI}_n = 100 \cdot \frac{\mathrm{EMA}_n(+\mathrm{DM})}{\mathrm{ATR}_n}, \quad -\mathrm{DI}_n = 100 \cdot \frac{\mathrm{EMA}_n(-\mathrm{DM})}{\mathrm{ATR}_n}
+$$
+
+A high $+\mathrm{DI}$ says upward bars dominate; a high $-\mathrm{DI}$ says the downside owns the tape. The classical trigger is a crossover — $+\mathrm{DI}$ rising above $-\mathrm{DI}$ for longs, the reverse for shorts.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+On SPY, picture $-\mathrm{DI}$ sitting above $+\mathrm{DI}$ through the 2022 drawdown — exactly the regime DMI is built to flag.
+
+## ADX: extracting strength from direction
+
+DMI tells you which side is winning, but not by how much. Wilder solved that with a clever normalization:
+
+$$
+\mathrm{DX} = 100 \cdot \frac{|+\mathrm{DI} - (-\mathrm{DI})|}{+\mathrm{DI} + (-\mathrm{DI})}
+$$
+
+$$
+\mathrm{ADX}_n = \mathrm{EMA}_n(\mathrm{DX}) \quad \text{(Wilder smoothing)}
+$$
+
+The absolute value is the point: DX discards direction and keeps only the *gap* between the two DI lines. When one side dominates, DX is large; when they tangle, DX collapses to zero. Smoothing DX with Wilder's EMA ($\alpha = 1/n$) gives ADX — a single trend-strength number.
+
+<KeyPoint title="ADX measures trend strength, not direction">A rising ADX only says "the current direction is becoming more decisive." Whether that direction is up or down requires reading $+\mathrm{DI}$ vs $-\mathrm{DI}$. ADX on its own is direction-blind.</KeyPoint>
+
+## Classic ADX thresholds
+
+Widely cited starting points, not laws:
+
+- **ADX < 20** — weak/absent trend. Trend strategies will likely whipsaw.
+- **20 to 25** — ambiguous. Regime change forming, or a head-fake.
+- **Above 25** — confirmed trend. Trend-following has its best edge.
+- **Above 40-50** — very strong trend, but late. Fresh entries get worse risk/reward.
+
+Wilder fit these on daily equities. Re-calibrate out-of-sample for your own instrument and timeframe.
+
+## Putting it together
+
+The common DMI+ADX workflow has three steps:
+
+1. **Filter regime with ADX.** Only allow trend strategies when ADX > 25; below 20, switch to mean-reversion or stand aside.
+2. **Pick a side with DI lines.** Choose long or short by whichever DI is higher.
+3. **Time entries with DI crossovers.** Wait for $+\mathrm{DI}$ to actually cross above $-\mathrm{DI}$ before committing capital.
+
+The idea: answer "should I be trading at all?" before "which way?" That order is what separates Wilder's system from naïve momentum chasing.
+
+## Pitfalls
+
+<Pitfall title="Using ADX below 20 as a buy-the-range signal">Beginners read "ADX < 20 = range" and flip it into "enter mean-reversion trades." But ADX is itself lagging — DX smoothed on already-smoothed DI inputs lags the regime by $n$ to $2n$ bars. By the time ADX prints 19, the range you wanted to fade is half-done; by the time it prints 26, the trend you wanted to ride has moved. ADX belongs in the regime *filter*, voting yes/no alongside price action, not in the trigger that fires the order.</Pitfall>
+
+Two more common mistakes:
+
+- **Treating a DI crossover as a standalone entry.** In ADX < 20 chop, DI lines cross constantly and each crossing costs commissions.
+- **Reusing parameters across instruments.** Wilder's 14 was tuned on daily equities; the same 14 on 5-minute futures is a different beast.
+
+## Check yourself
+
+<Quiz id="B-14-adx-dmi-q1" question="ADX rises from 18 to 32. What is the most accurate reading?" options={["Price is going up because ADX is rising.","Price is going down because ADX is rising.","The trend is strengthening, but direction must be read from +DI vs -DI.","ADX rising means a reversal is imminent."]} answer={2} explanation="ADX is a strength gauge, not a direction gauge. The DI lines decide which way the trend points." />
+
+<Quiz id="B-14-adx-dmi-q2" question="Why does 'wait for ADX to cross below 20 before switching to range strategies' usually disappoint?" options={["The threshold 20 is wrong — 30 works better.","ADX is itself lagging, so by the time it confirms range, most of the range is already done.","Range strategies can never be profitable.","ADX only applies to up trends."]} answer={1} explanation="ADX is DX after Wilder smoothing on top of already-smoothed DI inputs, lagging the underlying regime by n to 2n bars. As a real-time switch it will always make you late." />

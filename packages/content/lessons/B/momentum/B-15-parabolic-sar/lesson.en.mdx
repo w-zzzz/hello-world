@@ -1,0 +1,72 @@
+# Parabolic SAR
+
+Wilder's second 1978 classic is the Parabolic SAR — short for "Stop and Reverse." Its purpose is narrow: a trailing stop that always lives on the chart, moves every bar, and flips sides when price crosses it. In this lesson you will see the iterative formula, the philosophy behind the acceleration factor (AF), and why SAR is brutal in choppy markets.
+
+## The one-line recursion
+
+The update rule is a single line:
+
+$$
+\mathrm{SAR}_t = \mathrm{SAR}_{t-1} + \mathrm{AF} \cdot (\mathrm{EP} - \mathrm{SAR}_{t-1})
+$$
+
+Where:
+
+- $\mathrm{SAR}_{t-1}$ is the prior bar's SAR.
+- $\mathrm{EP}$ (Extreme Point) is the highest high so far in this up-trend (or the lowest low in this down-trend).
+- $\mathrm{AF}$ (Acceleration Factor) is a small fraction that grows as the trend persists.
+
+Read this as an asymmetric EMA: as price prints new extremes, EP moves with the trend and SAR is pulled toward it by $\mathrm{AF}$. The longer the trend, the larger AF, the tighter SAR sits behind price. When price crosses SAR, the trend is declared over: SAR jumps to the other side and the system reverses.
+
+## The acceleration factor schedule
+
+Wilder gave AF a stepwise self-adapting rule:
+
+$$
+\mathrm{AF}_0 = 0.02, \quad \Delta \mathrm{AF} = 0.02, \quad \mathrm{AF}_{\max} = 0.20
+$$
+
+Each new EP increments AF by 0.02, capped at 0.20. No new EP, AF holds. On a flip, AF resets to 0.02.
+
+This encodes a real intuition: **as a trend extends, your stop should creep up faster.** Early on, small AF gives price room to breathe; late, large AF clings to price and locks in gains. The 0.20 cap prevents pathological tightness — without it, SAR would essentially touch the bar.
+
+## Flip rules and direction switches
+
+Wilder added two guard rails so SAR is not knocked out by a single noisy bar:
+
+- In a long, the candidate SAR is clamped to the lowest low of the past two bars.
+- In a short, the candidate SAR is clamped to the highest high of the past two bars.
+
+This is a two-bar cushion. When price closes through SAR — a long closing below it, or a short closing above — the flip happens:
+
+1. New SAR = previous trend's EP.
+2. New EP = current bar's opposite extreme.
+3. AF resets to 0.02.
+
+<KeyPoint title="SAR is an adaptive trailing stop">SAR is not really a reversal predictor. It is a stop level that tightens with profit. Treat each dot as "this is where I should be flat" rather than "this is where I should reverse," and you will misuse it less often.</KeyPoint>
+
+## Seeing it on SPY
+
+The chart below makes the formula concrete. Picture a dot below each bar in an uptrend, climbing closer to price as the rally extends, and a dot above each bar in a downtrend.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+Watch two specific regimes:
+
+- The 2020-2021 rally is almost a single SAR run — dots glide up below the bars, exactly the setup SAR is built for.
+- The early-2022 chop is a graveyard for SAR. Dots flip three or four times a month; each flip costs you a round-trip's worth of slippage.
+
+## Pitfalls
+
+<Pitfall title="Running SAR as a full standalone system">SAR's pitch — "mechanical, always has a stop" — sounds great until you backtest across full history. In sideways regimes SAR flips 3-5 times a week, selling the low and buying the high each time. Wilder himself wrote that SAR should be paired with an independent trend/range filter (e.g. only let SAR manage stops when ADX > 25). Beginners who deploy SAR alone get a beautiful 2020-2021 SPY backtest that saws their equity to splinters over 5 years on the same instrument.</Pitfall>
+
+Two more common errors:
+
+- **Treating a SAR flip as an entry** with no price filter. On many instruments the bar after a flip retraces back through SAR more often than it extends.
+- **Reusing the default 0.02 / 0.20** on minute data. Wilder tuned those on daily commodities; intraday data needs a smaller AF step.
+
+## Check yourself
+
+<Quiz id="B-15-parabolic-sar-q1" question="What is the role of the acceleration factor (AF) in SAR?" options={["It delays the SAR signal to make it more stable.","It tightens SAR's trailing stop as the trend extends by stepping AF up on every new extreme.","It softens SAR when ADX is low.","It scales SAR with volume."]} answer={1} explanation="AF grows by 0.02 (capped at 0.20) every new EP, so SAR closes the gap to price faster the longer the trend has run — a trailing stop that tightens with profit." />
+
+<Quiz id="B-15-parabolic-sar-q2" question="Why does SAR underperform when used as a standalone system on most real markets?" options={["The SAR formula is algebraically wrong.","Real markets spend more time in chop than in trend, and in chop SAR flips constantly, bleeding to commissions and slippage.","SAR only works on crypto.","SAR must be re-calibrated by hand each day."]} answer={1} explanation="SAR's design assumes the current bar is part of a trend. In a range it generates a flip-fest. Pair it with an independent regime filter (ADX, volatility regime) as Wilder recommended." />

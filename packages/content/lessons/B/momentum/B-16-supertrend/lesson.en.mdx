@@ -1,0 +1,78 @@
+# SuperTrend
+
+SuperTrend rose to popularity in retail communities in the 2000s. Its look is striking: a single line that flips between red and green — price above green marks longs, below red marks shorts. Unlike a moving average, SuperTrend is a step function that jumps when direction switches. In this lesson you will learn how its two candidate bands are built, how each bar picks one, and why "perfect" SuperTrend parameters are usually overfit.
+
+## Two candidate bands: a symmetric ATR channel
+
+Step one: an ATR channel around the median price $\bar{P} = (H+L)/2$:
+
+$$
+\mathrm{UpperBand}_t = \bar{P}_t + m \cdot \mathrm{ATR}_n(t)
+$$
+
+$$
+\mathrm{LowerBand}_t = \bar{P}_t - m \cdot \mathrm{ATR}_n(t)
+$$
+
+Here $m$ is the multiplier (typically 3) and $n$ is the ATR period (typically 10). These bands alone do not define SuperTrend — each bar still picks one of them.
+
+Before picking, the bands are "locked" to prevent jitter in tight ranges:
+
+- $\mathrm{UpperBand}_t = \min(\mathrm{UpperBand}_t, \mathrm{UpperBand}_{t-1})$, unless the previous close exceeded $\mathrm{UpperBand}_{t-1}$.
+- $\mathrm{LowerBand}_t = \max(\mathrm{LowerBand}_t, \mathrm{LowerBand}_{t-1})$, unless the previous close was below $\mathrm{LowerBand}_{t-1}$.
+
+It is one-way ratcheting: in an uptrend the lower band can only rise. When price closes through it, the lock releases and the band resets.
+
+## Picking SuperTrend: where the step function comes from
+
+Each bar picks one band by comparing the **previous** close to the **previous** SuperTrend:
+
+- If previous SuperTrend = previous upper band (we were short):
+  - Current close above current upper band → flip long; ST = current lower band.
+  - Otherwise → stay short; ST = current upper band.
+- If previous SuperTrend = previous lower band (we were long):
+  - Current close below current lower band → flip short; ST = current upper band.
+  - Otherwise → stay long; ST = current lower band.
+
+Compactly:
+
+$$
+\mathrm{ST}_t = \begin{cases} \mathrm{LowerBand}_t, & \text{long regime} \ (\mathrm{Close}_{t-1} > \mathrm{ST}_{t-1}) \\ \mathrm{UpperBand}_t, & \text{short regime} \ (\mathrm{Close}_{t-1} < \mathrm{ST}_{t-1}) \end{cases}
+$$
+
+The result is the famous red/green staircase — climbing with the lower band during longs, jumping to the upper band when price closes through.
+
+<KeyPoint title="SuperTrend = ATR channel + a close-through direction switch">Strip away the marketing and SuperTrend is an ATR channel plus a discrete choice driven by the previous close. Once you see those two layers, implementing it yourself is roughly a dozen lines of code.</KeyPoint>
+
+## Seeing the staircase on SPY
+
+Picture the staircase on SPY as you read.
+
+<Chart symbol="SPY" height={360} intervalLabel="D" />
+
+In the April 2020-late 2021 rally, a green staircase climbs below price almost uninterrupted — SuperTrend's happy regime. Through 2022 a red staircase descends above price. Sandwiched between, chop zones show rapid green/red flips. Each flip is a round-trip; flip count decides whether you profit or bleed.
+
+## Where the (10, 3) defaults come from
+
+The cited defaults — ATR period 10, multiplier 3 — are not derived from any theorem. They are folklore from retail backtests on daily equities and crypto. The optimum drifts with market and timeframe:
+
+- **Larger $m$** widens the channel and reduces flips — at the cost of slower exits and bigger drawdowns.
+- **Smaller $m$** tightens the channel and flips more — PSAR territory in chop.
+- **Longer $n$** smooths channel width but lags volatility shifts; too short and the bands vibrate every bar.
+
+Beginners sweep $(n, m)$ on the whole history, pick the best curve, and declare victory. That is the trap below.
+
+## Pitfalls
+
+<Pitfall title="Treating a perfect SuperTrend backtest as a discovery instead of overfitting">With only two parameters, SuperTrend is fast to sweep — and that is exactly what makes it dangerous. The temptation is to feed in 2020-2024 history, scan $n \in [5, 20]$ and $m \in [1, 5]$, and pick the best Sharpe. That "discovery" is almost always an artifact: every bar saw every combination, so the chosen $(n, m)$ is a fit to noise. Split data into train/validation/test, tune on train, select on validation, report only on test. If test performance does not visibly underperform train, suspect leakage — honest research expects the drop.</Pitfall>
+
+Two more details:
+
+- **Close-through vs intrabar touch.** Standard SuperTrend flips on the close, not on intrabar highs or lows. Live minute-bar traders see "preview" values that may unflip by daily close.
+- **Gap risk.** Like any ATR-channel system, SuperTrend can flip on the open after an overnight gap. Compare "exit at last close" vs "exit at next open" in backtests — the spread is usually material.
+
+## Check yourself
+
+<Quiz id="B-16-supertrend-q1" question="Which formula generates SuperTrend's two candidate bands?" options={["Close plus and minus m standard deviations.","Median price (H+L)/2 plus and minus m times ATR.","Close plus and minus m times the past n-bar high-low range.","EMA plus and minus m volume-weighted deviations."]} answer={1} explanation="SuperTrend builds a symmetric ATR channel around (H+L)/2 with width m * ATR_n, then picks the upper or lower band each bar based on the previous close vs the previous SuperTrend." />
+
+<Quiz id="B-16-supertrend-q2" question="Why is 'find the (n, m) that maximizes Sharpe on the full 5-year history' a flawed research method?" options={["SuperTrend's parameters are fixed by definition.","The search space is too large to compute in reasonable time.","The sweep overfits training noise; data must be split into train/validation/test and the test set is the only honest performance report.","The best parameters are always the defaults (10, 3)."]} answer={2} explanation="SuperTrend has only two parameters, so a sweep is cheap — which is exactly why it overfits. An honest workflow tunes on train, selects on validation, and reports only the test set." />

@@ -1,14 +1,14 @@
 import { defineLesson } from '@quant-academy/content/schema'
 
 export default defineLesson({
-  id: 'B-04-bollinger-bands',
+  id: 'B-16-supertrend',
   trackId: 'B',
-  module: 'bollinger',
-  order: 4,
+  module: 'momentum',
+  order: 16,
   difficulty: 'intermediate',
   durationMin: 18,
   xp: 100,
-  prerequisites: ['B-02-ema'],
-  tags: ['indicators', 'bollinger'],
+  prerequisites: [],
+  tags: ['indicators', 'momentum'],
   contributors: ['@quant-academy'],
 })

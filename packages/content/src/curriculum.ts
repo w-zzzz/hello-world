@@ -153,6 +153,7 @@ const TRACK_B: LessonRecord[] = [
   // moving-averages cluster
   lesson('B', 1, {
     id: 'B-01-sma',
+    mdxReady: true,
     module: 'moving-averages',
     difficulty: 'beginner',
     durationMin: 15,
@@ -161,6 +162,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 2, {
     id: 'B-02-ema',
+    mdxReady: true,
     module: 'moving-averages',
     difficulty: 'beginner',
     durationMin: 16,
@@ -170,6 +172,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 3, {
     id: 'B-03-wma',
+    mdxReady: true,
     module: 'moving-averages',
     difficulty: 'beginner',
     durationMin: 14,
@@ -180,6 +183,7 @@ const TRACK_B: LessonRecord[] = [
   // bollinger cluster
   lesson('B', 4, {
     id: 'B-04-bollinger-bands',
+    mdxReady: true,
     module: 'bollinger',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -189,6 +193,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 5, {
     id: 'B-05-bollinger-strategies',
+    mdxReady: true,
     module: 'bollinger',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -199,6 +204,7 @@ const TRACK_B: LessonRecord[] = [
   // rsi cluster
   lesson('B', 6, {
     id: 'B-06-rsi-intro',
+    mdxReady: true,
     module: 'rsi',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -207,6 +213,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 7, {
     id: 'B-07-rsi-math',
+    mdxReady: true,
     module: 'rsi',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -216,6 +223,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 8, {
     id: 'B-08-rsi-divergence',
+    mdxReady: true,
     module: 'rsi',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -226,6 +234,7 @@ const TRACK_B: LessonRecord[] = [
   // macd cluster
   lesson('B', 9, {
     id: 'B-09-macd-intro',
+    mdxReady: true,
     module: 'macd',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -235,6 +244,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 10, {
     id: 'B-10-macd-histogram',
+    mdxReady: true,
     module: 'macd',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -245,6 +255,7 @@ const TRACK_B: LessonRecord[] = [
   // oscillators cluster
   lesson('B', 11, {
     id: 'B-11-stochastic',
+    mdxReady: true,
     module: 'oscillators',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -253,6 +264,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 12, {
     id: 'B-12-cci',
+    mdxReady: true,
     module: 'oscillators',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -261,6 +273,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 13, {
     id: 'B-13-williams-r',
+    mdxReady: true,
     module: 'oscillators',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -270,6 +283,7 @@ const TRACK_B: LessonRecord[] = [
   // momentum cluster
   lesson('B', 14, {
     id: 'B-14-adx-dmi',
+    mdxReady: true,
     module: 'momentum',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -278,6 +292,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 15, {
     id: 'B-15-parabolic-sar',
+    mdxReady: true,
     module: 'momentum',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -286,6 +301,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 16, {
     id: 'B-16-supertrend',
+    mdxReady: true,
     module: 'momentum',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -295,6 +311,7 @@ const TRACK_B: LessonRecord[] = [
   // volatility cluster
   lesson('B', 17, {
     id: 'B-17-atr',
+    mdxReady: true,
     module: 'volatility',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -303,6 +320,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 18, {
     id: 'B-18-keltner-channels',
+    mdxReady: true,
     module: 'volatility',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -312,6 +330,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 19, {
     id: 'B-19-donchian-channels',
+    mdxReady: true,
     module: 'volatility',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -321,6 +340,7 @@ const TRACK_B: LessonRecord[] = [
   // volume-flow cluster
   lesson('B', 20, {
     id: 'B-20-obv',
+    mdxReady: true,
     module: 'volume-flow',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -329,6 +349,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 21, {
     id: 'B-21-vwap',
+    mdxReady: true,
     module: 'volume-flow',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -337,6 +358,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 22, {
     id: 'B-22-mfi',
+    mdxReady: true,
     module: 'volume-flow',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -345,6 +367,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 23, {
     id: 'B-23-volume-profile',
+    mdxReady: true,
     module: 'volume-flow',
     difficulty: 'advanced',
     durationMin: 22,
@@ -355,6 +378,7 @@ const TRACK_B: LessonRecord[] = [
   // ichimoku cluster
   lesson('B', 24, {
     id: 'B-24-ichimoku-intro',
+    mdxReady: true,
     module: 'ichimoku',
     difficulty: 'advanced',
     durationMin: 22,
@@ -363,6 +387,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 25, {
     id: 'B-25-ichimoku-signals',
+    mdxReady: true,
     module: 'ichimoku',
     difficulty: 'advanced',
     durationMin: 22,
@@ -373,6 +398,7 @@ const TRACK_B: LessonRecord[] = [
   // pivots cluster
   lesson('B', 26, {
     id: 'B-26-pivot-points',
+    mdxReady: true,
     module: 'pivots',
     difficulty: 'intermediate',
     durationMin: 16,
@@ -381,6 +407,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 27, {
     id: 'B-27-fibonacci-pivots',
+    mdxReady: true,
     module: 'pivots',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -391,6 +418,7 @@ const TRACK_B: LessonRecord[] = [
   // composite cluster
   lesson('B', 28, {
     id: 'B-28-indicator-quality',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'advanced',
     durationMin: 20,
@@ -399,6 +427,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 29, {
     id: 'B-29-lookahead-traps',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'advanced',
     durationMin: 20,
@@ -407,6 +436,7 @@ const TRACK_B: LessonRecord[] = [
   }),
   lesson('B', 30, {
     id: 'B-30-indicator-review',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -421,6 +451,7 @@ const TRACK_B: LessonRecord[] = [
 const TRACK_C: LessonRecord[] = [
   lesson('C', 1, {
     id: 'C-01-confluence-intro',
+    mdxReady: true,
     module: 'confluence',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -429,6 +460,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 2, {
     id: 'C-02-multi-timeframe',
+    mdxReady: true,
     module: 'confluence',
     difficulty: 'intermediate',
     durationMin: 20,
@@ -438,6 +470,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 3, {
     id: 'C-03-divergence-detection',
+    mdxReady: true,
     module: 'divergence',
     difficulty: 'advanced',
     durationMin: 22,
@@ -446,6 +479,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 4, {
     id: 'C-04-divergence-game',
+    mdxReady: true,
     module: 'divergence',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -455,6 +489,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 5, {
     id: 'C-05-regime-detection',
+    mdxReady: true,
     module: 'regime',
     difficulty: 'advanced',
     durationMin: 22,
@@ -463,6 +498,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 6, {
     id: 'C-06-signal-aggregation',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'advanced',
     durationMin: 22,
@@ -471,6 +507,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 7, {
     id: 'C-07-smoothing-vs-lag',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'intermediate',
     durationMin: 18,
@@ -479,6 +516,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 8, {
     id: 'C-08-false-signal-filter',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'advanced',
     durationMin: 22,
@@ -487,6 +525,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 9, {
     id: 'C-09-signal-workshop',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'advanced',
     durationMin: 25,
@@ -496,6 +535,7 @@ const TRACK_C: LessonRecord[] = [
   }),
   lesson('C', 10, {
     id: 'C-10-signal-review',
+    mdxReady: true,
     module: 'composite',
     difficulty: 'intermediate',
     durationMin: 18,
